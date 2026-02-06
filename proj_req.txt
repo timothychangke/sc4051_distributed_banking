@@ -1,0 +1,174 @@
+=================================================================
+PROJECT REQUIREMENTS: DISTRIBUTED BANKING SYSTEM (UDP)
+=================================================================
+
+1. CORE OBJECTIVES
+------------------
+* Goal: Implement a distributed banking system using UDP.
+* Focus: Manual Marshalling, Remote Invocation, and Fault Tolerance.
+* Protocol: MUST use UDP. Standard RMI/RPC/Serialization is FORBIDDEN.
+* Responsibility: Work division must be clearly defined among group members.
+
+
+2. DATA STRUCTURES (BANK ACCOUNT)
+---------------------------------
+* Account Number:   Integer (Server-generated)
+* Account Holder:   Variable-length string
+* Password:         Fixed-length string
+* Currency Type:    Enumerated type
+* Account Balance:  Floating-point value
+* Storage:          In-memory (Persistent disk storage is optional)
+
+
+3. CORE SERVICES
+----------------
+S1. OPEN ACCOUNT: (Name, PW, Currency, Balance) -> Returns Account Number.
+
+S2. CLOSE ACCOUNT: (Name, AccNo, PW) -> Returns Ack or Error.
+    - Error Cases: Wrong password, account number not under users name, 
+      or account does not exist at server. Return appropriate error message.
+
+S3. DEPOSIT/WITHDRAW: (Name, AccNo, PW, Currency, Amt) -> Returns New Balance or Error.
+    - Error Cases: Wrong password, insufficient balance for withdrawal.
+
+S4. MONITOR (CALLBACK): 
+    - Client provides interval; Server pushes updates to Clients IP/Port.
+    - Client is BLOCKED during interval: User cannot input new requests 
+      until monitor interval expires.
+    - No multithreading required at client (due to blocking behavior).
+    - Server must support multiple concurrent monitoring clients.
+    - Updates pushed: Account opening, closing, deposit, withdraw.
+    - After interval expires: Client record removed from server.
+
+
+4. CUSTOM OPERATIONS (REPORT REQUIREMENT)
+-----------------------------------------
+- Operation 5: Must be IDEMPOTENT.
+- Operation 6: Must be NON-IDEMPOTENT.
+- Requirement: Describe design of both operations in the report.
+
+
+5. TECHNICAL CONSTRAINTS 
+-----------------------------------------------
+* NO Java Serialization, CORBA, or I/O Stream classes for networking.
+* NO existing RPC/RMI frameworks.
+* MARSHALLING: 
+    - Must manually convert data to byte arrays (Sequence of Bytes).
+    - Handle variable-length strings (Length + Data).
+    - Use Network Byte Order (Big-Endian) via htonl()/ntohl().
+    - Design Requirement: MUST design structures for request/reply messages 
+      and describe your design in the report.
+* CONCURRENCY: 
+    - Server: Can assume requests are well-separated (single-threaded processing).
+    - Client: Text-based console interface; must have a "Terminate" option.
+* CLIENT INTERFACE:
+    - Repeatedly asks user to enter requests.
+    - Each reply or error message from server MUST be printed on screen.
+* SERVER OUTPUT:
+    - Received requests MUST be printed on screen.
+    - Produced replies MUST be printed on screen.
+
+
+6. FAULT TOLERANCE & INVOCATION SEMANTICS
+-----------------------------------------
+You must implement and compare two semantics (selectable via CLI argument):
+
+A. AT-LEAST-ONCE:
+   - Use timeouts and retransmissions.
+   - Note: Can lead to errors in non-idempotent operations.
+
+B. AT-MOST-ONCE:
+   - Use timeouts, Request Identifiers (IDs), and Duplicate Filtering.
+   - Maintain a "Reply History" at the server to re-send lost replies.
+
+* SIMULATION: Must simulate message loss (Request/Reply) to test these.
+* EXPERIMENT: Compare both in the report; show why At-Most-Once is required 
+  for non-idempotent ops (e.g., duplicate deposits).
+
+
+7. NETWORKING & ENVIRONMENT
+---------------------------
+* Connection: Client needs Server IP/Port (passed as arguments).
+* Server IP: Found via 'ipconfig' command.
+* Lab Port: Use Port 2222 (if using Lab PCs) to bypass firewalls.
+* Languages: C/C++, Java, etc. (Cross-language implementation is a bonus).
+* Cross-Language Bonus: Implement client and server in different languages 
+  (e.g., one in C/C++, one in Java). NOTE: Must handle different data 
+  representations across languages.
+* Design Freedom: For remaining design and implementation details, make your 
+  own reasonable assumptions and decisions.
+
+
+8. DELIVERABLES
+---------------
+1. Live Demo (Running on laptops is okay).
+2. Well-commented Source Code.
+3. Lab Report:
+   - Request/Reply message structures (MUST be clearly designed and described).
+   - Design of custom idempotent/non-idempotent ops.
+   - Experiment results on message loss and invocation semantics.
+   - Clear explanation of design and implementation strategies.
+
+
+=================================================================
+DEVELOPMENT HINTS:
+- Use byte[] or char[] to buffer data before sendto() / recvfrom().
+- Request IDs are essential for filtering duplicates in At-Most-Once.
+- For Strings: [Length (4 bytes)] + [String Data (N bytes)].
+=================================================================
+
+
+=================================================================
+SUBMISSION & DEMONSTRATION REQUIREMENTS
+=================================================================
+
+1. DEADLINES & CHANNELS
+-----------------------
+* Deadline: 11:59 PM, April 2, 2026 (Thursday).
+* Submission Portal: NTULearn Assignment Module.
+* Late Policy: Strictly no late submissions accepted.
+
+
+2. SOURCE CODE SUBMISSION
+-------------------------
+* Format: All source programs MUST be packed into ONE file (e.g., .zip or .rar).
+* Portal: Submit via NTULearn Assignment Module.
+* Submission Limit: 
+    - NO resubmission allowed; submit only the final version.
+    - One representative per group submits (Do NOT submit multiple copies).
+* System Safety: Avoid last-minute submissions to prevent server overload.
+
+
+3. LAB REPORT SPECIFICATIONS
+----------------------------
+* Length: Maximum of 12 pages (excluding the cover).
+* Portal: Submit via NTULearn Assignment Module (same as source code).
+* Cover Page Requirements:
+    - Full names of all group members (per matriculation cards).
+    - Percentage of work contribution for each member.
+* Content:
+    - Clear explanation of design and implementation strategies.
+    - Description of Request/Reply message structures.
+    - Design of Idempotent vs. Non-idempotent operations.
+    - Results and discussion of the Fault Tolerance experiments.
+
+
+4. LIVE DEMONSTRATION
+---------------------
+* Environment: Server and Clients MUST run on different computers.
+* Callback Demo Setup:
+    - 1 Server.
+    - Client A: Performs operations (Open, Deposit, etc.).
+    - Client B: Monitors updates (Callback registration).
+* Schedule: To be arranged later.
+
+
+=================================================================
+CRITICAL REMINDERS:
+- Ensure the "At-Least-Once" vs "At-Most-Once" CLI toggle is working
+  perfectly before the demo.
+- Double-check the 12-page limit; prioritize diagrams of your
+  marshalling logic and message formats to save space.
+- Design freedom is allowed for unspecified details - make reasonable
+  assumptions and document them.
+=================================================================
