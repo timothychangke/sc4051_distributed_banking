@@ -15,3 +15,9 @@ go mod tidy
 ```sh
 go run cmd/main.go
 ```
+
+3. Check for build errors before pushing
+
+```sh
+go build ./...
+```
