@@ -11,3 +11,8 @@ Members:
 ## Architecture
 
 The file structure contains a client written in C++ and server written in Golang.
+
+### Build Client 
+
+
+### Build Server 
