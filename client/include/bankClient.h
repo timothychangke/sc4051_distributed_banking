@@ -16,10 +16,11 @@ public:
         TRANSFER_FUNDS       
     };
 
-    enum class CurrentcyType {
+    enum class CurrencyType {
         SGD,
         USD,
         EUR,
+        // add more ...
     };
 
     struct Request {
@@ -31,7 +32,7 @@ public:
         std::string tx_account_owner_name;
         
         double value;
-        CurrentcyType currency;
+        CurrencyType currency;
     };
 
     BankClient();

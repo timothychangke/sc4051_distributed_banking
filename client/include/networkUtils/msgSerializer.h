@@ -9,7 +9,7 @@ namespace NetworkUtils{
 
 class MessageSerializer {
 public:
-    MessageSerializer(int sockfd);
+    MessageSerializer();
     ~MessageSerializer();
 
     /**
@@ -23,7 +23,6 @@ public:
     Message deserialize(const std::vector<uint8_t>& data) const;
 
 private:
-    int sockfd;
 
 };
 
