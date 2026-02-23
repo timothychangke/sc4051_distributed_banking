@@ -12,7 +12,17 @@ Members:
 
 The file structure contains a client written in C++ and server written in Golang.
 
-### Build Client 
+<!-- 
 
+Require clarification 
 
-### Build Server 
+1. can the bank balance be negative ?
+2. can the bank account have more than 2 currencies at once ? 
+
+Require discussion 
+
+1. Error Handling 
+   Need to standardise the error code mapping 
+   (i.e insufficient balance is int error 400)
+
+ -->

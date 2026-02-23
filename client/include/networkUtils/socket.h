@@ -5,15 +5,9 @@
 #include <string>
 
 namespace NetworkUtils{
-
 class Socket {
-private:
-
-    uint32_t ip4Addr; // IPv4 as 4-byte int
-    uint16_t port;
-
 public:
-    Socket(uint32_t ip4Addr, uint16_t port);
+    Socket(uint32_t ipv4_address, uint16_t port);
     ~Socket();
 
     int connectToServer(); // returns sockfd
@@ -22,6 +16,10 @@ public:
     bool sendMessage(const std::vector<char>& data); 
     // Receives raw bytes from the connected socket
     std::vector<char> receiveMessage(); 
+
+private:
+    uint32_t ipv4_address;
+    uint16_t port;
 };
 
 }
