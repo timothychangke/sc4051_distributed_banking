@@ -11,15 +11,20 @@ enum class MessageType {
 };
 
 struct MessageId {
-    uint32_t idempotent_id;
+    uint32_t request_id;
     uint32_t ipv4_address;
     uint16_t port;
 }; 
 
+struct Payload {
+    uint16_t status_code; 
+    std::string content; 
+};
+
 struct Message {
     MessageType type;
-    MessageId   id;
-    std::string payload;
+    MessageId   id;  // idempotent_id
+    Payload     payload;
 };
 
 }
