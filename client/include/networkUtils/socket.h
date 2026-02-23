@@ -11,10 +11,10 @@ public:
     ~Socket();
 
     // Sends raw bytes over the connected socket 
-    bool sendMessage(const std::vector<char>& data); 
+    bool send_message(const std::vector<char>& data); 
 
     // Receives raw bytes from the connected socket
-    std::vector<char> receiveMessage(); 
+    std::vector<char> receive_message(); 
 
 private:
     int socket = -1; 
