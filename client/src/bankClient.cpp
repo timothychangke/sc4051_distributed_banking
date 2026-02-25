@@ -12,7 +12,7 @@ void BankClient::run() {
 
    try {
         while (true) {
-            std::cout << "\033[2J\033[1;1H"; // Clear screen
+            // std::cout << "\033[2J\033[1;1H"; // Clear screen
             print_service_menu();
             
             auto req = collect_user_input();
@@ -148,7 +148,7 @@ void BankClient::fill_transfer_account_details(Request& req) {
 }
 
 void BankClient::send_to_server(const BankClient::Request& request) {
-    std::cout << "Received Req" << request.account_owner_name;
+    std::cout << "Received Req" << request.account_owner_name <<  std::endl;
 }
 
 void BankClient::monitor_server_updates(){
