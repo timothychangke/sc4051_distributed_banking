@@ -48,8 +48,8 @@ public:
     void run(); // main loop
 
 private:
-    const std::unordered_map<std::string, BankClient::CurrencyType> stringToCurrency;
-
+    static const std::unordered_map<std::string, CurrencyType> stringToCurrency;
+    
     void print_service_menu();
     void print_top_box();
     void print_bottom_box();

@@ -1,6 +1,14 @@
 #include <iostream>
 #include "bankclient.h"
 
+const std::unordered_map<std::string, BankClient::CurrencyType>
+BankClient::stringToCurrency = {
+    {"SGD", BankClient::CurrencyType::SGD},
+    {"USD", BankClient::CurrencyType::USD},
+    {"EUR", BankClient::CurrencyType::EUR}
+    // more ...
+};
+
 BankClient::BankClient(){
     #ifdef _WIN32
         SetConsoleOutputCP(CP_UTF8);
@@ -30,15 +38,8 @@ void BankClient::run() {
 
 }
 
-const std::unordered_map<std::string, BankClient::CurrencyType> stringToCurrency = {
-    {"SGD", BankClient::CurrencyType::SGD},
-    {"USD", BankClient::CurrencyType::USD},
-    {"EUR", BankClient::CurrencyType::EUR}
-    // more ... 
-};
-
 void BankClient::print_service_menu() {
-    std::cout << "\033[1;36m" // Bold Cyan
+    std::cout << "\033[1;36m" // Bold Cyan (For fun)
               << "╔══════════════════════════════════════════════════╗\n"
               << "║          SC4051 DISTRIBUTED BANK SYSTEM          ║\n"
               << "╚══════════════════════════════════════════════════╝\033[0m\n"
@@ -117,15 +118,15 @@ std::optional<BankClient::Request> BankClient::collect_user_input() {
 }
 
 void BankClient::fill_auth_details(Request& req) {
-    std::cout << "  │  Holder  : "; std::getline(std::cin >> std::ws, req.account_owner_name);
-    std::cout << "  │  Acc No  : "; std::cin >> req.account_number;
-    std::cout << "  │  Password: "; std::cin >> req.account_password;
+    std::cout << "│  Account Holder  : "; std::getline(std::cin >> std::ws, req.account_owner_name);
+    std::cout << "│  Account Number  : "; std::cin >> req.account_number;
+    std::cout << "│  Password: "; std::cin >> req.account_password;
 }
 
 void BankClient::fill_currency_details(Request& req) {
     std::string user_input {};
     while (true) {
-        std::cout << "  | Desired currency (SGD/USD/EUR): "; std::cin >> user_input;
+        std::cout << "|  Desired currency (SGD/USD/EUR): "; std::cin >> user_input;
         
         for (auto &c : user_input) c = toupper(c);
 
@@ -139,16 +140,16 @@ void BankClient::fill_currency_details(Request& req) {
 }
 
 void BankClient::fill_amount_details(Request& req) {
-    std::cout << "  | Desired Amount : "; std::cin >> req.value; 
+    std::cout << "|  Desired Amount : "; std::cin >> req.value; 
 }
 
 void BankClient::fill_transfer_account_details(Request& req) {
-    std::cout << "  | Transfer Account Holder Name: "; std::getline(std::cin >> std::ws, req.tx_account_owner_name);
-    std::cout << "  | Transfer Account Number: "; std::cin >> req.tx_account_number;
+    std::cout << "|  Transfer Account Holder Name: "; std::getline(std::cin >> std::ws, req.tx_account_owner_name);
+    std::cout << "|  Transfer Account Number: "; std::cin >> req.tx_account_number;
 }
 
 void BankClient::send_to_server(const BankClient::Request& request) {
-    std::cout << "Received Req" << request.account_owner_name <<  std::endl;
+    std::cout << "Received Req: " << request.account_owner_name <<  std::endl;
 }
 
 void BankClient::monitor_server_updates(){
