@@ -5,6 +5,9 @@
 #include <ws2tcpip.h>
 #else
 #include <sys/socket.h> 
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 #endif
 
 #include <cstdint>
@@ -18,7 +21,7 @@ public:
     BaseSocket(uint32_t ipv4_address, uint16_t port);
     virtual ~BaseSocket();
 
-    virtual void create(); 
+    virtual void create();     // for simplicity just UDP for now 
     virtual void bind(); 
 
 protected:

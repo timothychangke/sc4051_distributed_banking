@@ -9,17 +9,14 @@ namespace NetworkUtils{
 class UDPSocket : public BaseSocket {
 public:
     UDPSocket();
-    ~UDPSocket();
+    virtual ~UDPSocket();
+    void connect();
 
     // Sends raw bytes over the connected UDPsocket 
-    bool send_message(const std::vector<char>& data); 
+    bool send_message(const std::vector<uint8_t>& data); 
 
     // Receives raw bytes from the connected UDPsocket
-    std::vector<char> receive_message(); 
-
-private:
-    int UDPsocket = -1; 
-
+    std::vector<uint8_t> receive_message(); 
 };
 
 }
