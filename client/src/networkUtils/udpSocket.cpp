@@ -28,8 +28,8 @@ bool NetworkUtils::UDPSocket::send_message(const std::vector<uint8_t>& data) {
 
 std::optional<std::vector<uint8_t>> NetworkUtils::UDPSocket::receive_message() {
     
-    std::vector<uint8_t> buffer(65535); 
-    int bytes_received = recvfrom(
+    std::vector<uint8_t> buffer(65535); // max datagram size 
+    int32_t bytes_received = recvfrom(
         sockfd, 
         reinterpret_cast<char*>(buffer.data()), 
         static_cast<int>(buffer.size()),        
