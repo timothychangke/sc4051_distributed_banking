@@ -10,6 +10,9 @@ namespace NetworkUtils {
 class TCPSocket : public BaseSocket {
 public:
     TCPSocket(const std::string& ipv4_address, uint16_t port);
+
+    void NetworkUtils::TCPSocket::connectToServer();
+    void NetworkUtils::TCPSocket::bindToClient(); 
     
     // High-level message handling
     virtual bool send_message(const std::vector<uint8_t>& data) override;

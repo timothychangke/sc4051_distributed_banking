@@ -22,10 +22,7 @@ public:
     BaseSocket(const std::string& ipv4_address, uint16_t port);
     virtual ~BaseSocket();
 
-    // Sends raw bytes over the connected TCPsocket 
     virtual bool send_message(const std::vector<uint8_t>& data) = 0; 
-
-    // Receives raw bytes from the connected TCPsocket
     virtual std::vector<uint8_t> receive_message() = 0; 
 
 protected:
