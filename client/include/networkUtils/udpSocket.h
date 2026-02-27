@@ -8,15 +8,16 @@
 namespace NetworkUtils{
 class UDPSocket : public BaseSocket {
 public:
-    UDPSocket();
+    UDPSocket(const std::string& ipv4_address, uint16_t port);
     virtual ~UDPSocket();
-    void connect();
 
-    // Sends raw bytes over the connected UDPsocket 
-    bool send_message(const std::vector<uint8_t>& data); 
+    // UDP does preserve boundaries. One sendto = One recvfrom
+    
+    // Sends raw bytes over the connected UDPSocket 
+    virtual bool send_message(const std::vector<uint8_t>& data) override; 
 
-    // Receives raw bytes from the connected UDPsocket
-    std::vector<uint8_t> receive_message(); 
+    // Receives raw bytes from the connected UDPSocket
+    virtual std::vector<uint8_t> receive_message() override;
 };
 
 }
