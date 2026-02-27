@@ -17,7 +17,7 @@ public:
     virtual bool send_message(const std::vector<uint8_t>& data) override; 
 
     // Receives raw bytes from the connected UDPSocket
-    virtual std::vector<uint8_t> receive_message() override;
+    virtual std::optional<std::vector<uint8_t>> receive_message() override;
 };
 
 }

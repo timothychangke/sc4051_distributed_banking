@@ -14,7 +14,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
-
+#include <optional>
 
 namespace NetworkUtils{
 class BaseSocket { 
@@ -23,7 +23,7 @@ public:
     virtual ~BaseSocket();
 
     virtual bool send_message(const std::vector<uint8_t>& data) = 0; 
-    virtual std::vector<uint8_t> receive_message() = 0; 
+    virtual std::optional<std::vector<uint8_t>> receive_message() = 0; 
 
 protected:
     int sockfd;                // The socket file descriptor

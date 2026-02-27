@@ -11,7 +11,7 @@ NetworkUtils::TCPSocket::TCPSocket(const std::string& ipv4_address, uint16_t por
 
 NetworkUtils::TCPSocket::~TCPSocket(){}
 
-void NetworkUtils::TCPSocket::connectToServer() {
+void NetworkUtils::TCPSocket::connect_to_server() {
 
     if (connect(sockfd,
         (struct sockaddr*)&address,
@@ -23,7 +23,7 @@ void NetworkUtils::TCPSocket::connectToServer() {
     isOpen = true;
 }
 
-void NetworkUtils::TCPSocket::bindToClient() {
+void NetworkUtils::TCPSocket::bind_to_client() {
     if (bind(sockfd, 
             (struct sockaddr*)&address, 
             sizeof(address)) <0)
@@ -36,6 +36,6 @@ bool NetworkUtils::TCPSocket::send_message(const std::vector<uint8_t>& data) {
     // TODO
 }
 
-std::vector<uint8_t> NetworkUtils::TCPSocket::receive_message() {
+std::optional<std::vector<uint8_t>> NetworkUtils::TCPSocket::receive_message() {
     // TODO
 } 
