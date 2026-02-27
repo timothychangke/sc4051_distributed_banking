@@ -5,7 +5,7 @@
 
 namespace NetworkUtils{
 
-enum class MessageType {
+enum class MessageType: uint8_t {
     Request, 
     Reply,
 };
