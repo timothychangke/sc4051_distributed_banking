@@ -28,12 +28,12 @@ private:
     void print_top_box();
     void print_bottom_box();
     
-    std::optional<Protocol::Request> collect_user_input();
-    void fill_auth_details(Protocol::Request& req);
-    void fill_currency_details(Protocol::Request& req);
-    void fill_amount_details(Protocol::Request& req);
-    void fill_transfer_account_details(Protocol::Request& req);
+    std::optional<Protocol::Command> collect_user_input();
+    void fill_auth_details(Protocol::Command& req);
+    void fill_currency_details(Protocol::Command& req);
+    void fill_amount_details(Protocol::Command& req);
+    void fill_transfer_account_details(Protocol::Command& req);
     
-    void send_to_server(const Protocol::Request& request);
+    void send_to_server(const Protocol::Command& req);
     void monitor_server_updates();
 };

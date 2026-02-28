@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+
 #include "protocol.h"
 #define HEADER_SIZE 17
 
@@ -23,23 +24,16 @@ struct Payload {
     std::string content; 
 };
 
+/** 
+* Transport Layer
+* Represents the network-level packet exchanged between client and server.
+* Contains routing/identity metadata and a payload.
+* The transport layer does not interpret the payload contents.
+*/
 struct Message {
     MessageType type;
     MessageId   id;  // idempotent_id
     Payload     payload;
-};
-
-struct Request {
-    Service service;
-    uint32_t account_number;
-    std::string account_owner_name;
-    std::string account_password;
-    
-    uint32_t tx_account_number;
-    std::string tx_account_owner_name;
-    
-    double value;
-    CurrencyType currency;
 };
 
 }

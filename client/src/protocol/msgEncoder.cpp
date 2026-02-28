@@ -1,13 +1,15 @@
 #include "msgEncoder.h"
 
 
-Protocol::MessageEncoder::MessageEncoder(){};
-Protocol::MessageEncoder::~MessageEncoder(){};
+Protocol::MessageEncoder::MessageEncoder(){}
+Protocol::MessageEncoder::~MessageEncoder(){}
 
-static std::vector<uint8_t> encode_message(const std::string& data){
+std::vector<uint8_t> Protocol::MessageEncoder::encode_message(const Protocol::Command& data)
+{
     //TODO
 }
 
-static std::string decode_message(const std::vector<uint8_t>& data){
+std::optional<Protocol::Command> Protocol::MessageEncoder::decode_message(const std::vector<uint8_t>& data)
+{
     //TODO
 }

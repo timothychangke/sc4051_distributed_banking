@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <vector>
 #include <optional>
+
 #include "message.h"
 
 namespace Protocol{

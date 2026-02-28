@@ -62,14 +62,14 @@ void BankClient::print_bottom_box() {
         std::cout << " └───────────────────────────────┘\n";
 }
 
-std::optional<Protocol::Request> BankClient::collect_user_input() {
+std::optional<Protocol::Command> BankClient::collect_user_input() {
     uint16_t user_input {};
     if(!(std::cin >> user_input) || user_input == 0) return std::nullopt;
 
     std::cout << "\n\033[1;36m[ ACTIVE SERVICE: " << user_input << " ]\033[0m";
     Protocol::Service service_type = static_cast<Protocol::Service>(user_input);
 
-    Protocol::Request req {};
+    Protocol::Command req {};
     req.service = service_type;
     switch (service_type) {
         case Protocol::Service::OPEN:
@@ -117,13 +117,13 @@ std::optional<Protocol::Request> BankClient::collect_user_input() {
     return req;
 }
 
-void BankClient::fill_auth_details(Protocol::Request& req) {
+void BankClient::fill_auth_details(Protocol::Command& req) {
     std::cout << "│  Account Holder  : "; std::getline(std::cin >> std::ws, req.account_owner_name);
     std::cout << "│  Account Number  : "; std::cin >> req.account_number;
     std::cout << "│  Password: "; std::cin >> req.account_password;
 }
 
-void BankClient::fill_currency_details(Protocol::Request& req) {
+void BankClient::fill_currency_details(Protocol::Command& req) {
     std::string user_input {};
     while (true) {
         std::cout << "|  Desired currency (SGD/USD/EUR): "; std::cin >> user_input;
@@ -139,17 +139,17 @@ void BankClient::fill_currency_details(Protocol::Request& req) {
     }
 }
 
-void BankClient::fill_amount_details(Protocol::Request& req) {
+void BankClient::fill_amount_details(Protocol::Command& req) {
     std::cout << "|  Desired Amount : "; std::cin >> req.value; 
 }
 
-void BankClient::fill_transfer_account_details(Protocol::Request& req) {
+void BankClient::fill_transfer_account_details(Protocol::Command& req) {
     std::cout << "|  Transfer Account Holder Name: "; std::getline(std::cin >> std::ws, req.tx_account_owner_name);
     std::cout << "|  Transfer Account Number: "; std::cin >> req.tx_account_number;
 }
 
-void BankClient::send_to_server(const Protocol::Request& request) {
-    std::cout << "Received Req: " << request.account_owner_name <<  std::endl;
+void BankClient::send_to_server(const Protocol::Command& req) {
+    std::cout << "Received Req: " << req.account_owner_name <<  std::endl;
 }
 
 void BankClient::monitor_server_updates(){

@@ -2,10 +2,11 @@
 
 #include <string>
 
-class errorHandler {
+class ErrorHandler {
 public:
-    errorHandler();
-    ~errorHandler();
+    ErrorHandler();
+    ~ErrorHandler();
 
-    std::string get_error(int error_code);
+    static std::string get_error_msg(int error_code);
+    static int get_error_code(std::string error_msg);
 };  
