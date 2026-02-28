@@ -4,6 +4,7 @@
 NetworkUtils::TCPSocket::TCPSocket(const std::string& ipv4_address, uint16_t port) 
     : BaseSocket(ipv4_address, port) 
 {
+    // AF_INET = IPv4, SOCK_STREAM = TCP
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1){
          throw std::runtime_error("[TCPSocket] Invalid sockfd");

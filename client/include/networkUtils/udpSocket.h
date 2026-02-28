@@ -5,6 +5,7 @@
 #include <string>
 
 #include "baseSocket.h"
+#define MAX_DATAGRAM_SIZE 65535
 
 namespace NetworkUtils{
 class UDPSocket : public BaseSocket {

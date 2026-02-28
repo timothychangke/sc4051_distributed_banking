@@ -2,7 +2,8 @@
 
 NetworkUtils::UDPSocket::UDPSocket(const std::string& ipv4_address, uint16_t port) 
     : BaseSocket(ipv4_address, port) 
-{
+{   
+    // AF_INET = IPv4, SOCK_DGRAM = UDP
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd == -1){
          throw std::runtime_error("[UDPSocket] Invalid sockfd");
@@ -27,7 +28,7 @@ bool NetworkUtils::UDPSocket::send_message(const std::vector<uint8_t>& data) {
 
 std::optional<std::vector<uint8_t>> NetworkUtils::UDPSocket::receive_message() {
     
-    std::vector<uint8_t> buffer(65535); // max datagram size 
+    std::vector<uint8_t> buffer(MAX_DATAGRAM_SIZE); // max datagram size 
     int32_t bytes_received = recvfrom(
         sockfd, 
         reinterpret_cast<char*>(buffer.data()), 
