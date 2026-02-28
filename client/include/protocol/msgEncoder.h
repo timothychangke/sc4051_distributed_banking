@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-namespace NetworkUtils{
+namespace Protocol{
 class MessageEncoder{
 public:
     MessageEncoder();

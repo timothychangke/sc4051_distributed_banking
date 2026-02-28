@@ -1,14 +1,13 @@
 #include "msgSerializer.h"
 
-NetworkUtils::MessageSerializer::MessageSerializer(){};
-NetworkUtils::MessageSerializer::~MessageSerializer(){};
-
+Protocol::MessageSerializer::MessageSerializer(){};
+Protocol::MessageSerializer::~MessageSerializer(){};
 
 /**
  * Converts a Message into a packed byte stream.
  * Format: [Type(1b)][ID(4b)][IP(4b)][Port(2b)][StatusCode(2b)][ContentLen(4b)][Content(Nb)]
  */
-std::vector<uint8_t> serialize(const NetworkUtils::Message& message)
+std::vector<uint8_t> Protocol::MessageSerializer::serialize(const Protocol::Message& message)
 {
     std::vector<uint8_t> data;
 
@@ -55,18 +54,21 @@ std::vector<uint8_t> serialize(const NetworkUtils::Message& message)
     return data;
 }
 
-
-std::optional<NetworkUtils::Message> deserialize(const std::vector<uint8_t>& data){
+/**
+ * Converts a packed byte stream into a Message.
+ * Format: [Type(1b)][ID(4b)][IP(4b)][Port(2b)][StatusCode(2b)][ContentLen(4b)][Content(Nb)]
+ */
+std::optional<Protocol::Message> Protocol::MessageSerializer::deserialize(const std::vector<uint8_t>& data){
 
     if (!validate_header(data.size())) {
         return std::nullopt;
     }
 
     size_t offset = 0;
-    NetworkUtils::Message msg{};
+    Protocol::Message msg{};
     
     // m_type (1 Byte)
-    msg.type = static_cast<NetworkUtils::MessageType>(data[offset]);
+    msg.type = static_cast<Protocol::MessageType>(data[offset]);
     offset ++;
 
     // request_id (4 Bytes)
@@ -108,21 +110,22 @@ std::optional<NetworkUtils::Message> deserialize(const std::vector<uint8_t>& dat
     }
 
     // content (N Bytes)
-    std::string content;
-    content.resize(content_len);
-    std::memcpy(content.data(), data.data() + offset, content_len);
+    msg.payload.content.resize(content_len);
+    std::memcpy(msg.payload.content.data(),
+                data.data() + offset,
+                content_len);
 
     return msg;
 }
 
-bool validate_header(size_t header_size) {
-    if (header_size < HEADER_SIZE)
+bool Protocol::MessageSerializer::validate_header(size_t total_size) {
+    if (total_size < HEADER_SIZE)
         return false;
     return true;
 }
 
-bool validate_payload(size_t payload_size, size_t offset, uint32_t content_len) {
-    if (payload_size < offset + content_len)
+bool Protocol::MessageSerializer::validate_payload(size_t total_size, size_t offset, uint32_t content_len) {
+    if (total_size < offset + content_len)
         return false;
     return true;
 }

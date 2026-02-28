@@ -10,6 +10,7 @@ namespace NetworkUtils {
 class TCPSocket : public BaseSocket {
 public:
     TCPSocket(const std::string& ipv4_address, uint16_t port);
+    virtual ~TCPSocket();
 
     void connect_to_server();
     void bind_to_client(); 

@@ -12,7 +12,7 @@
 #include <optional>
 #include "message.h"
 
-namespace NetworkUtils{
+namespace Protocol{
 
 class MessageSerializer {
 public:
@@ -23,11 +23,11 @@ public:
      * Converts a Message into a packed byte stream.
      * Format: [Type(4b)][ID(4b)][IP(4b)][Port(2b)][StrLen(4b)][Payload(Nb)]
      */
-    std::vector<uint8_t> serialize(const Message& message) const;
+    std::vector<uint8_t> serialize(const Message& message);
     /**
      * Converts a packed byte stream into a Message.
     */
-    std::optional<Message> deserialize(const std::vector<uint8_t>& data) const;
+    std::optional<Message> deserialize(const std::vector<uint8_t>& data);
 
 private:
     bool validate_header(size_t header_size); 

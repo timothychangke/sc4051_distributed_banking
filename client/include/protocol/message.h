@@ -4,7 +4,7 @@
 #include <string>
 #define HEADER_SIZE 17
 
-namespace NetworkUtils{
+namespace Protocol{
 
 enum class MessageType: uint8_t {
     Request, 
