@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Defensive Design**: Integrated security-focused input validation patterns to protect against malformed network payloads.
 
 - **Networking layer (`client/src/networkUtils/tcpSocket.cpp`)**: Finalised the socket communication interface.
-  - **Optimized I/O**: Implemented `send_message` and `receive_message` with optimised buffer resizing and error handling for reliable data transfer.
+  - **Optimised I/O**: Implemented `send_message` and `receive_message` with optimised buffer resizing and error handling for reliable data transfer.
   - **API Abstraction**: Standardised network parameter casting to ensure unified behavior across Windows (Winsock) and Linux (POSIX) systems.
 
 ### Added 

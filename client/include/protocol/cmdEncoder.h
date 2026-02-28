@@ -38,7 +38,7 @@ public:
     
 private:
 
-    static size_t get_required_size(const Command& data); //optimisation 
+    static size_t get_required_size(const Command& data);       //optimisation 
     static std::optional<FieldID> to_field_id(uint8_t value);
 
     static void append_uint8(std::vector<uint8_t> &buffer, uint8_t value);

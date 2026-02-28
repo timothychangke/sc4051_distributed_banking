@@ -9,47 +9,34 @@ std::vector<uint8_t> Protocol::CommandEncoder::encode_message(const Protocol::Co
     std::vector<uint8_t> buffer;
     buffer.reserve(CommandEncoder::get_required_size(data));
 
-    // encode Service (Total: 6 bytes)
-    // [1 byte ID] + [4 bytes Length] + [1 byte Value]
     if (data.service.has_value()) {
         CommandEncoder::encode_service(buffer, data);
     }
 
-    // encode account_number (Total: 9 bytes)
-    // [1 byte ID] + [4 bytes Length] + [4 bytes Value]
     if (data.account_number.has_value()) {
         CommandEncoder::encode_account_number(buffer, data);
     }
 
-    // encode account_owner_name (Total: 5 + N bytes)
-    // [1 byte ID] + [4 bytes Length] + [N bytes String]
     if (data.account_owner_name.has_value()) {
         CommandEncoder::encode_account_owner_name(buffer, data);
     }
 
-    // encode account_password (Total: 5 + N bytes)
     if (data.account_password.has_value()) {
         CommandEncoder::encode_account_password(buffer, data);
     }
 
-    // encode tx_account_number (Total: 9 bytes)
     if (data.tx_account_number.has_value()) {
         CommandEncoder::encode_tx_account_number(buffer, data);
     }
 
-    // encode tx_account_owner_name (Total: 5 + N bytes)
     if (data.tx_account_owner_name.has_value()) {
         CommandEncoder::encode_tx_account_owner_name(buffer, data);
     }
 
-    // encode value (Total: 13 bytes)
-    // [1 byte ID] + [4 bytes Length] + [8 bytes Double]
     if (data.monetary_value.has_value()) {
         CommandEncoder::encode_monetary_value(buffer, data);
     }
 
-    // encode currency (Total: 9 bytes)
-    // [1 byte ID] + [4 bytes Length] + [4 bytes Value]
     if (data.currency.has_value()) {
         CommandEncoder::encode_currency(buffer, data);
     }

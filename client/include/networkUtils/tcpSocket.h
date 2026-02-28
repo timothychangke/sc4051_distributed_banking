@@ -16,12 +16,10 @@ public:
     void connect_to_server();
     void bind_to_client(); 
     
-    // High-level message handling
     virtual bool send_message(const std::vector<uint8_t>& data) override;
     virtual std::optional<std::vector<uint8_t>> receive_message() override;
 
 private:
-    // Low-level robust helpers
     bool sendAll(const void* data, size_t length);
     bool recvAll(void* buffer, size_t length);
 };

@@ -3,12 +3,7 @@
 Protocol::MessageSerializer::MessageSerializer(){};
 Protocol::MessageSerializer::~MessageSerializer(){};
 
-/**
- * Converts a Message into a packed byte stream.
- * Format: [Type(1b)][ID(4b)][IP(4b)][Port(2b)][StatusCode(2b)][ContentLen(4b)][Content(Nb)]
- */
-std::vector<uint8_t> Protocol::MessageSerializer::serialize(const Protocol::Message& message)
-{
+std::vector<uint8_t> Protocol::MessageSerializer::serialize(const Protocol::Message& message){
     std::vector<uint8_t> data;
 
     // m_type (1 Byte)
@@ -54,12 +49,7 @@ std::vector<uint8_t> Protocol::MessageSerializer::serialize(const Protocol::Mess
     return data;
 }
 
-/**
- * Converts a packed byte stream into a Message.
- * Format: [Type(1b)][ID(4b)][IP(4b)][Port(2b)][StatusCode(2b)][ContentLen(4b)][Content(Nb)]
- */
 std::optional<Protocol::Message> Protocol::MessageSerializer::deserialize(const std::vector<uint8_t>& data){
-
     if (!validate_header(data.size())) {
         return std::nullopt;
     }
