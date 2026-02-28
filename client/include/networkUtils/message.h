@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#define HEADER_SIZE 17
 
 namespace NetworkUtils{
 

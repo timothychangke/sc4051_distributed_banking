@@ -7,10 +7,10 @@
     #include <arpa/inet.h>
 #endif
 
-#include "message.h"
 #include <cstdint>
 #include <vector>
-
+#include <optional>
+#include "message.h"
 
 namespace NetworkUtils{
 
@@ -27,9 +27,11 @@ public:
     /**
      * Converts a packed byte stream into a Message.
     */
-    Message deserialize(const std::vector<uint8_t>& data) const;
+    std::optional<Message> deserialize(const std::vector<uint8_t>& data) const;
 
 private:
+    bool validate_header(size_t header_size); 
+    bool validate_payload(size_t payload_size, size_t offset, uint32_t content_len); 
 
 };
 

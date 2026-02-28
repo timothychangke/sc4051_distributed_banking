@@ -1,4 +1,3 @@
-#include <iostream>
 #include "udpSocket.h"
 
 NetworkUtils::UDPSocket::UDPSocket(const std::string& ipv4_address, uint16_t port) 
