@@ -13,6 +13,11 @@ BankClient::BankClient(){
     #ifdef _WIN32
         SetConsoleOutputCP(CP_UTF8);
     #endif
+
+    // TODO
+    // init network and serialiser/encoder logic 
+
+
 }; 
 BankClient::~BankClient(){};
 
@@ -149,7 +154,8 @@ void BankClient::fill_transfer_account_details(Protocol::Command& req) {
 }
 
 void BankClient::send_to_server(const Protocol::Command& req) {
-    
+    // TODO
+    // just need to call functions
 }
 
 void BankClient::monitor_server_updates(){
