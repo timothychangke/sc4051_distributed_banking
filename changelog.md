@@ -8,12 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Implemented & Improved
 2026-02-28 (Jing)
 - **Protocol Encoding Layer (`client/src/protocol/cmdEncoder.cpp`)**: Implemented a message decoding pipeline.
-  - **Memory Architecture**: Implemented direct-to-buffer memory mapping for string fields using `.data()` to ensure efficient and safe heap utilization.
-  - **TLV Parsing Engine**: Implemented a Type-Length-Value (TLV) parsing loop with optimised offset management for multi-field packet reconstruction.
-  - **Defensive Design**: Integrated security-focused input validation patterns to protect against malformed network payloads.
+  - **TLV Parsing logic**: Implemented a Type-Length-Value (TLV) parsing loop with offset management for multi field packet reconstruction.
+  - **Defensive Design**: Integrated input validation patterns to protect against malformed network payloads/ buffer overflow.
 
 - **Networking layer (`client/src/networkUtils/tcpSocket.cpp`)**: Finalised the socket communication interface.
-  - **Optimised I/O**: Implemented `send_message` and `receive_message` with optimised buffer resizing and error handling for reliable data transfer.
+  - **Optimised I/O**: Implemented `send_message` and `receive_message` with buffer resizing and error handling for reliable data transfer.
   - **API Abstraction**: Standardised network parameter casting to ensure unified behavior across Windows (Winsock) and Linux (POSIX) systems.
 
 ### Added 
