@@ -52,10 +52,10 @@ std::optional<Protocol::Command> Protocol::CommandEncoder::decode_message(const 
     size_t offset {0};
     while (true) {
         auto sum1 = safe_math::safe_add(offset, FIELD_ID_SIZE);
-        if (!sum1) break;
+        if (!sum1) return std::nullopt;
 
         auto sum2 = safe_math::safe_add(*sum1, FIELD_LENGTH);
-        if (!sum2) break;
+        if (!sum2) return std::nullopt;
 
         if (*sum2 > data.size()) break;
         
