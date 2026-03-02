@@ -61,14 +61,14 @@ func (s *service) CloseAccount(name string, accNo uint32, pw [8]byte) error {
 		return ErrInvalidCredentials
 	}
 
+	if err := checkAuth(acc, name, pw); err != nil {
+		return err
+	}
+
 	// Lock the account before checking credentials or deleting to make sure
 	// no one is trying to withdraw from it while we close it.
 	acc.Mu.Lock()
 	defer acc.Mu.Unlock()
-
-	if err := checkAuth(acc, name, pw); err != nil {
-		return err
-	}
 
 	return s.store.DeleteAccount(accNo)
 }
@@ -80,13 +80,13 @@ func (s *service) Deposit(name string, accNo uint32, pw [8]byte, curr models.Cur
 		return 0, ErrInvalidCredentials
 	}
 
-	// Lock account before depositing
-	acc.Mu.Lock()
-	defer acc.Mu.Unlock()
-
 	if err := checkAuth(acc, name, pw); err != nil {
 		return 0, err
 	}
+
+	// Lock account before depositing
+	acc.Mu.Lock()
+	defer acc.Mu.Unlock()
 
 	if acc.CurrencyType != curr {
 		return 0, ErrCurrencyMismatch
@@ -108,13 +108,13 @@ func (s *service) Withdraw(name string, accNo uint32, pw [8]byte, curr models.Cu
 		return 0, ErrInvalidCredentials
 	}
 
-	// Lock the account before withdrawing
-	acc.Mu.Lock()
-	defer acc.Mu.Unlock()
-
 	if err := checkAuth(acc, name, pw); err != nil {
 		return 0, err
 	}
+
+	// Lock the account before withdrawing
+	acc.Mu.Lock()
+	defer acc.Mu.Unlock()
 
 	if acc.CurrencyType != curr {
 		return 0, ErrCurrencyMismatch
