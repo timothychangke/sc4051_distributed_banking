@@ -30,7 +30,7 @@ enum class InternalError {
     DECODE_OFFSET_OVERFLOW,             // Integer overflow when advancing the decode offset
     DECODE_LENGTH_MISMATCH,             // Fixed-size field declared a length that does not match its type size
     DECODE_STRING_TOO_LONG,             // String field length exceeds MAX_STRING_LENGTH
-    DECODE_FIELD_MISMATCH,              // Field length does not fit field_content
+    DECODE_FIELD_MISMATCH,              // Declared field length does not match the expected size for this field type
 
     // Message Serialization Layer
     SERIALIZE_ERROR,                    // General failure while serializing a Message to bytes
