@@ -1,13 +1,11 @@
 #include "helper.h"
 
-ErrorHandler::ErrorHandler(){};
-ErrorHandler::~ErrorHandler(){};
+int safe_math::msb_index(unsigned int x) {
+    if (x == 0) return -1;
 
+    int index = 0;
+    while (x >>= 1)
+        ++index;
 
-static std::string get_error_msg(int error_code){
-    // TODO
-}
-
-static int get_error_code(std::string error_msg){
-    // TODO
+    return index;
 }

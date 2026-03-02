@@ -14,6 +14,7 @@
 #include <unordered_map>
 
 #include "protocol.h"
+#include "helper.h"
 #define FIELD_ID_SIZE 1
 #define FIELD_LENGTH 4
 #define MAX_STRING_LENGTH 1024
@@ -40,6 +41,7 @@ private:
 
     static size_t get_required_size(const Command& data);       //optimisation 
     static std::optional<FieldID> to_field_id(uint8_t value);
+    static bool is_within_data_size(size_t offset,uint32_t length, const std::vector<uint8_t>& data);
 
     static void append_uint8(std::vector<uint8_t> &buffer, uint8_t value);
     static void append_uint16(std::vector<uint8_t> &buffer, uint16_t value);

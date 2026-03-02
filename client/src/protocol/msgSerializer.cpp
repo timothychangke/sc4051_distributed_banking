@@ -50,10 +50,8 @@ std::vector<uint8_t> Protocol::MessageSerializer::serialize(const Protocol::Mess
 }
 
 std::optional<Protocol::Message> Protocol::MessageSerializer::deserialize(const std::vector<uint8_t>& data){
-    if (!validate_header(data.size())) {
-        return std::nullopt;
-    }
-
+    if (!validate_header(data.size())) return std::nullopt;
+    
     size_t offset = 0;
     Protocol::Message msg{};
     
@@ -95,10 +93,8 @@ std::optional<Protocol::Message> Protocol::MessageSerializer::deserialize(const 
     content_len = ntohl(content_len);
     offset += 4;
 
-    if (!validate_payload(data.size(), offset, content_len)){
-        return std::nullopt;
-    }
-
+    if (!validate_payload(data.size(), offset, content_len)) return std::nullopt;
+    
     // content (N Bytes)
     msg.payload.content.resize(content_len);
     std::memcpy(msg.payload.content.data(),
@@ -109,13 +105,17 @@ std::optional<Protocol::Message> Protocol::MessageSerializer::deserialize(const 
 }
 
 bool Protocol::MessageSerializer::validate_header(size_t total_size) {
-    if (total_size < HEADER_SIZE)
-        return false;
+    if (total_size < HEADER_SIZE) return false;
+
     return true;
 }
 
 bool Protocol::MessageSerializer::validate_payload(size_t total_size, size_t offset, uint32_t content_len) {
-    if (total_size < offset + content_len)
-        return false;
+    auto maybe_sum = safe_math::safe_add(offset, content_len);
+    if (!maybe_sum) return false;
+    
+    size_t sum = *maybe_sum;    
+    if (total_size < sum) return false;
+
     return true;
 }

@@ -50,21 +50,35 @@ std::optional<Protocol::Command> Protocol::CommandEncoder::decode_message(const 
 
     Protocol::Command cmd{};
     size_t offset {0};
-    while (offset + 5 <= data.size()) {
+    while (true) {
+        auto sum1 = safe_math::safe_add(offset, FIELD_ID_SIZE);
+        if (!sum1) break;
+
+        auto sum2 = safe_math::safe_add(*sum1, FIELD_LENGTH);
+        if (!sum2) break;
+
+        if (*sum2 > data.size()) break;
         
         // decode [field_id(1b)]
         uint8_t field_id = data[offset];
         std::optional<Protocol::FieldID> field = CommandEncoder::to_field_id(field_id);
         if (!field.has_value()) return std::nullopt; // sanity check
-        offset += FIELD_ID_SIZE; 
+        
+        auto maybe_offset = safe_math::safe_add(offset, FIELD_ID_SIZE);
+        if (!maybe_offset) return std::nullopt;
+        offset = *maybe_offset;
 
         // decode [field_length(4b)]
         uint32_t length {};
         std::memcpy(&length, &data[offset], sizeof(uint32_t));
         length = ntohl(length); 
-        offset += FIELD_LENGTH;
-        if (offset + length > data.size()) return std::nullopt; // sanity check 
+        
+        maybe_offset = safe_math::safe_add(offset, FIELD_LENGTH);
+        if (!maybe_offset) return std::nullopt;
+        offset = *maybe_offset;
 
+        if(!is_within_data_size(offset, length, data)) return std::nullopt;
+        
         // decode [field_content(Nb)]
         switch (field.value()){
         
@@ -150,6 +164,17 @@ std::optional<Protocol::FieldID> Protocol::CommandEncoder::to_field_id(uint8_t v
             return std::nullopt;
     }
 }
+
+bool Protocol::CommandEncoder::is_within_data_size(size_t offset,uint32_t length, const std::vector<uint8_t>& data){
+    auto sum = safe_math::safe_add(offset, length);
+    if (!sum) return false;
+    
+    size_t s = *sum;
+    if (s > data.size()) return false;
+    
+    return true;
+}
+
 
 void Protocol::CommandEncoder::append_uint8(std::vector<uint8_t> &buffer, uint8_t value){
     buffer.push_back(value);

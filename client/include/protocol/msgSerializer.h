@@ -11,6 +11,7 @@
 #include <vector>
 #include <optional>
 
+#include "helper.h"
 #include "message.h"
 
 namespace Protocol{
