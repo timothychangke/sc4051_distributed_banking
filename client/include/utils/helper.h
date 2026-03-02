@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <limits>
 
-namespace safe_math  {
+namespace Safe_math  {
     int msb_index(unsigned int x);
 
     template <typename T, typename U>

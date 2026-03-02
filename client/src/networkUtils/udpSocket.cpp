@@ -12,21 +12,24 @@ NetworkUtils::UDPSocket::UDPSocket(const std::string& ipv4_address, uint16_t por
 
 NetworkUtils::UDPSocket::~UDPSocket(){}
 
-bool NetworkUtils::UDPSocket::send_message(const std::vector<uint8_t>& data) {
+Result<std::monostate, Error::InternalError>
+NetworkUtils::UDPSocket::send_message(const std::vector<uint8_t>& data) {
     if (sendto(
         sockfd,                                      // socket
         reinterpret_cast<const char*>(data.data()),  // message
         data.size(),                                 // length
         0,                                           // flags
         (struct sockaddr*)&address,                  // dest_addr
-        sizeof(address)) < 0){                       // dest_len
-            return false;
+        sizeof(address)) < 0) {
+            return Result<std::monostate, Error::InternalError>::fail(
+                Error::InternalError::SEND_FAILED);
         }
 
-    return true;
+    return std::monostate{};
 }
 
-std::optional<std::vector<uint8_t>> NetworkUtils::UDPSocket::receive_message() {
+Result<std::vector<uint8_t>, Error::InternalError>
+NetworkUtils::UDPSocket::receive_message() {
     std::vector<uint8_t> buffer(MAX_DATAGRAM_SIZE); // max datagram size 
     int32_t bytes_received = recvfrom(
         sockfd, 
@@ -37,7 +40,8 @@ std::optional<std::vector<uint8_t>> NetworkUtils::UDPSocket::receive_message() {
         nullptr
     );
     if (bytes_received < 0) {
-        return std::nullopt;
+        return Result<std::vector<uint8_t>, Error::InternalError>::fail(
+            Error::InternalError::RECEIVE_FAILED);
     }
     buffer.resize(bytes_received);
 

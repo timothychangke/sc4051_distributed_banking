@@ -13,6 +13,8 @@
 
 #include "helper.h"
 #include "message.h"
+#include "result.h"
+#include "internalError.h"
 
 namespace Protocol{
 
@@ -25,11 +27,11 @@ public:
      * Converts a Message into a packed byte stream.
      * Format: [Type(4b)][ID(4b)][IP(4b)][Port(2b)][StrLen(4b)][Payload(Nb)]
      */
-    std::vector<uint8_t> serialize(const Message& message);
+    Result<std::vector<uint8_t>, Error::InternalError> serialize(const Message& message);
     /**
      * Converts a packed byte stream into a Message.
     */
-    std::optional<Message> deserialize(const std::vector<uint8_t>& data);
+    Result<Message, Error::InternalError> deserialize(const std::vector<uint8_t>& data);
 
 private:
     bool validate_header(size_t header_size); 

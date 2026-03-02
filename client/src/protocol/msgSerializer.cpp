@@ -3,7 +3,8 @@
 Protocol::MessageSerializer::MessageSerializer(){};
 Protocol::MessageSerializer::~MessageSerializer(){};
 
-std::vector<uint8_t> Protocol::MessageSerializer::serialize(const Protocol::Message& message){
+Result<std::vector<uint8_t>, Error::InternalError>
+Protocol::MessageSerializer::serialize(const Protocol::Message& message){
     std::vector<uint8_t> data;
 
     // m_type (1 Byte)
@@ -49,8 +50,11 @@ std::vector<uint8_t> Protocol::MessageSerializer::serialize(const Protocol::Mess
     return data;
 }
 
-std::optional<Protocol::Message> Protocol::MessageSerializer::deserialize(const std::vector<uint8_t>& data){
-    if (!validate_header(data.size())) return std::nullopt;
+Result<Protocol::Message, Error::InternalError>
+Protocol::MessageSerializer::deserialize(const std::vector<uint8_t>& data){
+    if (!validate_header(data.size()))
+        return Result<Protocol::Message, Error::InternalError>::fail(
+            Error::InternalError::DESERIALIZE_HEADER_TOO_SHORT);
     
     size_t offset = 0;
     Protocol::Message msg{};
@@ -93,7 +97,9 @@ std::optional<Protocol::Message> Protocol::MessageSerializer::deserialize(const 
     content_len = ntohl(content_len);
     offset += 4;
 
-    if (!validate_payload(data.size(), offset, content_len)) return std::nullopt;
+    if (!validate_payload(data.size(), offset, content_len))
+        return Result<Protocol::Message, Error::InternalError>::fail(
+            Error::InternalError::DESERIALIZE_PAYLOAD_OVERFLOW);
     
     // content (N Bytes)
     msg.payload.content.resize(content_len);
@@ -111,7 +117,7 @@ bool Protocol::MessageSerializer::validate_header(size_t total_size) {
 }
 
 bool Protocol::MessageSerializer::validate_payload(size_t total_size, size_t offset, uint32_t content_len) {
-    auto maybe_sum = safe_math::safe_add(offset, content_len);
+    auto maybe_sum = Safe_math::safe_add(offset, content_len);
     if (!maybe_sum) return false;
     
     size_t sum = *maybe_sum;    

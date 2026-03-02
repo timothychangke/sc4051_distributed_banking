@@ -1,6 +1,6 @@
 #include "helper.h"
 
-int safe_math::msb_index(unsigned int x) {
+int Safe_math::msb_index(unsigned int x) {
     if (x == 0) return -1;
 
     int index = 0;
