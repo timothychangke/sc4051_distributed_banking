@@ -1,5 +1,5 @@
 #include <iostream>
-#include "bankclient.h"
+#include "bankClient.h"
 
 const std::unordered_map<std::string, Protocol::CurrencyType>
 BankClient::stringToCurrency = {
@@ -119,6 +119,7 @@ std::optional<Protocol::Command> BankClient::collect_user_input() {
             std::cout << "\033[31mInvalid Selection\033[0m\n";
             return std::nullopt;
     }
+    
     return req;
 }
 

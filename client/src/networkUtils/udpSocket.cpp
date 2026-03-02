@@ -13,7 +13,6 @@ NetworkUtils::UDPSocket::UDPSocket(const std::string& ipv4_address, uint16_t por
 NetworkUtils::UDPSocket::~UDPSocket(){}
 
 bool NetworkUtils::UDPSocket::send_message(const std::vector<uint8_t>& data) {
-
     if (sendto(
         sockfd,                                      // socket
         reinterpret_cast<const char*>(data.data()),  // message
@@ -23,11 +22,11 @@ bool NetworkUtils::UDPSocket::send_message(const std::vector<uint8_t>& data) {
         sizeof(address)) < 0){                       // dest_len
             return false;
         }
+
     return true;
 }
 
 std::optional<std::vector<uint8_t>> NetworkUtils::UDPSocket::receive_message() {
-    
     std::vector<uint8_t> buffer(MAX_DATAGRAM_SIZE); // max datagram size 
     int32_t bytes_received = recvfrom(
         sockfd, 
@@ -40,7 +39,7 @@ std::optional<std::vector<uint8_t>> NetworkUtils::UDPSocket::receive_message() {
     if (bytes_received < 0) {
         return std::nullopt;
     }
-
     buffer.resize(bytes_received);
+
     return buffer;
 } 
