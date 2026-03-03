@@ -24,6 +24,17 @@ enum class CurrencyType {
     // add more ...
 };
 
+enum class FieldID : uint8_t {
+    Service = 1,
+    AccountNumber = 2,
+    AccountOwnerName = 3,
+    AccountPassword = 4,
+    TxAccountNumber = 5,
+    TxAccountOwnerName = 6,
+    MonetaryValue = 7,
+    Currency = 8,
+};
+
 /** 
 * Application Layer
 * Represents the business-level operation.
@@ -74,19 +85,8 @@ struct Command {
 template<typename StructType, typename Func>
 void iterate(StructType& s, Func f) {
     std::apply([&](auto&... args) {
-        ((f(args.first, args.second.get())), ...);
+        ((f(args.first, args.second)), ...);
     }, s.all_fields());
 }
-
-enum class FieldID : uint8_t {
-    Service = 1,
-    AccountNumber = 2,
-    AccountOwnerName = 3,
-    AccountPassword = 4,
-    TxAccountNumber = 5,
-    TxAccountOwnerName = 6,
-    MonetaryValue = 7,
-    Currency = 8,
-};
 
 }
