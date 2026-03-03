@@ -221,7 +221,6 @@ bool Protocol::CommandEncoder::is_within_data_size(size_t offset,uint32_t length
     return true;
 }
 
-
 void Protocol::CommandEncoder::append_uint8(std::vector<uint8_t> &buffer, uint8_t value){
     buffer.push_back(value);
 }

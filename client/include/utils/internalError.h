@@ -5,6 +5,7 @@
 namespace Error{
 enum class InternalError {
     // Input / Application Layer  
+    USER_CANCELED,                      // User canceled the process
     BAD_INPUT,                          // User provided invalid or unparseable input
     INVALID_SERVICE,                    // Service type selected is not recognised
     INVALID_CURRENCY,                   // Currency string does not map to a known CurrencyType
