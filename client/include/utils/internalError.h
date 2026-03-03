@@ -24,6 +24,7 @@ enum class InternalError {
     ENCODING_ERROR,                     // General failure while encoding a Command to bytes
     DECODING_ERROR,                     // General failure while decoding bytes to a Command
 
+    ENCODE_UNKNOWN_FIELD,               // Encountered a field_id that does not map to a known FieldID
     ENCODE_EMPTY_COMMAND,               // Attempted to encode a Command with no fields set
     DECODE_EMPTY_DATA,                  // Received an empty byte buffer for decoding
 

@@ -19,6 +19,7 @@ std::string Error::to_string(Error::InternalError err) {
         case Error::InternalError::REQUEST_TIMEOUT:                    return "REQUEST_TIMEOUT";
 
         // Protocol Encoding
+        case Error::InternalError::ENCODE_UNKNOWN_FIELD:               return "ENCODE_UNKNOWN_FIELD";
         case Error::InternalError::ENCODING_ERROR:                     return "ENCODING_ERROR";
         case Error::InternalError::DECODING_ERROR:                     return "DECODING_ERROR";
         case Error::InternalError::ENCODE_EMPTY_COMMAND:               return "ENCODE_EMPTY_COMMAND";

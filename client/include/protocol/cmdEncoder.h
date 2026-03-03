@@ -28,6 +28,9 @@ namespace Protocol{
 using DecoderFunc = std::function<Result<std::monostate, Error::InternalError>(
     Protocol::Command&, size_t&, uint32_t, const std::vector<uint8_t>&)>;
 
+using EncoderFunc = std::function<Result<std::monostate, Error::InternalError>(
+    std::vector<uint8_t>&, const Command&)>;
+
 class CommandEncoder{
 public:
 
@@ -48,6 +51,7 @@ public:
     
 private:
     static const std::unordered_map<FieldID, DecoderFunc> decodeFuncMap;
+    static const std::unordered_map<FieldID, EncoderFunc> encodeFuncMap;
     
     static size_t get_optimal_buffer_size(const Command& data);       //optimisation 
     static std::optional<FieldID> to_field_id(uint8_t value);
@@ -59,14 +63,14 @@ private:
     static void append_double(std::vector<uint8_t> &buffer, double value);
     static void append_string(std::vector<uint8_t>& buffer, const std::string& str);
 
-    static void encode_service(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_account_number(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_account_owner_name(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_account_password(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_tx_account_number(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_tx_account_owner_name(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_monetary_value(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_currency(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_service(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_account_number(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_account_owner_name(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_account_password(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_tx_account_number(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_tx_account_owner_name(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_monetary_value(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_currency(std::vector<uint8_t>& buffer, const Command& data);
     
     static Result<std::monostate, Error::InternalError> decode_service(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
     static Result<std::monostate, Error::InternalError> decode_account_number(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);

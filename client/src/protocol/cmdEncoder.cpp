@@ -10,36 +10,25 @@ Protocol::CommandEncoder::encode_message(const Protocol::Command& data){
     std::vector<uint8_t> buffer;
     buffer.reserve(CommandEncoder::get_optimal_buffer_size(data));
 
-    if (data.service.has_value()) {
-        CommandEncoder::encode_service(buffer, data);
-    }
+    std::optional<Error::InternalError> error;
+    iterate(data, [&](auto fieldId, const auto& field) {
+        if (error || !field.has_value()) return;
 
-    if (data.account_number.has_value()) {
-        CommandEncoder::encode_account_number(buffer, data);
-    }
+        auto it = encodeFuncMap.find(fieldId);
+        if (it == encodeFuncMap.end()) {
+            error = Error::InternalError::ENCODE_UNKNOWN_FIELD;
+            return;
+        }
 
-    if (data.account_owner_name.has_value()) {
-        CommandEncoder::encode_account_owner_name(buffer, data);
-    }
+        auto res = it->second(buffer, data);
+        if (!res) {
+            error = res.error();
+            return;
+        }
+    });
 
-    if (data.account_password.has_value()) {
-        CommandEncoder::encode_account_password(buffer, data);
-    }
-
-    if (data.tx_account_number.has_value()) {
-        CommandEncoder::encode_tx_account_number(buffer, data);
-    }
-
-    if (data.tx_account_owner_name.has_value()) {
-        CommandEncoder::encode_tx_account_owner_name(buffer, data);
-    }
-
-    if (data.monetary_value.has_value()) {
-        CommandEncoder::encode_monetary_value(buffer, data);
-    }
-
-    if (data.currency.has_value()) {
-        CommandEncoder::encode_currency(buffer, data);
+    if (error) {
+        return Result<std::vector<uint8_t>, Error::InternalError>::fail(*error);
     }
 
     if (buffer.empty()) {
@@ -112,11 +101,11 @@ Protocol::CommandEncoder::decode_message(const std::vector<uint8_t>& data){
             return Result<Protocol::Command, Error::InternalError>::fail(res.error());
         }
 
-        auto maybe_offset = Safe_math::safe_add(offset, length);
-        if (!maybe_offset)
+        auto next_offset = Safe_math::safe_add(offset, length);
+        if (!next_offset)
             return Result<Protocol::Command, Error::InternalError>::fail(
                 Error::InternalError::DECODE_OFFSET_OVERFLOW);
-        offset = *maybe_offset;
+        offset = *next_offset;
     }
 
     return cmd;
@@ -210,7 +199,18 @@ void Protocol::CommandEncoder::append_string(std::vector<uint8_t>& buffer, const
     buffer.insert(buffer.end(), str.begin(), str.end());
 }
 
-void Protocol::CommandEncoder::encode_service(std::vector<uint8_t>& buffer, const Protocol::Command& data){
+const std::unordered_map<Protocol::FieldID, Protocol::EncoderFunc> Protocol::CommandEncoder::encodeFuncMap = {
+    {Protocol::FieldID::Service, &Protocol::CommandEncoder::encode_service},
+    {Protocol::FieldID::AccountNumber, &Protocol::CommandEncoder::encode_account_number},
+    {Protocol::FieldID::AccountOwnerName, &Protocol::CommandEncoder::encode_account_owner_name},
+    {Protocol::FieldID::AccountPassword, &Protocol::CommandEncoder::encode_account_password},
+    {Protocol::FieldID::TxAccountNumber, &Protocol::CommandEncoder::encode_tx_account_number},
+    {Protocol::FieldID::TxAccountOwnerName, &Protocol::CommandEncoder::encode_tx_account_owner_name},
+    {Protocol::FieldID::MonetaryValue, &Protocol::CommandEncoder::encode_monetary_value},
+    {Protocol::FieldID::Currency, &Protocol::CommandEncoder::encode_currency}
+};
+
+Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::encode_service(std::vector<uint8_t>& buffer, const Protocol::Command& data){
     uint8_t field_id = static_cast<uint8_t>(FieldID::Service);
     uint8_t value = static_cast<uint8_t>(data.service.value());
     uint32_t length = sizeof(uint8_t);
@@ -218,9 +218,11 @@ void Protocol::CommandEncoder::encode_service(std::vector<uint8_t>& buffer, cons
     CommandEncoder::append_uint8(buffer, field_id);
     CommandEncoder::append_uint32(buffer, length);
     CommandEncoder::append_uint8(buffer, value);
+
+    return std::monostate{};
 }
 
-void Protocol::CommandEncoder::encode_account_number(std::vector<uint8_t>& buffer, const Protocol::Command& data){
+Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::encode_account_number(std::vector<uint8_t>& buffer, const Protocol::Command& data){
     uint8_t field_id = static_cast<uint8_t>(FieldID::AccountNumber);
     uint32_t value = data.account_number.value();
     uint32_t length = sizeof(uint32_t);
@@ -228,9 +230,11 @@ void Protocol::CommandEncoder::encode_account_number(std::vector<uint8_t>& buffe
     CommandEncoder::append_uint8(buffer, field_id);
     CommandEncoder::append_uint32(buffer, length);
     CommandEncoder::append_uint32(buffer, value);
+
+    return std::monostate{};
 }
 
-void Protocol::CommandEncoder::encode_account_owner_name(std::vector<uint8_t>& buffer, const Protocol::Command& data){
+Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::encode_account_owner_name(std::vector<uint8_t>& buffer, const Protocol::Command& data){
     uint8_t field_id = static_cast<uint8_t>(FieldID::AccountOwnerName);
     std::string value = data.account_owner_name.value();
     uint32_t length = static_cast<uint32_t>(value.size());
@@ -238,9 +242,11 @@ void Protocol::CommandEncoder::encode_account_owner_name(std::vector<uint8_t>& b
     CommandEncoder::append_uint8(buffer, field_id);
     CommandEncoder::append_uint32(buffer, length);
     CommandEncoder::append_string(buffer, value);
+
+    return std::monostate{};
 }
 
-void Protocol::CommandEncoder::encode_account_password(std::vector<uint8_t>& buffer, const Protocol::Command& data){
+Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::encode_account_password(std::vector<uint8_t>& buffer, const Protocol::Command& data){
     uint8_t field_id = static_cast<uint8_t>(FieldID::AccountPassword);
     std::string value = data.account_password.value();
     uint32_t length = static_cast<uint32_t>(value.size());
@@ -248,9 +254,11 @@ void Protocol::CommandEncoder::encode_account_password(std::vector<uint8_t>& buf
     CommandEncoder::append_uint8(buffer, field_id);
     CommandEncoder::append_uint32(buffer, length);
     CommandEncoder::append_string(buffer, value);
+
+    return std::monostate{};
 }   
 
-void Protocol::CommandEncoder::encode_tx_account_number(std::vector<uint8_t>& buffer, const Protocol::Command& data){
+Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::encode_tx_account_number(std::vector<uint8_t>& buffer, const Protocol::Command& data){
     uint8_t field_id = static_cast<uint8_t>(FieldID::TxAccountNumber);
     uint32_t value = data.tx_account_number.value();
     uint32_t length = sizeof(uint32_t);
@@ -258,9 +266,11 @@ void Protocol::CommandEncoder::encode_tx_account_number(std::vector<uint8_t>& bu
     CommandEncoder::append_uint8(buffer, field_id);
     CommandEncoder::append_uint32(buffer, length);
     CommandEncoder::append_uint32(buffer, value);
+
+    return std::monostate{};
 }
 
-void Protocol::CommandEncoder::encode_tx_account_owner_name(std::vector<uint8_t>& buffer, const Protocol::Command& data){
+Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::encode_tx_account_owner_name(std::vector<uint8_t>& buffer, const Protocol::Command& data){
     uint8_t field_id = static_cast<uint8_t>(FieldID::TxAccountOwnerName);
     std::string value = data.tx_account_owner_name.value();
     uint32_t length = static_cast<uint32_t>(value.size());
@@ -268,9 +278,11 @@ void Protocol::CommandEncoder::encode_tx_account_owner_name(std::vector<uint8_t>
     CommandEncoder::append_uint8(buffer, field_id);
     CommandEncoder::append_uint32(buffer, length);
     CommandEncoder::append_string(buffer, value);
+
+    return std::monostate{};
 }
 
-void Protocol::CommandEncoder::encode_monetary_value(std::vector<uint8_t>& buffer, const Protocol::Command& data){
+Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::encode_monetary_value(std::vector<uint8_t>& buffer, const Protocol::Command& data){
     uint8_t field_id = static_cast<uint8_t>(FieldID::MonetaryValue);
     double value = static_cast<double>(data.monetary_value.value());
     uint32_t length = sizeof(double);
@@ -278,16 +290,20 @@ void Protocol::CommandEncoder::encode_monetary_value(std::vector<uint8_t>& buffe
     CommandEncoder::append_uint8(buffer, field_id);
     CommandEncoder::append_uint32(buffer, length);
     CommandEncoder::append_double(buffer, value);
+
+    return std::monostate{};
 }
 
-void Protocol::CommandEncoder::encode_currency(std::vector<uint8_t>& buffer, const Protocol::Command& data){
+Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::encode_currency(std::vector<uint8_t>& buffer, const Protocol::Command& data){
     uint8_t field_id = static_cast<uint8_t>(FieldID::Currency);
-    uint32_t value = static_cast<uint32_t>(data.currency.value());
-    uint32_t length = sizeof(uint32_t);
+    uint8_t value = static_cast<uint8_t>(data.currency.value());
+    uint32_t length = sizeof(uint8_t);
 
     CommandEncoder::append_uint8(buffer, field_id);
     CommandEncoder::append_uint32(buffer, length);
-    CommandEncoder::append_uint32(buffer, value);
+    CommandEncoder::append_uint8(buffer, value);
+    
+    return std::monostate{};
 }
 
 const std::unordered_map<Protocol::FieldID, Protocol::DecoderFunc> Protocol::CommandEncoder::decodeFuncMap = {
@@ -373,7 +389,7 @@ Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::decode_tx
 Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::decode_tx_account_owner_name(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer){
     if (length > MAX_STRING_LENGTH) {
         return Result<std::monostate, Error::InternalError>::fail(
-            Error::InternalError::DECODE_FIELD_OVERFLOW);
+            Error::InternalError::DECODE_STRING_TOO_LONG);
     }
     
     std::string tx_acc_name{};
@@ -411,14 +427,13 @@ Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::decode_mo
 }
 
 Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::decode_currency(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer){
-    if (length != sizeof(uint32_t)) {
+    if (length != sizeof(uint8_t)) {
         return Result<std::monostate, Error::InternalError>::fail(
             Error::InternalError::DECODE_FIELD_OVERFLOW);
     }
     
-    uint32_t cur{};
+    uint8_t cur{};
     std::memcpy(&cur, buffer.data() + offset, length);
-    cur = ntohl(cur);
     data.currency = static_cast<Protocol::CurrencyType>(cur);
 
     return std::monostate{};

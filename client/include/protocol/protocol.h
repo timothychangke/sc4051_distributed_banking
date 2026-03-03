@@ -43,7 +43,40 @@ struct Command {
     
     std::optional<double> monetary_value;
     std::optional<CurrencyType> currency;
+
+    auto all_fields() { 
+        return std::make_tuple(
+            std::make_pair(FieldID::Service, std::ref(service)), 
+            std::make_pair(FieldID::AccountNumber, std::ref(account_number)), 
+            std::make_pair(FieldID::AccountOwnerName, std::ref(account_owner_name)), 
+            std::make_pair(FieldID::AccountPassword, std::ref(account_password)), 
+            std::make_pair(FieldID::TxAccountNumber, std::ref(tx_account_number)), 
+            std::make_pair(FieldID::TxAccountOwnerName, std::ref(tx_account_owner_name)), 
+            std::make_pair(FieldID::MonetaryValue, std::ref(monetary_value)), 
+            std::make_pair(FieldID::Currency, std::ref(currency))
+        ); 
+    }
+
+    auto all_fields() const { 
+        return std::make_tuple(
+            std::make_pair(FieldID::Service, std::cref(service)), 
+            std::make_pair(FieldID::AccountNumber, std::cref(account_number)), 
+            std::make_pair(FieldID::AccountOwnerName, std::cref(account_owner_name)), 
+            std::make_pair(FieldID::AccountPassword, std::cref(account_password)), 
+            std::make_pair(FieldID::TxAccountNumber, std::cref(tx_account_number)), 
+            std::make_pair(FieldID::TxAccountOwnerName, std::cref(tx_account_owner_name)), 
+            std::make_pair(FieldID::MonetaryValue, std::cref(monetary_value)), 
+            std::make_pair(FieldID::Currency, std::cref(currency))
+        ); 
+    }
 };
+
+template<typename StructType, typename Func>
+void iterate(StructType& s, Func f) {
+    std::apply([&](auto&... args) {
+        ((f(args.first, args.second.get())), ...);
+    }, s.all_fields());
+}
 
 enum class FieldID : uint8_t {
     Service = 1,
