@@ -1,6 +1,7 @@
 #pragma once 
 
 #ifdef _WIN32
+#define NOMINMAX
 #include <windows.h>
 #endif
 
@@ -51,7 +52,7 @@ private:
 
         std::string input;
         for(int i=0; i < MAX_TRIES; i++) {
-            bbankUI->print_prompt(prompt + " (or type 'quit' to cancel): ");
+            bankUI->print_prompt(prompt + " (or type 'quit' to cancel): ");
             std::getline(std::cin, input); 
             if (input == "quit") {
                 return Result<T, Error::InternalError>::fail(
@@ -82,9 +83,9 @@ private:
                 }
 
             } catch (const std::invalid_argument&) {
-                bankUI->print_error("Invalid" + prompt + "input. Please enter a number")
+                bankUI->print_error("Invalid" + prompt + "input. Please enter a number");
             } catch (const std::out_of_range&) {
-                bankUI->print_error("Invalid" + prompt + "input. Number out of range.")
+                bankUI->print_error("Invalid" + prompt + "input. Number out of range.");
             }
         }
         bankUI->print_error("Exceeded Maximum Tries");

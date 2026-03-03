@@ -37,6 +37,9 @@ void BankClient::run() {
             bankUI->print("[ SENDING REQUEST TO SERVER ]");
             send_to_server(req.value());
             
+            std::cout << "Press Enter to continue";
+            std::cin.get(); // Reads the next character from the input stream
+
         }
     } catch (const std::exception& e) {
         std::cerr << "CRITICAL ERROR: " << e.what() << std::endl;
@@ -163,19 +166,19 @@ Result<std::string, Error::InternalError> BankClient::getValidatedString(const s
 
 Result<std::monostate, Error::InternalError> BankClient::fill_account_creation_details(Protocol::Command& req) {
     auto maybe_acc = getValidatedString("Account Holder");
-    if (maybe_acc.fail) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
+    if (!maybe_acc) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
     req.account_owner_name = maybe_acc.value();
 
     auto maybe_pwd = getValidatedString("Set Password");
-    if (maybe_pwd.fail) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
+    if (!maybe_pwd) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
     req.account_password = maybe_pwd.value();
 
     auto maybe_cur = getValidatedcurrency("Desired currency (SGD/USD/EUR)");
-    if (maybe_cur.fail) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::INVALID_CURRENCY);
+    if (!maybe_cur) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::INVALID_CURRENCY);
     req.currency = maybe_cur.value();
 
     auto maybe_val = getValidatedNumber<double>("Initial Deposit");
-    if (maybe_val.fail) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
+    if (!maybe_val) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
     req.monetary_value = maybe_val.value();
 
     return std::monostate{};
@@ -183,15 +186,15 @@ Result<std::monostate, Error::InternalError> BankClient::fill_account_creation_d
 
 Result<std::monostate, Error::InternalError> BankClient::fill_auth_details(Protocol::Command& req) {
     auto maybe_acc_name = getValidatedString("Account Holder");
-    if (maybe_acc_name.fail) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
+    if (!maybe_acc_name) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
     req.account_owner_name = maybe_acc_name.value();
 
     auto maybe_acc_num = getValidatedNumber<uint32_t>("Account Number");
-    if (maybe_acc_num.fail) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
+    if (!maybe_acc_num) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
     req.account_number = maybe_acc_num.value();
 
     auto maybe_pwd = getValidatedString("Account Password");
-    if (maybe_pwd.fail) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
+    if (!maybe_pwd) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
     req.account_password = maybe_pwd.value();
     
     return std::monostate{};
@@ -199,7 +202,7 @@ Result<std::monostate, Error::InternalError> BankClient::fill_auth_details(Proto
 
 Result<std::monostate, Error::InternalError> BankClient::fill_currency_details(Protocol::Command& req) {
     auto maybe_cur = getValidatedcurrency("Desired currency (SGD/USD/EUR)");
-    if (maybe_cur.fail) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::INVALID_CURRENCY);
+    if (!maybe_cur) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::INVALID_CURRENCY);
     req.currency = maybe_cur.value();
 
    return std::monostate{};
@@ -207,7 +210,7 @@ Result<std::monostate, Error::InternalError> BankClient::fill_currency_details(P
 
 Result<std::monostate, Error::InternalError> BankClient::fill_amount_details(Protocol::Command& req) {
     auto maybe_val = getValidatedNumber<double>("Desired Amount");
-    if (maybe_val.fail) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
+    if (!maybe_val) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
     req.monetary_value = maybe_val.value();
 
     return std::monostate{};
@@ -215,11 +218,11 @@ Result<std::monostate, Error::InternalError> BankClient::fill_amount_details(Pro
 
 Result<std::monostate, Error::InternalError> BankClient::fill_transfer_account_details(Protocol::Command& req) {
     auto maybe_acc_name = getValidatedString("Transfer Account Holder Name");
-    if (maybe_acc_name.fail) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
+    if (!maybe_acc_name) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
     req.tx_account_owner_name = maybe_acc_name.value();
 
     auto maybe_acc_num = getValidatedNumber<uint32_t>("Transfer Account Number");
-    if (maybe_acc_num.fail) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
+    if (!maybe_acc_num) return Result<std::monostate, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
     req.tx_account_number = maybe_acc_num.value();
 
     return std::monostate{};

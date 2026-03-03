@@ -1,5 +1,6 @@
 #include <iostream>
 #include <memory>
+#include "bankUI.h"
 #include "bankClient.h"
 
 int main() {
@@ -14,9 +15,9 @@ int main() {
     #endif
 
     // Core Logic
-    std::unique_ptr<BankClient> bank = std::make_unique<BankClient>();
-    bank->run();
-    
+    auto bankUI = std::make_unique<BankUI>();
+    auto bankClient = std::make_unique<BankClient>(bankUI);
+    bankClient->run();
     
     #ifdef _WIN32
     WSACleanup();
