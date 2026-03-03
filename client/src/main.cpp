@@ -16,7 +16,7 @@ int main() {
 
     // Core Logic
     auto bankUI = std::make_unique<BankUI>();
-    auto bankClient = std::make_unique<BankClient>(bankUI);
+    auto bankClient = std::make_unique<BankClient>(std::move(bankUI)); 
     bankClient->run();
     
     #ifdef _WIN32
