@@ -83,9 +83,9 @@ private:
                 }
 
             } catch (const std::invalid_argument&) {
-                bankUI->print_error("Invalid " + prompt + "input. Please enter a number");
+                bankUI->print_error("Invalid " + prompt + " input. Please enter a number");
             } catch (const std::out_of_range&) {
-                bankUI->print_error("Invalid " + prompt + "input. Number out of range.");
+                bankUI->print_error("Invalid " + prompt + " input. Number out of range.");
             }
         }
         bankUI->print_error("Exceeded Maximum Tries");

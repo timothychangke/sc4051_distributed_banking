@@ -66,7 +66,7 @@ Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input()
 
     switch (service_type) {
         case Protocol::Service::OPEN:
-            bankUI->print("ACTIVE SERVICE :" + Protocol::to_string(service_type));
+            bankUI->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
             bankUI->print_box_top();
             if (auto res = fill_account_creation_details(req); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
@@ -76,7 +76,7 @@ Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input()
         case Protocol::Service::CLOSE:
         case Protocol::Service::GET_BALANCE:
         case Protocol::Service::MONITOR:
-            bankUI->print("ACTIVE SERVICE :" + Protocol::to_string(service_type));
+            bankUI->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
             bankUI->print_box_top();
             if (auto res = fill_auth_details(req); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
@@ -85,7 +85,7 @@ Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input()
 
         case Protocol::Service::DEPOSIT:
         case Protocol::Service::WITHDRAW:
-            bankUI->print("ACTIVE SERVICE :" + Protocol::to_string(service_type));
+            bankUI->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
             bankUI->print_box_top();
             if (auto res = fill_auth_details(req); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
@@ -97,7 +97,7 @@ Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input()
             break;
 
         case Protocol::Service::TRANSFER_FUNDS:
-            bankUI->print("ACTIVE SERVICE :" + Protocol::to_string(service_type));
+            bankUI->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
             bankUI->print_box_top();
             if (auto res = fill_auth_details(req); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
@@ -144,7 +144,7 @@ Result<std::string, Error::InternalError> BankClient::getValidatedString(const s
             return input;
         }
 
-        bankUI->print_error("Invalid " + prompt + "string. Try again.");
+        bankUI->print_error("Invalid " + prompt + " string. Try again.");
     }
     bankUI->print_error("Exceeded Maximum Tries");
     

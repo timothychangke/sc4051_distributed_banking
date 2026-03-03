@@ -1,7 +1,7 @@
 #include "bankUI.h"
 
-void BankUI::print(const std::string &msg, Color color) {
-        std::cout << color_code(color) << msg << color_code(Color::RESET);
+void BankUI::print(const std::string &msg, Colour colour) {
+        std::cout << colour_code(colour) << msg << colour_code(Colour::RESET);
     }
 
 void BankUI::print_prompt(const std::string &field_name) {
@@ -9,10 +9,10 @@ void BankUI::print_prompt(const std::string &field_name) {
 }
 
 void BankUI::print_error(const std::string &msg) {
-    print("[!] " + msg + "\n", Color::RED);
+    print("[!] " + msg + "\n", Colour::RED);
 }
 
-void BankUI::print_box_top()    { print("\n───────────────────────────────\n", Color::BOLD); }
+void BankUI::print_box_top()    { print("\n───────────────────────────────\n", Colour::BOLD); }
 void BankUI::print_box_bottom() { print("───────────────────────────────\n"); }
 
 void BankUI::print_service_menu() {
