@@ -12,8 +12,8 @@ void BankUI::print_error(const std::string &msg) {
     print("[!] " + msg + "\n", Color::RED);
 }
 
-void BankUI::print_box_top() { print("\n" + std::string(31, '─') + "\n", Color::BOLD); }
-void BankUI::print_box_bottom() { print(std::string(31, '─') + "\n"); }
+void BankUI::print_box_top()    { print("\n───────────────────────────────\n", Color::BOLD); }
+void BankUI::print_box_bottom() { print("───────────────────────────────\n"); }
 
 void BankUI::print_service_menu() {
     print("\033[1;36m" // Bold Cyan

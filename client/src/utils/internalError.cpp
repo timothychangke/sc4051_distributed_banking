@@ -3,6 +3,7 @@
 std::string Error::to_string(Error::InternalError err) {
     switch (err) {
         // Input / Application
+        case Error::InternalError::USER_QUIT:                          return "USER_QUIT";
         case Error::InternalError::USER_CANCELED:                      return "USER_CANCELED";
         case Error::InternalError::BAD_INPUT:                          return "BAD_INPUT";
         case Error::InternalError::INVALID_SERVICE:                    return "INVALID_SERVICE";

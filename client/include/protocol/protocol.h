@@ -1,5 +1,6 @@
 #pragma once 
 #include <optional>
+#include <string>
 
 namespace Protocol{
 
@@ -13,6 +14,8 @@ enum class Service : uint8_t {
     GET_BALANCE     = 6,        
     TRANSFER_FUNDS  = 7,     
 };
+
+std::string to_string(Service svc);
 
 enum class CurrencyType {
     SGD,
