@@ -42,9 +42,9 @@ private:
     Result<std::monostate, Error::InternalError> fill_amount_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_transfer_account_details(Protocol::Command& req);
     
-    bool BankClient::isValidString(const std::string& str);
+    bool isValidString(const std::string& str);
     Result<std::string, Error::InternalError> getValidatedString(const std::string& prompt);
-    Result<Protocol::CurrencyType, Error::InternalError> getValidatedcurrency(const std::string& prompt);
+    Result<Protocol::CurrencyType, Error::InternalError> getValidatedCurrency(const std::string& prompt);
 
     template<typename T>
     Result<T, Error::InternalError> getValidatedNumber(const std::string& prompt) {

@@ -152,7 +152,7 @@ Result<std::string, Error::InternalError> BankClient::getValidatedString(const s
                 Error::InternalError::BAD_INPUT);
 }
 
- Result<Protocol::CurrencyType, Error::InternalError> BankClient::getValidatedcurrency(const std::string& prompt){
+ Result<Protocol::CurrencyType, Error::InternalError> BankClient::getValidatedCurrency(const std::string& prompt){
     std::string input;
     for(int i=0; i < MAX_TRIES; i++) {
         bankUI->print_prompt(prompt + " (or type 'quit' to cancel)");
@@ -184,7 +184,7 @@ Result<std::monostate, Error::InternalError> BankClient::fill_account_creation_d
     if (!maybe_pwd) return Result<std::monostate, Error::InternalError>::fail(maybe_pwd.error());
     req.account_password = maybe_pwd.value();
 
-    auto maybe_cur = getValidatedcurrency("Desired currency (SGD/USD/EUR)");
+    auto maybe_cur = getValidatedCurrency("Desired currency (SGD/USD/EUR)");
     if (!maybe_cur) return Result<std::monostate, Error::InternalError>::fail(maybe_cur.error());
     req.currency = maybe_cur.value();
 
@@ -212,7 +212,7 @@ Result<std::monostate, Error::InternalError> BankClient::fill_auth_details(Proto
 }
 
 Result<std::monostate, Error::InternalError> BankClient::fill_currency_details(Protocol::Command& req) {
-    auto maybe_cur = getValidatedcurrency("Desired currency (SGD/USD/EUR)");
+    auto maybe_cur = getValidatedCurrency("Desired currency (SGD/USD/EUR)");
     if (!maybe_cur) return Result<std::monostate, Error::InternalError>::fail(maybe_cur.error());
     req.currency = maybe_cur.value();
 
