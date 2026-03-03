@@ -12,16 +12,22 @@
 #include <string>
 #include <optional>
 #include <unordered_map>
+#include <functional>
 
 #include "protocol.h"
 #include "helper.h"
 #include "result.h"
 #include "internalError.h"
+
 #define FIELD_ID_SIZE 1
 #define FIELD_LENGTH 4
 #define MAX_STRING_LENGTH 1024
 
 namespace Protocol{
+
+using DecoderFunc = std::function<Result<std::monostate, Error::InternalError>(
+    Protocol::Command&, size_t&, uint32_t, const std::vector<uint8_t>&)>;
+
 class CommandEncoder{
 public:
 
@@ -41,8 +47,9 @@ public:
     static Result<Command, Error::InternalError> decode_message(const std::vector<uint8_t>& data);
     
 private:
-
-    static size_t get_required_size(const Command& data);       //optimisation 
+    static const std::unordered_map<FieldID, DecoderFunc> decodeFuncMap;
+    
+    static size_t get_optimal_buffer_size(const Command& data);       //optimisation 
     static std::optional<FieldID> to_field_id(uint8_t value);
     static bool is_within_data_size(size_t offset,uint32_t length, const std::vector<uint8_t>& data);
 
@@ -60,15 +67,15 @@ private:
     static void encode_tx_account_owner_name(std::vector<uint8_t>& buffer, const Command& data);
     static void encode_monetary_value(std::vector<uint8_t>& buffer, const Command& data);
     static void encode_currency(std::vector<uint8_t>& buffer, const Command& data);
-   
-    static bool decode_service(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_account_number(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_account_owner_name(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_account_password(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_tx_account_number(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_tx_account_owner_name(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_monetary_value(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_currency(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    
+    static Result<std::monostate, Error::InternalError> decode_service(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_account_number(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_account_owner_name(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_account_password(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_tx_account_number(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_tx_account_owner_name(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_monetary_value(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_currency(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
 
 };
 }
