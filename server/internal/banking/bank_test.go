@@ -151,3 +151,123 @@ func TestService_ConcurrentWithdrawals(t *testing.T) {
 		t.Errorf("Expected final balance to be strictly 0.0 after concurrent overdraft attempts, got %f", finalBalance)
 	}
 }
+
+// TestService_CheckBalance verifies the idempotent S5 operation.
+func TestService_CheckBalance(t *testing.T) {
+	_, svc := setupTestEnvironment()
+	pw := defaultPassword()
+	accNo := svc.OpenAccount("Frank", pw, models.SGD, 250.75)
+
+	tests := []struct {
+		name          string
+		holderName    string
+		accNo         uint32
+		attemptPw     [8]byte
+		expectedErr   error
+		expectBalance float64
+	}{
+		{"Valid Check", "Frank", accNo, pw, nil, 250.75},
+		{"Wrong Password", "Frank", accNo, [8]byte{'w','r','o','n','g'}, ErrInvalidCredentials, 0},
+		{"Wrong Name", "NotFrank", accNo, pw, ErrAccountMismatch, 0},
+		{"Non-existent Account", "Frank", 99999, pw, ErrInvalidCredentials, 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bal, err := svc.CheckBalance(tt.holderName, tt.accNo, tt.attemptPw)
+			if err != tt.expectedErr {
+				t.Errorf("Expected error '%v', got '%v'", tt.expectedErr, err)
+			}
+			if err == nil && bal != tt.expectBalance {
+				t.Errorf("Expected balance %f, got %f", tt.expectBalance, bal)
+			}
+		})
+	}
+}
+
+// TestService_Transfer verifies the non-idempotent S6 operation logic.
+func TestService_Transfer(t *testing.T) {
+	_, svc := setupTestEnvironment()
+	pw := defaultPassword()
+	
+	aliceAcc := svc.OpenAccount("Alice", pw, models.SGD, 500.0)
+	bobAcc := svc.OpenAccount("Bob", pw, models.SGD, 100.0)
+
+	tests := []struct {
+		name        string
+		fromName    string
+		fromAcc     uint32
+		attemptPw   [8]byte
+		toAcc       uint32
+		amount      float64
+		expectedErr error
+	}{
+		{"Valid Transfer", "Alice", aliceAcc, pw, bobAcc, 200.0, nil},
+		{"Insufficient Funds", "Alice", aliceAcc, pw, bobAcc, 1000.0, ErrInsufficientFunds},
+		{"Same Account Transfer", "Alice", aliceAcc, pw, aliceAcc, 50.0, ErrTransferSameAccount},
+		{"Wrong Password", "Alice", aliceAcc, [8]byte{'b','a','d'}, bobAcc, 50.0, ErrInvalidCredentials},
+		{"Wrong Sender Name", "NotAlice", aliceAcc, pw, bobAcc, 50.0, ErrAccountMismatch},
+		{"Invalid Receiver", "Alice", aliceAcc, pw, 99999, 50.0, ErrAccountNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := svc.Transfer(tt.fromName, tt.fromAcc, tt.attemptPw, tt.toAcc, tt.amount)
+			if err != tt.expectedErr {
+				t.Errorf("Expected error '%v', got '%v'", tt.expectedErr, err)
+			}
+		})
+	}
+
+	// Verify final balances after the single successful $200 transfer
+	aliceBal, _ := svc.CheckBalance("Alice", aliceAcc, pw)
+	bobBal, _ := svc.CheckBalance("Bob", bobAcc, pw)
+
+	if aliceBal != 300.0 {
+		t.Errorf("Expected Alice to have 300.0, got %f", aliceBal)
+	}
+	if bobBal != 300.0 {
+		t.Errorf("Expected Bob to have 300.0, got %f", bobBal)
+	}
+}
+
+// TestService_ConcurrentTransfers PROVES your deadlock prevention works.
+func TestService_ConcurrentTransfers(t *testing.T) {
+	_, svc := setupTestEnvironment()
+	pw := defaultPassword()
+
+	// Initialize both accounts with $1000
+	acc1 := svc.OpenAccount("Account1", pw, models.SGD, 1000.0)
+	acc2 := svc.OpenAccount("Account2", pw, models.SGD, 1000.0)
+
+	var wg sync.WaitGroup
+	routines := 50 // 50 transfers in each direction
+
+	// 1. Fire 50 goroutines transferring $10 from Acc1 to Acc2
+	for i := 0; i < routines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = svc.Transfer("Account1", acc1, pw, acc2, 10.0)
+		}()
+	}
+
+	// 2. Fire 50 goroutines transferring $10 from Acc2 to Acc1 SIMULTANEOUSLY
+	for i := 0; i < routines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = svc.Transfer("Account2", acc2, pw, acc1, 10.0)
+		}()
+	}
+
+	wg.Wait() // If you didn't have lock-ordering, the test would freeze forever right here.
+
+	// Both accounts sent $500 and received $500, so balances should be exactly $1000.
+	bal1, _ := svc.CheckBalance("Account1", acc1, pw)
+	bal2, _ := svc.CheckBalance("Account2", acc2, pw)
+
+	if bal1 != 1000.0 || bal2 != 1000.0 {
+		t.Errorf("Race condition detected! Expected both balances to be 1000.0. Got Acc1: %f, Acc2: %f", bal1, bal2)
+	}
+}
