@@ -17,10 +17,10 @@ LEGEND: [ ] = To Do | [/] = In Progress | [X] = Completed
 
 2. CORE BANKING SERVICES (S1 - S4)
 -----------------------------------------------------------------
-[ ] S1 - OPEN: Returns unique Acc No after creation.
-[ ] S2 - CLOSE: Validates Name/AccNo/PW; returns Ack or Error.
-[ ] S3 - DEPOSIT: Updates balance; returns new total or Error.
-[ ] S3 - WITHDRAW: Validates funds; returns new total or Error.
+[ ✓ ] S1 - OPEN: Returns unique Acc No after creation.
+[ ✓ ] S2 - CLOSE: Validates Name/AccNo/PW; returns Ack or Error.
+[ ✓ ] S3 - DEPOSIT: Updates balance; returns new total or Error.
+[ ✓ ] S3 - WITHDRAW: Validates funds; returns new total or Error.
 [ ] S4 - CALLBACK REGISTRATION: Stores Client IP/Port/Interval.
 [ ] S4 - BLOCKING BEHAVIOR: Client input disabled during monitor.
 [ ] S4 - PUSH UPDATES: Server broadcasts all S1-S3 changes to subs.
@@ -29,8 +29,8 @@ LEGEND: [ ] = To Do | [/] = In Progress | [X] = Completed
 
 3. CUSTOM OPERATIONS & IDEMPOTENCY
 -----------------------------------------------------------------
-[ ] OP 5 (IDEMPOTENT): Designed and implemented (e.g., Get Balance).
-[ ] OP 6 (NON-IDEMPOTENT): Designed and implemented (e.g., Transfer).
+[ ✓ ] OP 5 (IDEMPOTENT): Designed and implemented (e.g., Get Balance).
+[ ✓ ] OP 6 (NON-IDEMPOTENT): Designed and implemented (e.g., Transfer).
 [ ] COMPARISON TEST: Tested both under simulated message loss.
 
 
