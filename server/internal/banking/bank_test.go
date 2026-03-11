@@ -271,3 +271,49 @@ func TestService_ConcurrentTransfers(t *testing.T) {
 		t.Errorf("Race condition detected! Expected both balances to be 1000.0. Got Acc1: %f, Acc2: %f", bal1, bal2)
 	}
 }
+
+func TestService_ConcurrentCheckBalanceAndWithdraw(t *testing.T) {
+	_, svc := setupTestEnvironment()
+	pw := defaultPassword()
+
+	// Initial balance of $1000
+	accNo := svc.OpenAccount("Grace", pw, models.SGD, 1000.0)
+
+	var wg sync.WaitGroup
+	routines := 100
+
+	// 1. Spawn 100 Writers: Each withdraws $5 concurrently
+	for i := 0; i < routines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = svc.Withdraw("Grace", accNo, pw, models.SGD, 5.0)
+		}()
+	}
+
+	// 2. Spawn 100 Readers: Each checks the balance concurrently
+	for i := 0; i < routines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// We don't care about the returned value here, we just want to force
+			// the memory read to happen at the exact same time as the writes above.
+			_, _ = svc.CheckBalance("Grace", accNo, pw)
+		}()
+	}
+
+	wg.Wait() // Wait for all 200 goroutines to finish colliding
+
+	// 3. Verify final state
+	finalBal, err := svc.CheckBalance("Grace", accNo, pw)
+	if err != nil {
+		t.Fatalf("Unexpected error checking final balance: %v", err)
+	}
+
+	// We started with 1000, withdrew 5 exactly 100 times. 
+	// 1000 - (100 * 5) = 500
+	expectedBal := 500.0
+	if finalBal != expectedBal {
+		t.Errorf("Expected final balance to be %f, got %f", expectedBal, finalBal)
+	}
+}
