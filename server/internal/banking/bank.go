@@ -148,6 +148,10 @@ func (s *service) CheckBalance(name string, accNo uint32, pw [8]byte) (float64, 
 	if err := checkAuth(acc, name, pw); err != nil {
 		return 0, err
 	}
+	
+	// There must be a lock to the account to read balance, which is a mutable states.
+	acc.Mu.Lock() 
+	defer acc.Mu.Unlock()
 
 	// No locks needed here as we are only reading
 	return acc.Balance, nil
