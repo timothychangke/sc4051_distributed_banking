@@ -47,11 +47,10 @@ std::string BankIO::read_line() {
 }
 
 int BankIO::read_int() {
-    int input;
-    while (!(std::cin >> input)) {
+    int input {};
+    if (!(std::cin >> input)) {
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        print_error("Invalid input. Please enter a number.");
     }
     return input;
 }
