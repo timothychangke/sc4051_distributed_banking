@@ -13,7 +13,7 @@
 
 #include "protocol.h"
 #include "message.h"
-#include "bankUI.h"
+#include "bankIO.h"
 #include "result.h"
 #include "internalError.h"
 
@@ -23,13 +23,13 @@
 class BankClient{
 public:
 
-    BankClient(std::unique_ptr<BankUI> bankUI);
+    BankClient(std::unique_ptr<BankIO> bankIO);
     ~BankClient();
 
     void run(); // main loop
 
-private:
-    std::unique_ptr<BankUI> bankUI;
+protected:
+    std::unique_ptr<BankIO> bankIO;
     static const std::unordered_map<std::string, Protocol::CurrencyType> stringToCurrency;
      
     Result<Protocol::Command, Error::InternalError> collect_user_input();    
@@ -55,7 +55,7 @@ private:
 
         std::string input;
         for(int i=0; i < MAX_TRIES; i++) {
-            bankUI->print_prompt(prompt + " (or type 'quit' to cancel)");
+            bankIO->print_prompt(prompt + " (or type 'quit' to cancel)");
             std::getline(std::cin, input); 
             if (input == "quit") {
                 return Result<T, Error::InternalError>::fail(
@@ -86,12 +86,12 @@ private:
                 }
 
             } catch (const std::invalid_argument&) {
-                bankUI->print_error("Invalid " + prompt + " input. Please enter a number");
+                bankIO->print_error("Invalid " + prompt + " input. Please enter a number");
             } catch (const std::out_of_range&) {
-                bankUI->print_error("Invalid " + prompt + " input. Number out of range.");
+                bankIO->print_error("Invalid " + prompt + " input. Number out of range.");
             }
         }
-        bankUI->print_error("Exceeded Maximum Tries");
+        bankIO->print_error("Exceeded Maximum Tries");
 
         return Result<T, Error::InternalError>::fail(
                 Error::InternalError::BAD_INPUT);

@@ -16,8 +16,14 @@ inline std::string colour_code(Colour c) {
     return "\033[0m";
 }
 
-class BankUI {
+class BankIO {
 public:
+
+    virtual ~BankIO() = default;
+    virtual std::string read_line() = 0;
+    virtual int read_int() = 0;
+    void ensure_clean_buffer();
+
     void print(const std::string &msg, Colour colour = Colour::RESET);
     void print_prompt(const std::string &field_name);
     void print_error(const std::string &msg);

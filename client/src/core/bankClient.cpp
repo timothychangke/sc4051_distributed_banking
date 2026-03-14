@@ -1,8 +1,8 @@
 #include <iostream>
 #include "bankClient.h"
 
-BankClient::BankClient(std::unique_ptr<BankUI> bankUI)
-    : bankUI(std::move(bankUI)){
+BankClient::BankClient(std::unique_ptr<BankIO> bankIO)
+    : bankIO(std::move(bankIO)){
     #ifdef _WIN32
         SetConsoleCP(CP_UTF8);
         SetConsoleOutputCP(CP_UTF8);
@@ -24,13 +24,13 @@ void BankClient::run() {
    try {
         while (true) {
             // std::cout << "\033[2J\033[1;1H"; // Clear screen
-            bankUI->print_service_menu();
+            bankIO->print_service_menu();
             
             auto req = collect_user_input();
             if(!req){
                 if (req.error() != Error::InternalError::USER_CANCELED){
                     Error::InternalError err = req.error();
-                    bankUI->print_error(Error::to_string(err));
+                    bankIO->print_error(Error::to_string(err));
                     break;
                 }
                 else{
@@ -38,7 +38,7 @@ void BankClient::run() {
                 }
             }
         
-            bankUI->print("[ SENDING REQUEST TO SERVER ]");
+            bankIO->print("[ SENDING REQUEST TO SERVER ]");
             send_to_server(req.value());
             
             std::cout << "Press Enter to continue";
@@ -61,44 +61,44 @@ Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input()
     Protocol::Command req {};
     req.service = service_type;
     
-    std::cin.clear(); // clear buffer 
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    std::cin.clear(); // clear buffer state 
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // clear buffer content 
 
     switch (service_type) {
         case Protocol::Service::OPEN:
-            bankUI->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
-            bankUI->print_box_top();
+            bankIO->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
+            bankIO->print_box_top();
             if (auto res = fill_account_creation_details(req); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
-            bankUI->print_box_bottom();
+            bankIO->print_box_bottom();
             break;
 
         case Protocol::Service::CLOSE:
         case Protocol::Service::GET_BALANCE:
         case Protocol::Service::MONITOR:
-            bankUI->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
-            bankUI->print_box_top();
+            bankIO->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
+            bankIO->print_box_top();
             if (auto res = fill_auth_details(req); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
-            bankUI->print_box_bottom();
+            bankIO->print_box_bottom();
             break;
 
         case Protocol::Service::DEPOSIT:
         case Protocol::Service::WITHDRAW:
-            bankUI->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
-            bankUI->print_box_top();
+            bankIO->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
+            bankIO->print_box_top();
             if (auto res = fill_auth_details(req); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
             if (auto res = fill_currency_details(req); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
             if (auto res = fill_amount_details(req); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
-            bankUI->print_box_bottom();
+            bankIO->print_box_bottom();
             break;
 
         case Protocol::Service::TRANSFER_FUNDS:
-            bankUI->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
-            bankUI->print_box_top();
+            bankIO->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
+            bankIO->print_box_top();
             if (auto res = fill_auth_details(req); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
             if (auto res = fill_transfer_account_details(req); !res)
@@ -107,11 +107,11 @@ Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input()
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
             if (auto res = fill_amount_details(req); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
-            bankUI->print_box_bottom();
+            bankIO->print_box_bottom();
             break;
 
         default:
-            bankUI->print_error("Invalid Selection");
+            bankIO->print_error("Invalid Selection");
             return Result<Protocol::Command, Error::InternalError>::fail(
             Error::InternalError::INVALID_SERVICE);
     }
@@ -138,7 +138,7 @@ bool BankClient::isValidStringLength(const std::string& str) {
 Result<std::string, Error::InternalError> BankClient::getValidatedString(const std::string& prompt){
     std::string input;
     for(int i=0; i < MAX_TRIES; i++) {
-        bankUI->print_prompt(prompt + " (or type 'quit' to cancel)");
+        bankIO->print_prompt(prompt + " (or type 'quit' to cancel)");
         std::getline(std::cin, input); 
         if (input == "quit") {
             return Result<std::string, Error::InternalError>::fail(
@@ -149,9 +149,9 @@ Result<std::string, Error::InternalError> BankClient::getValidatedString(const s
             return input;
         }
 
-        bankUI->print_error("Invalid " + prompt + " string. Try again.");
+        bankIO->print_error("Invalid " + prompt + " string. Try again.");
     }
-    bankUI->print_error("Exceeded Maximum Tries");
+    bankIO->print_error("Exceeded Maximum Tries");
     
     return Result<std::string, Error::InternalError>::fail(
                 Error::InternalError::BAD_INPUT);
@@ -168,7 +168,7 @@ Result<std::string, Error::InternalError> BankClient::getValidatedPassword(const
 Result<Protocol::CurrencyType, Error::InternalError> BankClient::getValidatedCurrency(const std::string& prompt){
     std::string input;
     for(int i=0; i < MAX_TRIES; i++) {
-        bankUI->print_prompt(prompt + " (or type 'quit' to cancel)");
+        bankIO->print_prompt(prompt + " (or type 'quit' to cancel)");
         std::getline(std::cin, input); 
         if (input == "quit") {
             return Result<Protocol::CurrencyType, Error::InternalError>::fail(
@@ -180,9 +180,9 @@ Result<Protocol::CurrencyType, Error::InternalError> BankClient::getValidatedCur
         if (it != stringToCurrency.end()) {
             return it->second; 
         }
-        bankUI->print_error("Invalid " + prompt + ". Try again.");
+        bankIO->print_error("Invalid " + prompt + ". Try again.");
     }
-    bankUI->print_error("Exceeded Maximum Tries");
+    bankIO->print_error("Exceeded Maximum Tries");
     
     return Result<Protocol::CurrencyType, Error::InternalError>::fail(
                 Error::InternalError::INVALID_CURRENCY);

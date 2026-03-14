@@ -1,21 +1,21 @@
-#include "bankUI.h"
+#include "bankIO.h"
 
-void BankUI::print(const std::string &msg, Colour colour) {
+void BankIO::print(const std::string &msg, Colour colour) {
         std::cout << colour_code(colour) << msg << colour_code(Colour::RESET);
     }
 
-void BankUI::print_prompt(const std::string &field_name) {
+void BankIO::print_prompt(const std::string &field_name) {
     print("|  " + field_name + ": ");
 }
 
-void BankUI::print_error(const std::string &msg) {
+void BankIO::print_error(const std::string &msg) {
     print("[!] " + msg + "\n", Colour::RED);
 }
 
-void BankUI::print_box_top()    { print("\n───────────────────────────────\n", Colour::BOLD); }
-void BankUI::print_box_bottom() { print("───────────────────────────────\n"); }
+void BankIO::print_box_top()    { print("\n───────────────────────────────\n", Colour::BOLD); }
+void BankIO::print_box_bottom() { print("───────────────────────────────\n"); }
 
-void BankUI::print_service_menu() {
+void BankIO::print_service_menu() {
     print("\033[1;36m" // Bold Cyan
             "╔══════════════════════════════════════════════════╗\n"
             "║          SC4051 DISTRIBUTED BANK SYSTEM          ║\n"
@@ -29,4 +29,29 @@ void BankUI::print_service_menu() {
             "   6. BALANCE\n"
             "────────────────────────────────────────────────────\n"
             " >> Selection: ");
+}
+
+void BankIO::ensure_clean_buffer() {
+    if (std::cin.peek() == '\n') {
+        std::cin.ignore();
+    }
+}
+
+std::string BankIO::read_line() {
+    ensure_clean_buffer(); // Make sure a previous '>>' didn't leave a \n
+    std::string input;
+    if (!std::getline(std::cin, input)) {
+        std::cin.clear();
+    }
+    return input;
+}
+
+int BankIO::read_int() {
+    int input;
+    while (!(std::cin >> input)) {
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        print_error("Invalid input. Please enter a number.");
+    }
+    return input;
 }
