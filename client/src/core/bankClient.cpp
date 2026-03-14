@@ -130,6 +130,11 @@ bool BankClient::isValidString(const std::string& str) {
     return true;
 }
 
+bool BankClient::isValidStringLength(const std::string& str) {
+    if (str.empty()) return false;
+    return str.length() <= MAX_PW_LEN ? true : false;
+}
+
 Result<std::string, Error::InternalError> BankClient::getValidatedString(const std::string& prompt){
     std::string input;
     for(int i=0; i < MAX_TRIES; i++) {
@@ -152,7 +157,15 @@ Result<std::string, Error::InternalError> BankClient::getValidatedString(const s
                 Error::InternalError::BAD_INPUT);
 }
 
- Result<Protocol::CurrencyType, Error::InternalError> BankClient::getValidatedCurrency(const std::string& prompt){
+Result<std::string, Error::InternalError> BankClient::getValidatedPassword(const std::string& prompt){
+    auto maybe_pw = getValidatedString(prompt);
+    if (!maybe_pw) return Result<std::string, Error::InternalError>::fail(maybe_pw.error());
+    if (!isValidStringLength(maybe_pw.value())) return Result<std::string, Error::InternalError>::fail(Error::InternalError::BAD_PW_LEN);
+
+    return maybe_pw;
+}
+
+Result<Protocol::CurrencyType, Error::InternalError> BankClient::getValidatedCurrency(const std::string& prompt){
     std::string input;
     for(int i=0; i < MAX_TRIES; i++) {
         bankUI->print_prompt(prompt + " (or type 'quit' to cancel)");

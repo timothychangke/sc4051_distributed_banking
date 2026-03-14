@@ -18,7 +18,7 @@
 #include "internalError.h"
 
 #define MAX_TRIES 3
-
+#define MAX_PW_LEN 8
 
 class BankClient{
 public:
@@ -43,7 +43,10 @@ private:
     Result<std::monostate, Error::InternalError> fill_transfer_account_details(Protocol::Command& req);
     
     bool isValidString(const std::string& str);
+    bool isValidStringLength(const std::string& str);
+
     Result<std::string, Error::InternalError> getValidatedString(const std::string& prompt);
+    Result<std::string, Error::InternalError> getValidatedPassword(const std::string& prompt);
     Result<Protocol::CurrencyType, Error::InternalError> getValidatedCurrency(const std::string& prompt);
 
     template<typename T>
