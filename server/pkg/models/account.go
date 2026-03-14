@@ -1,5 +1,7 @@
 package models
 
+import "sync"
+
 // Currency represents a supported monetary unit.
 // It is backed by a uint8 to satisfy manual binary marshalling requirements.
 type Currency uint8
@@ -12,6 +14,8 @@ const (
 
 // Account represents the persistent state of a bank user.
 type Account struct {
+	// This protects the account's fields from concurrent mutation
+	Mu            sync.Mutex
 	AccountNumber uint32
 	HolderName    string
 	// Password must be exactly 8 bytes as per protocol specifications.
