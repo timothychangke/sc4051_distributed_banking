@@ -116,6 +116,18 @@ Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input()
     return req;
 }
 
+void BankClient::trim(std::string& str) {
+    // Trim leading whitespace
+    str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+
+    // Trim trailing whitespace
+    str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), str.end());
+}
+
 bool BankClient::isValidString(const std::string& str) {
     if (str.empty()) return false;
 
@@ -136,6 +148,8 @@ Result<std::string, Error::InternalError> BankClient::getValidatedString(const s
     for(int i=0; i < MAX_TRIES; i++) {
         bankIO->print_prompt(prompt + " (or type 'quit' to cancel)");
         std::string input = bankIO->read_line(); 
+
+        trim(input);
         if (input == "quit") {
             return Result<std::string, Error::InternalError>::fail(
                 Error::InternalError::USER_CANCELED);

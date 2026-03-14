@@ -42,6 +42,7 @@ protected:
     Result<std::monostate, Error::InternalError> fill_amount_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_transfer_account_details(Protocol::Command& req);
     
+    void trim(std::string& str);
     bool isValidString(const std::string& str);
     bool isValidStringLength(const std::string& str);
 

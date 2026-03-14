@@ -20,8 +20,8 @@ class BankIO {
 public:
 
     virtual ~BankIO() = default;
-    virtual std::string read_line() = 0;
-    virtual int read_int() = 0;
+    virtual std::string read_line();
+    virtual int read_int();
     void ensure_clean_buffer();
 
     void print(const std::string &msg, Colour colour = Colour::RESET);
