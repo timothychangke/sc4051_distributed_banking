@@ -53,10 +53,9 @@ protected:
     Result<T, Error::InternalError> getValidatedNumber(const std::string& prompt) {
         static_assert(std::is_arithmetic<T>::value, "T must be numeric");
 
-        std::string input;
         for(int i=0; i < MAX_TRIES; i++) {
             bankIO->print_prompt(prompt + " (or type 'quit' to cancel)");
-            std::getline(std::cin, input); 
+            std::string input = bankIO -> read_line(); 
             if (input == "quit") {
                 return Result<T, Error::InternalError>::fail(
                     Error::InternalError::USER_CANCELED);

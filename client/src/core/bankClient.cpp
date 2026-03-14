@@ -51,7 +51,7 @@ void BankClient::run() {
 }
 
 Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input() {
-    uint16_t user_input {};
+    int user_input = bankIO->read_int();
     if(!(std::cin >> user_input) || user_input == 0){
         return Result<Protocol::Command, Error::InternalError>::fail(
             Error::InternalError::USER_QUIT);
@@ -61,9 +61,6 @@ Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input()
     Protocol::Command req {};
     req.service = service_type;
     
-    std::cin.clear(); // clear buffer state 
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // clear buffer content 
-
     switch (service_type) {
         case Protocol::Service::OPEN:
             bankIO->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
@@ -136,10 +133,9 @@ bool BankClient::isValidStringLength(const std::string& str) {
 }
 
 Result<std::string, Error::InternalError> BankClient::getValidatedString(const std::string& prompt){
-    std::string input;
     for(int i=0; i < MAX_TRIES; i++) {
         bankIO->print_prompt(prompt + " (or type 'quit' to cancel)");
-        std::getline(std::cin, input); 
+        std::string input = bankIO->read_line(); 
         if (input == "quit") {
             return Result<std::string, Error::InternalError>::fail(
                 Error::InternalError::USER_CANCELED);
@@ -166,10 +162,9 @@ Result<std::string, Error::InternalError> BankClient::getValidatedPassword(const
 }
 
 Result<Protocol::CurrencyType, Error::InternalError> BankClient::getValidatedCurrency(const std::string& prompt){
-    std::string input;
     for(int i=0; i < MAX_TRIES; i++) {
         bankIO->print_prompt(prompt + " (or type 'quit' to cancel)");
-        std::getline(std::cin, input); 
+        std::string input = bankIO->read_line(); 
         if (input == "quit") {
             return Result<Protocol::CurrencyType, Error::InternalError>::fail(
                 Error::InternalError::USER_CANCELED);
