@@ -82,8 +82,8 @@ struct Command {
     }
 };
 
-template<typename StructType, typename Func>
-void iterate(StructType& s, Func f) {
+template<typename T, typename Func>
+void iterate(T& s, Func f) {
     std::apply([&](auto&... args) {
         ((f(args.first, args.second)), ...);
     }, s.all_fields());

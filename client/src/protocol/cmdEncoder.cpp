@@ -7,10 +7,10 @@ Protocol::CommandEncoder::~CommandEncoder(){}
 Result<std::vector<uint8_t>, Error::InternalError>
 Protocol::CommandEncoder::encode_message(const Protocol::Command& data){
     
-    std::vector<uint8_t> buffer;
+    std::vector<uint8_t> buffer {};
     buffer.reserve(CommandEncoder::get_optimal_buffer_size(data));
 
-    std::optional<Error::InternalError> error;
+    std::optional<Error::InternalError> error {};
     iterate(data, [&](auto fieldId, const auto& field) {
         if (error || !field.has_value()) return;
 
