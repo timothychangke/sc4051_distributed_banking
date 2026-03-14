@@ -3,9 +3,12 @@
 #include <cstdint>
 #include <string>
 
-namespace NetworkUtils{
+#include "protocol.h"
+#define HEADER_SIZE 17
 
-enum class MessageType {
+namespace Protocol{
+
+enum class MessageType: uint8_t {
     Request, 
     Reply,
 };
@@ -21,6 +24,12 @@ struct Payload {
     std::string content; 
 };
 
+/** 
+* Transport Layer
+* Represents the network-level packet exchanged between client and server.
+* Contains routing/identity metadata and a payload.
+* The transport layer does not interpret the payload contents.
+*/
 struct Message {
     MessageType type;
     MessageId   id;  // idempotent_id
