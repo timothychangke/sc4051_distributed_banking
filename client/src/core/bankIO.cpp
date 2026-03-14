@@ -54,3 +54,9 @@ int BankIO::read_int() {
     }
     return input;
 }
+
+void BankIO::wait_for_enter() {
+    std::cout << "Press Enter to continue";
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    std::cin.get();
+}

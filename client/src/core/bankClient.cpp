@@ -41,8 +41,7 @@ void BankClient::run() {
             bankIO->print("[ SENDING REQUEST TO SERVER ]");
             send_to_server(req.value());
             
-            std::cout << "Press Enter to continue";
-            std::cin.get(); // Reads the next character from the input stream
+            bankIO->wait_for_enter();
 
         }
     } catch (const std::exception& e) {
@@ -52,7 +51,7 @@ void BankClient::run() {
 
 Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input() {
     int user_input = bankIO->read_int();
-    if(!(std::cin >> user_input) || user_input == 0){
+    if(user_input == 0){
         return Result<Protocol::Command, Error::InternalError>::fail(
             Error::InternalError::USER_QUIT);
     }

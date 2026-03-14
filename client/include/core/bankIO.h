@@ -24,10 +24,11 @@ public:
     virtual int read_int();
     void ensure_clean_buffer();
 
-    void print(const std::string &msg, Colour colour = Colour::RESET);
-    void print_prompt(const std::string &field_name);
-    void print_error(const std::string &msg);
-    void print_box_top();
-    void print_box_bottom();
-    void print_service_menu();
+    virtual void print(const std::string &msg, Colour colour = Colour::RESET);
+    virtual void print_prompt(const std::string &field_name);
+    virtual void print_error(const std::string &msg);
+    virtual void print_box_top();
+    virtual void print_box_bottom();
+    virtual void print_service_menu();
+    virtual void wait_for_enter();
 };

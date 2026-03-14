@@ -32,6 +32,13 @@ class MockBankIO : public BankIO{
 public:
     MOCK_METHOD(std::string, read_line, (), (override));
     MOCK_METHOD(int, read_int, (), (override));
+    MOCK_METHOD(void, print_prompt, (const std::string&), (override));
+    MOCK_METHOD(void, print_error, (const std::string&), (override));
+    MOCK_METHOD(void, print, (const std::string&, Colour), (override));
+    MOCK_METHOD(void, print_box_top, (), (override));
+    MOCK_METHOD(void, print_box_bottom, (), (override));
+    MOCK_METHOD(void, print_service_menu, (), (override));
+    MOCK_METHOD(void, wait_for_enter, (), (override));
 };
 
 class BankClientTestWrapper : public BankClient {
@@ -52,6 +59,8 @@ public:
     using BankClient::fill_currency_details;
     using BankClient::fill_amount_details;
     using BankClient::fill_transfer_account_details;
+
+    using BankClient::collect_user_input;
 };
 
 class BankClientTest : public ::testing::Test {
@@ -96,4 +105,206 @@ TEST_F(BankClientTest, IsValidStringLength_ChecksLengthCorrectly) {
     
     EXPECT_FALSE(client->isValidStringLength("123456789")); 
     EXPECT_FALSE(client->isValidStringLength(""));      
+}
+
+TEST_F(BankClientTest, getValidatedString_valid) {
+    // 1st case: "john"
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("john"));
+    EXPECT_EQ(client->getValidatedString("john"), "john");
+
+    // 2nd case: "  john"
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("  john"));
+    EXPECT_EQ(client->getValidatedString("  john"), "john");
+
+    // 3rd case: "john  "
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("john  "));
+    EXPECT_EQ(client->getValidatedString("john  "), "john");
+
+    // 4th case: "  john  "
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("  john  "));
+    EXPECT_EQ(client->getValidatedString("  john  "), "john");
+}
+
+TEST_F(BankClientTest, getValidatedString_invalid) {
+    
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(3); 
+    EXPECT_CALL(*mockIO, print_error(testing::_)).Times(4); // 3 invalid tries + 1 exceeded max tries
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("123"))     // 1st attempt: invalid (has space)
+        .WillOnce(testing::Return("123"))     // 2nd attempt: invalid
+        .WillOnce(testing::Return("jo hn"));  // 3rd attempt: invalid
+        
+    auto result = client->getValidatedString("Enter Name");
+    auto expected = Result<std::string, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
+    EXPECT_EQ(result, expected);
+}
+
+TEST_F(BankClientTest, getValidatedPassword_valid) {
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("pass"));
+    
+    EXPECT_EQ(client->getValidatedPassword("Password"), "pass");
+}
+
+TEST_F(BankClientTest, getValidatedPassword_invalidLength) {
+    // 1st attempt: too long (9 chars)
+    // 2nd attempt: quit
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(2);
+    EXPECT_CALL(*mockIO, print_error(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("toolong12"))
+        .WillOnce(testing::Return("quit"));
+
+    auto result = client->getValidatedPassword("Password");
+    auto expected = Result<std::string, Error::InternalError>::fail(Error::InternalError::USER_CANCELED);
+    EXPECT_EQ(result, expected);
+}
+
+TEST_F(BankClientTest, getValidatedCurrency_validCases) {
+    // Test case insensitivity and mapping
+    
+    // Case 1: "sgd" -> SGD
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("sgd"));
+    EXPECT_EQ(client->getValidatedCurrency("Currency").value(), Protocol::CurrencyType::SGD);
+
+    // Case 2: "USD" -> USD
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("USD"));
+    EXPECT_EQ(client->getValidatedCurrency("Currency").value(), Protocol::CurrencyType::USD);
+
+    // Case 3: "Eur" -> EUR
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("Eur"));
+    EXPECT_EQ(client->getValidatedCurrency("Currency").value(), Protocol::CurrencyType::EUR);
+}
+
+TEST_F(BankClientTest, getValidatedNumber_uint32) {
+    // Valid uint32
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("123456"));
+    EXPECT_EQ(client->getValidatedNumber<uint32_t>("Account").value(), 123456u);
+
+    // Out of range for uint16_t (to test templated range check)
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(2);
+    EXPECT_CALL(*mockIO, print_error(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("70000")) // Too large for uint16
+        .WillOnce(testing::Return("100"));
+    EXPECT_EQ(client->getValidatedNumber<uint16_t>("Port").value(), 100u);
+}
+
+TEST_F(BankClientTest, getValidatedNumber_double) {
+    // Valid double
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("123.45"));
+    EXPECT_DOUBLE_EQ(client->getValidatedNumber<double>("Amount").value(), 123.45);
+
+    // Invalid string -> number
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(2);
+    EXPECT_CALL(*mockIO, print_error(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("abc"))
+        .WillOnce(testing::Return("50.0"));
+    EXPECT_DOUBLE_EQ(client->getValidatedNumber<double>("Amount").value(), 50.0);
+}
+
+TEST_F(BankClientTest, fill_account_creation_details_success) {
+    Protocol::Command req;
+    
+    // Expectations for prompt and input
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(4);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("John"))      // Name
+        .WillOnce(testing::Return("Secret"))    // Password
+        .WillOnce(testing::Return("SGD"))       // Currency
+        .WillOnce(testing::Return("1000.50"));  // Amount
+
+    auto res = client->fill_account_creation_details(req);
+    EXPECT_TRUE(res.ok());
+    EXPECT_EQ(req.account_owner_name, "John");
+    EXPECT_EQ(req.account_password, "Secret");
+    EXPECT_EQ(req.currency, Protocol::CurrencyType::SGD);
+    EXPECT_DOUBLE_EQ(req.monetary_value.value(), 1000.50);
+}
+
+TEST_F(BankClientTest, fill_auth_details_success) {
+    Protocol::Command req;
+    
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(3);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("Alice"))     // Name
+        .WillOnce(testing::Return("123456"))    // Number (read_line -> stoll)
+        .WillOnce(testing::Return("password")); // Pass
+
+    auto res = client->fill_auth_details(req);
+    EXPECT_TRUE(res.ok());
+    EXPECT_EQ(req.account_owner_name, "Alice");
+    EXPECT_EQ(req.account_number, 123456u);
+    EXPECT_EQ(req.account_password, "password");
+}
+
+TEST_F(BankClientTest, fill_transfer_account_details_success) {
+    Protocol::Command req;
+    
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(2);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("Bob"))      // TX Name
+        .WillOnce(testing::Return("654321")); // TX Number
+
+    auto res = client->fill_transfer_account_details(req);
+    EXPECT_TRUE(res.ok());
+    EXPECT_EQ(req.tx_account_owner_name, "Bob");
+    EXPECT_EQ(req.tx_account_number, 654321u);
+}
+
+TEST_F(BankClientTest, fill_currency_details_success) {
+    Protocol::Command req;
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("EUR"));
+    
+    auto res = client->fill_currency_details(req);
+    EXPECT_TRUE(res.ok());
+    EXPECT_EQ(req.currency, Protocol::CurrencyType::EUR);
+}
+
+TEST_F(BankClientTest, fill_amount_details_success) {
+    Protocol::Command req;
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("75.25"));
+    
+    auto res = client->fill_amount_details(req);
+    EXPECT_TRUE(res.ok());
+    EXPECT_DOUBLE_EQ(req.monetary_value.value(), 75.25);
+}
+
+TEST_F(BankClientTest, collect_user_input_OPEN) {
+    // Mock the selection (1 for OPEN)
+    EXPECT_CALL(*mockIO, read_int()).WillOnce(testing::Return(1));
+    
+    // Logic for OPEN selection
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(4);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("John"))
+        .WillOnce(testing::Return("Pass"))
+        .WillOnce(testing::Return("USD"))
+        .WillOnce(testing::Return("500"));
+
+    auto res = client->collect_user_input();
+    ASSERT_TRUE(res.ok());
+    EXPECT_EQ(res.value().service, Protocol::Service::OPEN);
+    EXPECT_EQ(res.value().account_owner_name, "John");
+}
+
+TEST_F(BankClientTest, collect_user_input_QUIT) {
+    // Mock the selection (0 for EXIT)
+    EXPECT_CALL(*mockIO, read_int()).WillOnce(testing::Return(0));
+    
+    auto res = client->collect_user_input();
+    ASSERT_FALSE(res.ok());
+    EXPECT_EQ(res.error(), Error::InternalError::USER_QUIT);
 }
