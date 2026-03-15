@@ -7,16 +7,15 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-# Add test executable
-add_executable(test_bankClient test_bankClient.cpp)
-
-# Link it to gtest and your project library
-target_link_libraries(test_bankClient
-  gtest_main
-  gmock_main
-  client_lib
-)
-
-# Register tests
+# Register GoogleTest
 include(GoogleTest)
+
+# BankClient Tests
+add_executable(test_bankClient test_bankClient.cpp)
+target_link_libraries(test_bankClient gtest_main gmock_main client_lib)
 gtest_discover_tests(test_bankClient)
+
+# NetworkUtils Tests
+add_executable(test_networkUtils test_networkUtils.cpp)
+target_link_libraries(test_networkUtils gtest_main gmock_main client_lib)
+gtest_discover_tests(test_networkUtils)

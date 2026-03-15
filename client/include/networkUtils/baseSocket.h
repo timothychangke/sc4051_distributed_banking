@@ -26,6 +26,7 @@ public:
 
     virtual Result<std::monostate, Error::InternalError> send_message(const std::vector<uint8_t>& data) = 0;
     virtual Result<std::vector<uint8_t>, Error::InternalError> receive_message() = 0;
+    virtual Result<std::monostate, Error::InternalError> bind_socket() = 0;
 
 protected:
     int sockfd;                // The socket file descriptor

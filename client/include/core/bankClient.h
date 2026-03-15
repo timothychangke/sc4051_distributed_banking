@@ -42,7 +42,7 @@ protected:
     Result<std::monostate, Error::InternalError> fill_amount_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_transfer_account_details(Protocol::Command& req);
     
-    void trim(std::string& str);
+    void trimString(std::string& str);
     bool isValidString(const std::string& str);
     bool isValidStringLength(const std::string& str);
 
@@ -56,7 +56,8 @@ protected:
 
         for(int i=0; i < MAX_TRIES; i++) {
             bankIO->print_prompt(prompt + " (or type 'quit' to cancel)");
-            std::string input = bankIO -> read_line(); 
+            std::string input = bankIO->read_line(); 
+            trimString(input);
             if (input == "quit") {
                 return Result<T, Error::InternalError>::fail(
                     Error::InternalError::USER_CANCELED);

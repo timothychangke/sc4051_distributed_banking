@@ -47,3 +47,19 @@ NetworkUtils::UDPSocket::receive_message() {
 
     return buffer;
 } 
+
+Result<std::monostate, Error::InternalError>
+NetworkUtils::UDPSocket::bind_socket() {
+  
+    if(bind(
+        sockfd,                         // socket
+        (struct sockaddr*)&address,     // dest_addr
+        sizeof(address))                // addr_len
+        < 0) {
+            return Result<std::monostate, Error::InternalError>::fail(
+                Error::InternalError::BIND_FAILED);
+        }
+  
+    return std::monostate{};
+
+} 
