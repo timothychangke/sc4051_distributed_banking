@@ -2,6 +2,17 @@
 
 Google C++ testing framework **gtest** is an industry standard for writing robust and maintainable code. 
 
+
+### Local test 
+
+```
+# Assuming in /client dir
+cmake --build build
+
+cd build
+ctest -C Debug --output-on-failure
+```
+
 ### Google Test Macro Quick Reference
 
 | Macro | Purpose |

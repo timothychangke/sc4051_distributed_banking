@@ -33,7 +33,7 @@ public:
     */
     Result<Message, Error::InternalError> deserialize(const std::vector<uint8_t>& data);
 
-private:
+protected:
     bool validate_header(size_t header_size); 
     bool validate_payload(size_t payload_size, size_t offset, uint32_t content_len); 
 
