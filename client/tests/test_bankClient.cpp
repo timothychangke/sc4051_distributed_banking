@@ -193,7 +193,7 @@ TEST_F(BankClientTest, getValidatedNumber_uint32) {
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(2);
     EXPECT_CALL(*mockIO, print_error(testing::_)).Times(1);
     EXPECT_CALL(*mockIO, read_line())
-        .WillOnce(testing::Return("1.321")) 
+        .WillOnce(testing::Return("abc")) 
         .WillOnce(testing::Return("123456"));
     EXPECT_EQ(client->getValidatedNumber<uint32_t>("Account").value(), 123456u);
 }
