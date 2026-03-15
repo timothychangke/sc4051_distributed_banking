@@ -189,7 +189,22 @@ TEST_F(BankClientTest, getValidatedNumber_uint32) {
     EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("123456"));
     EXPECT_EQ(client->getValidatedNumber<uint32_t>("Account").value(), 123456u);
 
-    // Out of range for uint16_t (to test templated range check)
+    // invalid -> valid uint32
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(2);
+    EXPECT_CALL(*mockIO, print_error(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("1.321")) 
+        .WillOnce(testing::Return("123456"));
+    EXPECT_EQ(client->getValidatedNumber<uint32_t>("Account").value(), 123456u);
+}
+
+TEST_F(BankClientTest, getValidatedNumber_uint16) {
+     // Valid double
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("100"));
+    EXPECT_EQ(client->getValidatedNumber<uint16_t>("Port").value(), 100u);
+   
+    // invalid -> valid uint16 
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(2);
     EXPECT_CALL(*mockIO, print_error(testing::_)).Times(1);
     EXPECT_CALL(*mockIO, read_line())
@@ -219,10 +234,10 @@ TEST_F(BankClientTest, fill_account_creation_details_success) {
     // Expectations for prompt and input
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(4);
     EXPECT_CALL(*mockIO, read_line())
-        .WillOnce(testing::Return("John"))      // Name
-        .WillOnce(testing::Return("Secret"))    // Password
-        .WillOnce(testing::Return("SGD"))       // Currency
-        .WillOnce(testing::Return("1000.50"));  // Amount
+        .WillOnce(testing::Return("John"))      // name
+        .WillOnce(testing::Return("Secret"))    // pw
+        .WillOnce(testing::Return("SGD"))       // currency 
+        .WillOnce(testing::Return("1000.50"));  // amt
 
     auto res = client->fill_account_creation_details(req);
     EXPECT_TRUE(res.ok());
@@ -237,9 +252,9 @@ TEST_F(BankClientTest, fill_auth_details_success) {
     
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(3);
     EXPECT_CALL(*mockIO, read_line())
-        .WillOnce(testing::Return("Alice"))     // Name
-        .WillOnce(testing::Return("123456"))    // Number (read_line -> stoll)
-        .WillOnce(testing::Return("password")); // Pass
+        .WillOnce(testing::Return("Alice"))     // name
+        .WillOnce(testing::Return("123456"))    // number (read_line -> stoll)
+        .WillOnce(testing::Return("password")); // PW
 
     auto res = client->fill_auth_details(req);
     EXPECT_TRUE(res.ok());
@@ -250,11 +265,10 @@ TEST_F(BankClientTest, fill_auth_details_success) {
 
 TEST_F(BankClientTest, fill_transfer_account_details_success) {
     Protocol::Command req;
-    
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(2);
     EXPECT_CALL(*mockIO, read_line())
         .WillOnce(testing::Return("Bob"))      // TX Name
-        .WillOnce(testing::Return("654321")); // TX Number
+        .WillOnce(testing::Return("654321"));  // TX Number
 
     auto res = client->fill_transfer_account_details(req);
     EXPECT_TRUE(res.ok());
@@ -283,10 +297,7 @@ TEST_F(BankClientTest, fill_amount_details_success) {
 }
 
 TEST_F(BankClientTest, collect_user_input_OPEN) {
-    // Mock the selection (1 for OPEN)
     EXPECT_CALL(*mockIO, read_int()).WillOnce(testing::Return(1));
-    
-    // Logic for OPEN selection
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(4);
     EXPECT_CALL(*mockIO, read_line())
         .WillOnce(testing::Return("John"))
@@ -301,7 +312,6 @@ TEST_F(BankClientTest, collect_user_input_OPEN) {
 }
 
 TEST_F(BankClientTest, collect_user_input_QUIT) {
-    // Mock the selection (0 for EXIT)
     EXPECT_CALL(*mockIO, read_int()).WillOnce(testing::Return(0));
     
     auto res = client->collect_user_input();
