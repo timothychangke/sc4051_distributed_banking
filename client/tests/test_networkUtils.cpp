@@ -56,8 +56,6 @@ TEST_F(NetworkIntegrationTest, SendAndReceiveLoopback) {
 }
 
 TEST_F(NetworkIntegrationTest, ReceiveTimeoutOrFailure) {
-    // This is hard to test without a non-blocking socket or a separate thread,
-    // but we can verify that sending very large data handled by UDPSocket.
     
     uint16_t test_port = 9998;
     NetworkUtils::UDPSocket receiver("127.0.0.1", test_port);
