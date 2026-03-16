@@ -24,3 +24,8 @@ gtest_discover_tests(test_msgSerializer)
 add_executable(test_networkUtils test_networkUtils.cpp)
 target_link_libraries(test_networkUtils gtest_main gmock_main client_lib)
 gtest_discover_tests(test_networkUtils)
+
+# CmdEncoder Tests
+add_executable(test_cmdEncoder test_cmdEncoder.cpp)
+target_link_libraries(test_cmdEncoder gtest_main gmock_main client_lib)
+gtest_discover_tests(test_cmdEncoder)

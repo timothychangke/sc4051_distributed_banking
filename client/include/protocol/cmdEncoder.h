@@ -49,7 +49,7 @@ public:
      */
     static Result<Command, Error::InternalError> decode_message(const std::vector<uint8_t>& data);
     
-private:
+protected:
     static const std::unordered_map<FieldID, DecoderFunc> decodeFuncMap;
     static const std::unordered_map<FieldID, EncoderFunc> encodeFuncMap;
     
