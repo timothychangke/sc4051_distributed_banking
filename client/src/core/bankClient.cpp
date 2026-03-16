@@ -1,8 +1,16 @@
 #include <iostream>
 #include "bankClient.h"
 
-BankClient::BankClient(std::unique_ptr<BankIO> bankIO)
-    : bankIO(std::move(bankIO)){
+BankClient::BankClient(
+    std::unique_ptr<BankIO> bankIO,
+    std::unique_ptr<NetworkUtils::BaseSocket> socket,
+    std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder,
+    std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer
+)
+    : bankIO(std::move(bankIO)),
+      socket(std::move(socket)),
+      cmdEncoder(std::move(cmdEncoder)),
+      msgSerializer(std::move(msgSerializer)){
     #ifdef _WIN32
         SetConsoleCP(CP_UTF8);
         SetConsoleOutputCP(CP_UTF8);
@@ -21,32 +29,27 @@ BankClient::stringToCurrency = {
 
 void BankClient::run() {
 
-   try {
-        while (true) {
-            // std::cout << "\033[2J\033[1;1H"; // Clear screen
-            bankIO->print_service_menu();
-            
-            auto req = collect_user_input();
-            if(!req){
-                if (req.error() != Error::InternalError::USER_CANCELED){
-                    Error::InternalError err = req.error();
-                    bankIO->print_error(Error::to_string(err));
-                    break;
-                }
-                else{
-                    continue;
-                }
-            }
+    while (true) {
+        // std::cout << "\033[2J\033[1;1H"; // Clear screen
         
-            bankIO->print("[ SENDING REQUEST TO SERVER ]");
-            send_to_server(req.value());
-            
-            bankIO->wait_for_enter();
-
+        bankIO->print_service_menu();
+        auto req = collect_user_input();
+        if(!req){
+            if (req.error() != Error::InternalError::USER_CANCELED){
+                Error::InternalError err = req.error();
+                bankIO->print_error(Error::to_string(err));
+                break;
+            }
+            else{
+                continue;
+            }
         }
-    } catch (const std::exception& e) {
-        std::cerr << "CRITICAL ERROR: " << e.what() << std::endl;
+        bankIO->print("[ SENDING REQUEST TO SERVER ]");
+        send_to_server(req.value());
+        bankIO->wait_for_enter();
+
     }
+    
 }
 
 Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input() {

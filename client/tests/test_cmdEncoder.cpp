@@ -324,11 +324,11 @@ TEST_F(CommandEncoderTest, full_cycle_success) {
     cmd.account_owner_name = "Alice";
     cmd.currency = Protocol::CurrencyType::EUR;
     
-    auto res_enc = Protocol::CommandEncoder::encode_message(cmd);
+    auto res_enc = encoder.encode_message(cmd);
     ASSERT_TRUE(res_enc.ok());
     std::vector<uint8_t> encoded = res_enc.value();
     
-    auto res_dec = Protocol::CommandEncoder::decode_message(encoded);
+    auto res_dec = encoder.decode_message(encoded);
     ASSERT_TRUE(res_dec.ok());
     Protocol::Command decoded = res_dec.value();
     
@@ -342,14 +342,14 @@ TEST_F(CommandEncoderTest, full_cycle_success) {
 
 TEST_F(CommandEncoderTest, encode_empty_fail) {
     Protocol::Command cmd; // No fields set
-    auto res = Protocol::CommandEncoder::encode_message(cmd);
+    auto res = encoder.encode_message(cmd);
     ASSERT_FALSE(res.ok());
     EXPECT_EQ(res.error(), Error::InternalError::ENCODE_EMPTY_COMMAND);
 }
 
 TEST_F(CommandEncoderTest, decode_empty_fail) {
     std::vector<uint8_t> data;
-    auto res = Protocol::CommandEncoder::decode_message(data);
+    auto res = encoder.decode_message(data);
     ASSERT_FALSE(res.ok());
     EXPECT_EQ(res.error(), Error::InternalError::DECODE_EMPTY_DATA);
 }

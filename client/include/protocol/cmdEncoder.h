@@ -18,6 +18,7 @@
 #include "helper.h"
 #include "result.h"
 #include "internalError.h"
+#include "baseCmdEncoder.h"
 
 #define FIELD_ID_SIZE 1
 #define FIELD_LENGTH 4
@@ -31,7 +32,7 @@ using DecoderFunc = std::function<Result<std::monostate, Error::InternalError>(
 using EncoderFunc = std::function<Result<std::monostate, Error::InternalError>(
     std::vector<uint8_t>&, const Command&)>;
 
-class CommandEncoder{
+class CommandEncoder : public BaseCommandEncoder {
 public:
 
     CommandEncoder();
@@ -42,12 +43,12 @@ public:
      * Format: [field_id(1b)][field_length(4b)][field_content(Nb)]
      * Returns ENCODE_EMPTY_COMMAND if no fields are set.
      */
-    static Result<std::vector<uint8_t>, Error::InternalError> encode_message(const Command& data);
+    Result<std::vector<uint8_t>, Error::InternalError> encode_message(const Command& data) override;
     
      /**
      * Converts a packed byte stream into the Command struct.
      */
-    static Result<Command, Error::InternalError> decode_message(const std::vector<uint8_t>& data);
+    Result<Command, Error::InternalError> decode_message(const std::vector<uint8_t>& data) override;
     
 protected:
     static const std::unordered_map<FieldID, DecoderFunc> decodeFuncMap;

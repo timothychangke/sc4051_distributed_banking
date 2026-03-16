@@ -14,11 +14,10 @@
 #include "helper.h"
 #include "message.h"
 #include "result.h"
-#include "internalError.h"
-
+#include "baseMsgSerializer.h"
 namespace Protocol{
 
-class MessageSerializer {
+class MessageSerializer : public BaseMessageSerializer {
 public:
     MessageSerializer();
     ~MessageSerializer();
@@ -27,11 +26,11 @@ public:
      * Converts a Message into a packed byte stream.
      * Format: [Type(4b)][ID(4b)][IP(4b)][Port(2b)][StrLen(4b)][Payload(Nb)]
      */
-    Result<std::vector<uint8_t>, Error::InternalError> serialize(const Message& message);
+    Result<std::vector<uint8_t>, Error::InternalError> serialize(const Message& message) override;
     /**
      * Converts a packed byte stream into a Message.
     */
-    Result<Message, Error::InternalError> deserialize(const std::vector<uint8_t>& data);
+    Result<Message, Error::InternalError> deserialize(const std::vector<uint8_t>& data) override;
 
 protected:
     bool validate_header(size_t header_size); 

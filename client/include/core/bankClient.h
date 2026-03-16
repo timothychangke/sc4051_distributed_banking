@@ -14,6 +14,10 @@
 #include "protocol.h"
 #include "message.h"
 #include "bankIO.h"
+#include "baseSocket.h"
+#include "baseCmdEncoder.h"
+#include "baseMsgSerializer.h"
+
 #include "result.h"
 #include "internalError.h"
 
@@ -23,29 +27,36 @@
 class BankClient{
 public:
 
-    BankClient(std::unique_ptr<BankIO> bankIO);
-    ~BankClient();
+    BankClient( 
+        std::unique_ptr<BankIO> bankIO,
+        std::unique_ptr<NetworkUtils::BaseSocket> socket,
+        std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder,
+        std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer
+    );
+    
+    virtual ~BankClient();
 
     void run(); // main loop
 
 protected:
     std::unique_ptr<BankIO> bankIO;
+    std::unique_ptr<NetworkUtils::BaseSocket> socket;
+    std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder;
+    std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer;
     static const std::unordered_map<std::string, Protocol::CurrencyType> stringToCurrency;
-     
-    Result<Protocol::Command, Error::InternalError> collect_user_input();    
+    
     void send_to_server(const Protocol::Command& req);
     void monitor_server_updates();
-
+    void trimString(std::string& str);
+    bool isValidString(const std::string& str);
+    bool isValidStringLength(const std::string& str);
+ 
+    Result<Protocol::Command, Error::InternalError> collect_user_input();    
     Result<std::monostate, Error::InternalError> fill_account_creation_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_auth_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_currency_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_amount_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_transfer_account_details(Protocol::Command& req);
-    
-    void trimString(std::string& str);
-    bool isValidString(const std::string& str);
-    bool isValidStringLength(const std::string& str);
-
     Result<std::string, Error::InternalError> getValidatedString(const std::string& prompt);
     Result<std::string, Error::InternalError> getValidatedPassword(const std::string& prompt);
     Result<Protocol::CurrencyType, Error::InternalError> getValidatedCurrency(const std::string& prompt);
