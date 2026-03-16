@@ -42,9 +42,34 @@ public:
     MOCK_METHOD(void, wait_for_enter, (), (override));
 };
 
+class MockSocket : public NetworkUtils::BaseSocket {
+public:
+    MockSocket() : NetworkUtils::BaseSocket("127.0.0.1", 8080) {}
+    MOCK_METHOD((Result<std::monostate, Error::InternalError>), send_message, (const std::vector<uint8_t>&), (override));
+    MOCK_METHOD((Result<std::vector<uint8_t>, Error::InternalError>), receive_message, (), (override));
+    MOCK_METHOD((Result<std::monostate, Error::InternalError>), bind_socket, (), (override));
+};
+
+class MockEncoder : public Protocol::BaseCommandEncoder {
+public:
+    MOCK_METHOD((Result<std::vector<uint8_t>, Error::InternalError>), encode_message, (const Protocol::Command&), (override));
+    MOCK_METHOD((Result<Protocol::Command, Error::InternalError>), decode_message, (const std::vector<uint8_t>&), (override));
+};
+
+class MockSerializer : public Protocol::BaseMessageSerializer {
+public:
+    MOCK_METHOD((Result<std::vector<uint8_t>, Error::InternalError>), serialize, (const Protocol::Message&), (override));
+    MOCK_METHOD((Result<Protocol::Message, Error::InternalError>), deserialize, (const std::vector<uint8_t>&), (override));
+};
+
 class BankClientTestWrapper : public BankClient {
 public:
-    BankClientTestWrapper(std::unique_ptr<BankIO> io) : BankClient(std::move(io)) {}
+    BankClientTestWrapper(
+        std::unique_ptr<BankIO> io,
+        std::unique_ptr<NetworkUtils::BaseSocket> socket,
+        std::unique_ptr<Protocol::BaseCommandEncoder> encoder,
+        std::unique_ptr<Protocol::BaseMessageSerializer> serializer
+    ) : BankClient(std::move(io), std::move(socket), std::move(encoder), std::move(serializer)) {}
     
     // expose methods for testing
     using BankClient::isValidString;
@@ -73,13 +98,19 @@ protected:
     void SetUp() override {
     
         auto uniqueMockIO = std::make_unique<MockBankIO>();
+        auto uniqueMockSocket = std::make_unique<MockSocket>();
+        auto uniqueMockEncoder = std::make_unique<MockEncoder>();
+        auto uniqueMockSerializer = std::make_unique<MockSerializer>();
         
-        // Save a raw pointer to it so we can still set MOCK_EXPECTATIONS on it later,
-        // even after we move the unique_ptr into the client.
         mockIO = uniqueMockIO.get();
         
-        // Initialize the client wrapper with the mock
-        client = std::make_unique<BankClientTestWrapper>(std::move(uniqueMockIO));
+        // Initialize the client wrapper with all mocks
+        client = std::make_unique<BankClientTestWrapper>(
+            std::move(uniqueMockIO),
+            std::move(uniqueMockSocket),
+            std::move(uniqueMockEncoder),
+            std::move(uniqueMockSerializer)
+        );
     }
    
     void TearDown() override {}

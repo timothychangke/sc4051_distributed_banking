@@ -8,8 +8,14 @@
 
 int main(int argc, char* argv[]) {
 
-    std::cout << "Hello World" << std::endl;
-    
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <Server_IP> <Server_Port>" << std::endl;
+        return 1;
+    }
+
+    std::string serverIp = argv[1];
+    uint16_t serverPort = static_cast<uint16_t>(std::stoi(argv[2]));
+
     #ifdef _WIN32
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
@@ -17,16 +23,10 @@ int main(int argc, char* argv[]) {
     }
     #endif
 
-    // uncomment in production !
-    // if (argc < 3) {
-    //     std::cerr << "Usage: " << argv[0] << " <IP> <Port>" << std::endl;
-    //     return 1;
-    // }
-
     try {
         // create dependency 
         auto bankIO = std::make_unique<BankIO>();
-        auto udpSocket = std::make_unique<NetworkUtils::UDPSocket>(argv[1], (uint16_t)std::stoi(argv[2]));
+        auto udpSocket = std::make_unique<NetworkUtils::UDPSocket>(serverIp, serverPort);
         auto cmdEncoder = std::make_unique<Protocol::CommandEncoder>();
         auto msgSerializer = std::make_unique<Protocol::MessageSerializer>();
 

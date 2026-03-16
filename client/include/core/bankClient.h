@@ -1,8 +1,13 @@
 #pragma once 
 
 #ifdef _WIN32
-#define NOMINMAX
-#include <windows.h>
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #define NOMINMAX
+    #define WIN32_LEAN_AND_MEAN
+    #include <windows.h>
+#else // _WIN32
+    #include <arpa/inet.h>
 #endif
 
 #include <cstdint>
@@ -80,8 +85,8 @@ protected:
                     long long value = std::stoll(input);
 
                     // Check if T can hold the value
-                    if (value < static_cast<long long>(std::numeric_limits<T>::min()) ||
-                        value > static_cast<long long>(std::numeric_limits<T>::max())) {
+                    if (value < static_cast<long long>((std::numeric_limits<T>::min)()) ||
+                        value > static_cast<long long>((std::numeric_limits<T>::max)())) {
                         throw std::out_of_range("Out of range");
                     }
 

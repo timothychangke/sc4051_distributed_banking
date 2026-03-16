@@ -265,7 +265,6 @@ Result<std::monostate, Error::InternalError> BankClient::fill_transfer_account_d
 
 void BankClient::send_to_server(const Protocol::Command& req) {
     // TODO
-    // just need to call functions
 }
 
 void BankClient::monitor_server_updates(){
