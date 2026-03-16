@@ -76,3 +76,14 @@ forgot which date oops (Tim)
   - **Deadlock Prevention Logic**: Developed a sophisticated locking strategy within the `Transfer` method. By comparing account numbers and locking them in a consistent global order (lowest ID first), the system prevents "deadly embrace" deadlocks that could occur if two users attempted to transfer funds to each other simultaneously.
   - **Atomic Multi-Account Updates**: Ensured that the transfer of funds is atomic by holding both account locks until both the decrement and increment operations are completed and updated in the `MemoryStore`.
   - **Transfer Validations**: Added logic to prevent transfers to the same account and integrated `ErrTransferSameAccount` and `ErrAccountNotFound` to provide the mandatory clear error feedback to the client interface.
+
+### Added
+
+2026-03-16 (Tim)
+
+* **Monitor Manager (`internal/monitor/manager.go`)**: Implemented a thread-safe UDP callback system to handle the real-time account monitoring requirement.
+* `Manager & subscriber`: Established the core tracking structures using a `sync.Mutex` to guarantee thread-safe read/writes to the active subscriber map across concurrent UDP requests.
+* `Register(clientAddr, interval)`: Added idempotent client registration. It maps the client's `net.UDPAddr` to an absolute `expiresAt` timestamp, allowing clients to cleanly register or extend their monitoring window.
+* `NotifyAll(update)`: Implemented the broadcast engine. Optimized to marshal the payload exactly once per update (saving CPU cycles) and features "lazy eviction" to prune expired subscribers dynamically during the iteration loop.
+* `periodicSweep()`: Added a dedicated background goroutine that routinely sweeps and deletes expired clients, preventing memory leaks during periods of low transactional activity.
+* `MarshalUpdateFunc`: Introduced a dependency injection pattern for payload marshalling. This cleanly decouples the network broadcasting logic from the specific byte-level wire format used by the handler layer.
