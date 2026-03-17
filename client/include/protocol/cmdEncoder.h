@@ -72,6 +72,8 @@ protected:
     static Result<std::monostate, Error::InternalError> encode_tx_account_owner_name(std::vector<uint8_t>& buffer, const Command& data);
     static Result<std::monostate, Error::InternalError> encode_monetary_value(std::vector<uint8_t>& buffer, const Command& data);
     static Result<std::monostate, Error::InternalError> encode_currency(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_monitor_updates(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_monitor_timeout_seconds(std::vector<uint8_t>& buffer, const Command& data);
     
     static Result<std::monostate, Error::InternalError> decode_service(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
     static Result<std::monostate, Error::InternalError> decode_account_number(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
@@ -81,6 +83,8 @@ protected:
     static Result<std::monostate, Error::InternalError> decode_tx_account_owner_name(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
     static Result<std::monostate, Error::InternalError> decode_monetary_value(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
     static Result<std::monostate, Error::InternalError> decode_currency(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_monitor_updates(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_monitor_timeout_seconds(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
 
 };
 }

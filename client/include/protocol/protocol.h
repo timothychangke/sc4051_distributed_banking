@@ -33,6 +33,8 @@ enum class FieldID : uint8_t {
     TxAccountOwnerName = 6,
     MonetaryValue = 7,
     Currency = 8,
+    MonitorUpdates = 9,
+    MonitorTimeoutSeconds = 10,
 };
 
 /** 
@@ -55,6 +57,9 @@ struct Command {
     std::optional<double> monetary_value;
     std::optional<CurrencyType> currency;
 
+    std::optional<std::string> monitor_updates;
+    std::optional<uint32_t> monitor_timeout_seconds; 
+
     auto all_fields() { 
         return std::make_tuple(
             std::make_pair(FieldID::Service, std::ref(service)), 
@@ -64,7 +69,9 @@ struct Command {
             std::make_pair(FieldID::TxAccountNumber, std::ref(tx_account_number)), 
             std::make_pair(FieldID::TxAccountOwnerName, std::ref(tx_account_owner_name)), 
             std::make_pair(FieldID::MonetaryValue, std::ref(monetary_value)), 
-            std::make_pair(FieldID::Currency, std::ref(currency))
+            std::make_pair(FieldID::Currency, std::ref(currency)),
+            std::make_pair(FieldID::MonitorUpdates, std::ref(monitor_updates)),
+            std::make_pair(FieldID::MonitorTimeoutSeconds, std::ref(monitor_timeout_seconds))
         ); 
     }
 
@@ -77,7 +84,9 @@ struct Command {
             std::make_pair(FieldID::TxAccountNumber, std::cref(tx_account_number)), 
             std::make_pair(FieldID::TxAccountOwnerName, std::cref(tx_account_owner_name)), 
             std::make_pair(FieldID::MonetaryValue, std::cref(monetary_value)), 
-            std::make_pair(FieldID::Currency, std::cref(currency))
+            std::make_pair(FieldID::Currency, std::cref(currency)),
+            std::make_pair(FieldID::MonitorUpdates, std::cref(monitor_updates)),
+            std::make_pair(FieldID::MonitorTimeoutSeconds, std::cref(monitor_timeout_seconds))
         ); 
     }
 };
