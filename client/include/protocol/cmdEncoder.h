@@ -14,9 +14,9 @@
 #include <unordered_map>
 #include <functional>
 
-#include "protocol.h"
-#include "helper.h"
 #include "result.h"
+#include "safemath.h"
+#include "protocol.h"
 #include "internalError.h"
 #include "baseCmdEncoder.h"
 

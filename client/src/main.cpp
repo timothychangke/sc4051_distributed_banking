@@ -1,10 +1,12 @@
 #include <iostream>
 #include <memory>
+
 #include "bankIO.h"
 #include "udpSocket.h"
 #include "msgSerializer.h"
 #include "cmdEncoder.h"
 #include "bankClient.h"
+#include "semantics.h"
 
 int main(int argc, char* argv[]) {
 
@@ -15,6 +17,12 @@ int main(int argc, char* argv[]) {
 
     std::string serverIp = argv[1];
     uint16_t serverPort = static_cast<uint16_t>(std::stoi(argv[2]));
+    auto maybe_flag = Semantics::getInvocationFlag(argc, argv);
+    if (!maybe_flag) {
+        std::cerr << "Warning: Unknown flag. Only '-1' and '-m' " << std::endl;
+        return 1;
+    }
+    Semantics::InvocationFlag flag = maybe_flag.value();
 
     #ifdef _WIN32
     WSADATA wsaData;

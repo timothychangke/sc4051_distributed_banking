@@ -25,6 +25,7 @@
 
 #include "result.h"
 #include "internalError.h"
+#include "semantics.h"
 
 #define MAX_TRIES 3
 #define MAX_PW_LEN 8
@@ -36,7 +37,8 @@ public:
         std::unique_ptr<BankIO> bankIO,
         std::unique_ptr<NetworkUtils::BaseSocket> socket,
         std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder,
-        std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer
+        std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer,
+        Semantics::InvocationFlag flag 
     );
     
     virtual ~BankClient();
@@ -48,6 +50,7 @@ protected:
     std::unique_ptr<NetworkUtils::BaseSocket> socket;
     std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder;
     std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer;
+    Semantics::InvocationFlag flag;
     static const std::unordered_map<std::string, Protocol::CurrencyType> stringToCurrency;
     
     void send_to_server(const Protocol::Command& req);

@@ -5,12 +5,14 @@ BankClient::BankClient(
     std::unique_ptr<BankIO> bankIO,
     std::unique_ptr<NetworkUtils::BaseSocket> socket,
     std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder,
-    std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer
+    std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer,
+    Semantics::InvocationFlag flag
 )
     : bankIO(std::move(bankIO)),
       socket(std::move(socket)),
       cmdEncoder(std::move(cmdEncoder)),
-      msgSerializer(std::move(msgSerializer)){
+      msgSerializer(std::move(msgSerializer)),
+      flag(flag){
     #ifdef _WIN32
         SetConsoleCP(CP_UTF8);
         SetConsoleOutputCP(CP_UTF8);

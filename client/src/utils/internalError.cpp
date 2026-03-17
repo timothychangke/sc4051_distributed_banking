@@ -9,6 +9,7 @@ std::string Error::to_string(Error::InternalError err) {
         case Error::InternalError::BAD_PW_LEN:                         return "BAD_PW_LEN";
         case Error::InternalError::INVALID_SERVICE:                    return "INVALID_SERVICE";
         case Error::InternalError::INVALID_CURRENCY:                   return "INVALID_CURRENCY";
+        case Error::InternalError::INVALID_INVOCATION_FLAG:            return "INVALID_INVOCATION_FLAG";
 
         // Network / Socket
         case Error::InternalError::INVALID_ADDRESS:                    return "INVALID_ADDRESS";
