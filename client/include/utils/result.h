@@ -41,4 +41,12 @@ public:
 
     // Access the error (only call if !ok())
     E        error() const { return std::get<E>(_data); }
+
+    // Equality operators for testing
+    bool operator==(const Result& other) const {
+        return _data == other._data;
+    }
+    bool operator==(const T& val) const {
+        return ok() && value() == val;
+    }
 };

@@ -1,5 +1,6 @@
 #pragma once 
 #include <optional>
+#include <string>
 
 namespace Protocol{
 
@@ -14,11 +15,24 @@ enum class Service : uint8_t {
     TRANSFER_FUNDS  = 7,     
 };
 
+std::string to_string(Service svc);
+
 enum class CurrencyType {
     SGD,
     USD,
     EUR,
     // add more ...
+};
+
+enum class FieldID : uint8_t {
+    Service = 1,
+    AccountNumber = 2,
+    AccountOwnerName = 3,
+    AccountPassword = 4,
+    TxAccountNumber = 5,
+    TxAccountOwnerName = 6,
+    MonetaryValue = 7,
+    Currency = 8,
 };
 
 /** 
@@ -40,17 +54,39 @@ struct Command {
     
     std::optional<double> monetary_value;
     std::optional<CurrencyType> currency;
+
+    auto all_fields() { 
+        return std::make_tuple(
+            std::make_pair(FieldID::Service, std::ref(service)), 
+            std::make_pair(FieldID::AccountNumber, std::ref(account_number)), 
+            std::make_pair(FieldID::AccountOwnerName, std::ref(account_owner_name)), 
+            std::make_pair(FieldID::AccountPassword, std::ref(account_password)), 
+            std::make_pair(FieldID::TxAccountNumber, std::ref(tx_account_number)), 
+            std::make_pair(FieldID::TxAccountOwnerName, std::ref(tx_account_owner_name)), 
+            std::make_pair(FieldID::MonetaryValue, std::ref(monetary_value)), 
+            std::make_pair(FieldID::Currency, std::ref(currency))
+        ); 
+    }
+
+    auto all_fields() const { 
+        return std::make_tuple(
+            std::make_pair(FieldID::Service, std::cref(service)), 
+            std::make_pair(FieldID::AccountNumber, std::cref(account_number)), 
+            std::make_pair(FieldID::AccountOwnerName, std::cref(account_owner_name)), 
+            std::make_pair(FieldID::AccountPassword, std::cref(account_password)), 
+            std::make_pair(FieldID::TxAccountNumber, std::cref(tx_account_number)), 
+            std::make_pair(FieldID::TxAccountOwnerName, std::cref(tx_account_owner_name)), 
+            std::make_pair(FieldID::MonetaryValue, std::cref(monetary_value)), 
+            std::make_pair(FieldID::Currency, std::cref(currency))
+        ); 
+    }
 };
 
-enum class FieldID : uint8_t {
-    Service = 1,
-    AccountNumber = 2,
-    AccountOwnerName = 3,
-    AccountPassword = 4,
-    TxAccountNumber = 5,
-    TxAccountOwnerName = 6,
-    MonetaryValue = 7,
-    Currency = 8,
-};
+template<typename T, typename Func>
+void iterate(T& s, Func f) {
+    std::apply([&](auto&... args) {
+        ((f(args.first, args.second)), ...);
+    }, s.all_fields());
+}
 
 }

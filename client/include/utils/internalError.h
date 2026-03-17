@@ -5,7 +5,10 @@
 namespace Error{
 enum class InternalError {
     // Input / Application Layer  
+    USER_QUIT,                          // User quit/exit the process
+    USER_CANCELED,                      // User canceled the process
     BAD_INPUT,                          // User provided invalid or unparseable input
+    BAD_PW_LEN,                         // User provided password exceeding MAX_PW_LEN
     INVALID_SERVICE,                    // Service type selected is not recognised
     INVALID_CURRENCY,                   // Currency string does not map to a known CurrencyType
 
@@ -14,6 +17,7 @@ enum class InternalError {
     SOCKET_CREATE_FAILED,               // socket() syscall returned -1 (fd creation failed)
     SEND_FAILED,                        // sendto() returned a negative value
     RECEIVE_FAILED,                     // recvfrom() returned a negative value
+    BIND_FAILED,                         // bind() syscall returned -1 (failed to bind to specifiec address) 
 
     // Request / Response
     REQUEST_TIMEOUT,                    // No response received within the retry window
@@ -22,6 +26,7 @@ enum class InternalError {
     ENCODING_ERROR,                     // General failure while encoding a Command to bytes
     DECODING_ERROR,                     // General failure while decoding bytes to a Command
 
+    ENCODE_UNKNOWN_FIELD,               // Encountered a field_id that does not map to a known FieldID
     ENCODE_EMPTY_COMMAND,               // Attempted to encode a Command with no fields set
     DECODE_EMPTY_DATA,                  // Received an empty byte buffer for decoding
 

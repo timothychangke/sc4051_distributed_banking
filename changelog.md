@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
+2026-03-16 (Jing)
+
+- **Comprehensive Unit Testing**: Expanded the test suite to 48 tests across 4 test suites, achieving full coverage for critical components. Verified all field encoders, command integrated cycles, message serialization, and client logic.
+  - **Test Files**: `test_cmdEncoder.cpp`, `test_msgSerializer.cpp`, `test_bankClient.cpp`, `test_networkUtils.cpp`.
+- **Cleaner Command Logic (`client/include/protocol/protocol.h`)**: Refactored `Command` struct and `CommandEncoder` to use a generic `iterate` template with `std::apply`. This eliminates repetitive field handling and ensures consistent processing across encoding and decoding logic.
+- **Protocol Layer Abstraction**: Refactored `CommandEncoder` and `MessageSerializer` into a polymorphic design using abstract base classes (`BaseCommandEncoder`, `BaseMessageSerializer`). This improves extensibility and enables easier mocking for unit tests.
+- **Dependency Injection Framework (`client/src/core/bankClient.cpp`)**: Refactored `BankClient` to use constructor-based dependency injection. It now depends on interfaces (`BaseSocket`, `BaseCommandEncoder`, `BaseMessageSerializer`) rather than concrete implementations, significantly improving testability and separation of concerns.
+- **Robust Client Bootstrap (`client/src/main.cpp`)**: Updated the main entry point to handle server IP and Port via command-line arguments. Implemented a reliable dependency injection sequence in `main` to initialize the client.
+
+### Added
 2026-03-02 (Jing)
 
 - **Layered Client Architecture (`client/`)**: Implemented a three-layer client architecture across the application, protocol, and networking layers.

@@ -12,17 +12,27 @@
 #include <string>
 #include <optional>
 #include <unordered_map>
+#include <functional>
 
 #include "protocol.h"
 #include "helper.h"
 #include "result.h"
 #include "internalError.h"
+#include "baseCmdEncoder.h"
+
 #define FIELD_ID_SIZE 1
 #define FIELD_LENGTH 4
 #define MAX_STRING_LENGTH 1024
 
 namespace Protocol{
-class CommandEncoder{
+
+using DecoderFunc = std::function<Result<std::monostate, Error::InternalError>(
+    Protocol::Command&, size_t&, uint32_t, const std::vector<uint8_t>&)>;
+
+using EncoderFunc = std::function<Result<std::monostate, Error::InternalError>(
+    std::vector<uint8_t>&, const Command&)>;
+
+class CommandEncoder : public BaseCommandEncoder {
 public:
 
     CommandEncoder();
@@ -33,16 +43,18 @@ public:
      * Format: [field_id(1b)][field_length(4b)][field_content(Nb)]
      * Returns ENCODE_EMPTY_COMMAND if no fields are set.
      */
-    static Result<std::vector<uint8_t>, Error::InternalError> encode_message(const Command& data);
+    Result<std::vector<uint8_t>, Error::InternalError> encode_message(const Command& data) override;
     
      /**
      * Converts a packed byte stream into the Command struct.
      */
-    static Result<Command, Error::InternalError> decode_message(const std::vector<uint8_t>& data);
+    Result<Command, Error::InternalError> decode_message(const std::vector<uint8_t>& data) override;
     
-private:
-
-    static size_t get_required_size(const Command& data);       //optimisation 
+protected:
+    static const std::unordered_map<FieldID, DecoderFunc> decodeFuncMap;
+    static const std::unordered_map<FieldID, EncoderFunc> encodeFuncMap;
+    
+    static size_t get_optimal_buffer_size(const Command& data);       //optimisation 
     static std::optional<FieldID> to_field_id(uint8_t value);
     static bool is_within_data_size(size_t offset,uint32_t length, const std::vector<uint8_t>& data);
 
@@ -52,23 +64,23 @@ private:
     static void append_double(std::vector<uint8_t> &buffer, double value);
     static void append_string(std::vector<uint8_t>& buffer, const std::string& str);
 
-    static void encode_service(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_account_number(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_account_owner_name(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_account_password(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_tx_account_number(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_tx_account_owner_name(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_monetary_value(std::vector<uint8_t>& buffer, const Command& data);
-    static void encode_currency(std::vector<uint8_t>& buffer, const Command& data);
-   
-    static bool decode_service(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_account_number(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_account_owner_name(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_account_password(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_tx_account_number(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_tx_account_owner_name(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_monetary_value(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
-    static bool decode_currency(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> encode_service(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_account_number(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_account_owner_name(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_account_password(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_tx_account_number(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_tx_account_owner_name(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_monetary_value(std::vector<uint8_t>& buffer, const Command& data);
+    static Result<std::monostate, Error::InternalError> encode_currency(std::vector<uint8_t>& buffer, const Command& data);
+    
+    static Result<std::monostate, Error::InternalError> decode_service(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_account_number(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_account_owner_name(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_account_password(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_tx_account_number(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_tx_account_owner_name(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_monetary_value(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    static Result<std::monostate, Error::InternalError> decode_currency(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
 
 };
 }

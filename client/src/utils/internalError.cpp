@@ -1,9 +1,12 @@
 #include "internalError.h"
 
-std::string to_string(Error::InternalError err) {
+std::string Error::to_string(Error::InternalError err) {
     switch (err) {
         // Input / Application
+        case Error::InternalError::USER_QUIT:                          return "USER_QUIT";
+        case Error::InternalError::USER_CANCELED:                      return "USER_CANCELED";
         case Error::InternalError::BAD_INPUT:                          return "BAD_INPUT";
+        case Error::InternalError::BAD_PW_LEN:                         return "BAD_PW_LEN";
         case Error::InternalError::INVALID_SERVICE:                    return "INVALID_SERVICE";
         case Error::InternalError::INVALID_CURRENCY:                   return "INVALID_CURRENCY";
 
@@ -12,11 +15,13 @@ std::string to_string(Error::InternalError err) {
         case Error::InternalError::SOCKET_CREATE_FAILED:               return "SOCKET_CREATE_FAILED";
         case Error::InternalError::SEND_FAILED:                        return "SEND_FAILED";
         case Error::InternalError::RECEIVE_FAILED:                     return "RECEIVE_FAILED";
+        case Error::InternalError::BIND_FAILED:                        return "BIND_FAILED";
 
         // Request / Response
         case Error::InternalError::REQUEST_TIMEOUT:                    return "REQUEST_TIMEOUT";
 
         // Protocol Encoding
+        case Error::InternalError::ENCODE_UNKNOWN_FIELD:               return "ENCODE_UNKNOWN_FIELD";
         case Error::InternalError::ENCODING_ERROR:                     return "ENCODING_ERROR";
         case Error::InternalError::DECODING_ERROR:                     return "DECODING_ERROR";
         case Error::InternalError::ENCODE_EMPTY_COMMAND:               return "ENCODE_EMPTY_COMMAND";
