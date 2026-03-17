@@ -11,7 +11,7 @@
 #endif
 
 #include <cstdint>
-#include <string>
+#include <vector>
 #include <optional>
 #include <unordered_map>
 #include <memory>
@@ -116,4 +116,7 @@ protected:
         return Result<T, Error::InternalError>::fail(
                 Error::InternalError::BAD_INPUT);
     }
+
+private:
+    uint32_t current_request_id = 0;
 };

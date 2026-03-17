@@ -12,7 +12,8 @@ BankClient::BankClient(
       socket(std::move(socket)),
       cmdEncoder(std::move(cmdEncoder)),
       msgSerializer(std::move(msgSerializer)),
-      flag(flag){
+      flag(flag),
+      current_request_id(0){
     #ifdef _WIN32
         SetConsoleCP(CP_UTF8);
         SetConsoleOutputCP(CP_UTF8);
@@ -266,7 +267,44 @@ Result<std::monostate, Error::InternalError> BankClient::fill_transfer_account_d
 }
 
 void BankClient::send_to_server(const Protocol::Command& req) {
-    // TODO
+    
+    // 1. encode the Command struct
+    auto res_enc = cmdEncoder->encode_message(req);
+    if (!res_enc) {
+        bankIO->print_error("[Client] Failed to encode command: " + Error::to_string(res_enc.error()));
+        return;
+    }
+    
+    // 2. build the Message struct
+    Protocol::Message msg{};
+    msg.type = Protocol::MessageType::Request;
+    if (BankClient::flag == Semantics::InvocationFlag::AT_MOST_ONCE){
+        msg.id.request_id = ++current_request_id;
+    } else{
+        msg.id.request_id = 0; 
+    }
+
+    msg.id.ipv4_address = 0; // might need to bind local ip
+    msg.id.port = 0;         // might need to bind local port
+
+    msg.payload.status_code = 0;
+    msg.payload.content = res_enc.value(); 
+
+    // 3. serialize the Message
+    auto res_ser = msgSerializer->serialize(msg);
+    if (!res_ser) {
+        bankIO->print_error("[Client] Failed to serialize message: " + Error::to_string(res_ser.error()));
+        return;
+    }
+
+    // 4. send via socket || TODO: implement timeout
+    auto res_send = socket->send_message(res_ser.value()); 
+    if (!res_send) {
+         bankIO->print_error("[Client] Network error: " + Error::to_string(res_send.error()));
+         return;
+    }
+
+    bankIO->print("[ SUCCESS: Message sent to server ]", Colour::CYAN);
 }
 
 void BankClient::monitor_server_updates(){

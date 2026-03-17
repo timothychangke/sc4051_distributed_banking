@@ -68,8 +68,9 @@ public:
         std::unique_ptr<BankIO> io,
         std::unique_ptr<NetworkUtils::BaseSocket> socket,
         std::unique_ptr<Protocol::BaseCommandEncoder> encoder,
-        std::unique_ptr<Protocol::BaseMessageSerializer> serializer
-    ) : BankClient(std::move(io), std::move(socket), std::move(encoder), std::move(serializer)) {}
+        std::unique_ptr<Protocol::BaseMessageSerializer> serializer,
+        Semantics::InvocationFlag flag
+    ) : BankClient(std::move(io), std::move(socket), std::move(encoder), std::move(serializer), flag) {}
     
     // expose methods for testing
     using BankClient::isValidString;
@@ -109,7 +110,8 @@ protected:
             std::move(uniqueMockIO),
             std::move(uniqueMockSocket),
             std::move(uniqueMockEncoder),
-            std::move(uniqueMockSerializer)
+            std::move(uniqueMockSerializer),
+            Semantics::InvocationFlag::AT_LEAST_ONCE
         );
     }
    

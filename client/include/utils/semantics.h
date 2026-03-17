@@ -22,8 +22,9 @@ enum class InvocationFlag {
     AT_MOST_ONCE = 2,
 };
 
-Result<Semantics::InvocationFlag, Error::InternalError> Semantics::getInvocationFlag(int argc, char* argv[]);
-const std::unordered_map<std::string, Semantics::InvocationFlag> Semantics::stringToInvocationFlag;
+Result<InvocationFlag, Error::InternalError> getInvocationFlag(int argc, char* argv[]);
+extern const std::unordered_map<std::string, InvocationFlag> stringToInvocationFlag;
 uint32_t generateRandomUint32(); 
+
 }
 

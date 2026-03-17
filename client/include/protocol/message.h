@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
+#include <vector>
 
 #include "protocol.h"
 #define HEADER_SIZE 17
@@ -21,7 +21,7 @@ struct MessageId {
 
 struct Payload {
     uint16_t status_code; 
-    std::string content; 
+    std::vector<uint8_t> content; 
 };
 
 /** 
