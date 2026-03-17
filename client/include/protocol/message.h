@@ -14,7 +14,7 @@ enum class MessageType: uint8_t {
 };
 
 struct MessageId {
-    uint32_t request_id;
+    uint32_t request_id;    // generated on client side 
     uint32_t ipv4_address;
     uint16_t port;
 }; 
