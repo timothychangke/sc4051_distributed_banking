@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Client Request Orchestrator (`client/src/core/bankClient.cpp`)**:
   - Created the `send_to_server(const Protocol::Command&)` function to formalize the end-to-end communication lifecycle.
   - This function encapsulates: command encoding, message construction (including dynamic request ID and local socket info), binary serialization, network transmission with exponential backoff (up to 3 tries), response reception with timeout protection, and automated decoding of server payloads (e.g., balance and account number updates).
+- **Protocol Command Encoding (`client/src/protocol/cmdEncoder.cpp`)**:
+  - Implemented serialization and deserialization logic for monitoring fields (`monitor_updates` and `monitor_timeout_seconds`), enabling the client to handle account monitoring requests and asynchronous server updates.
 
 ### Added
 2026-03-16 (Jing)
