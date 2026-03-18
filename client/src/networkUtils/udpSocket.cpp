@@ -31,14 +31,16 @@ NetworkUtils::UDPSocket::UDPSocket(const std::string& ipv4_address, uint16_t por
 
     #ifdef _WIN32
     DWORD timeout_ms = TIMEOUT * 1000;
-    if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms)) != 0) {
+    if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms)) != 0 ||
+        setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms)) != 0) {
         throw std::runtime_error("[UDPSocket] setsockopt error");
     }
     #else
     struct timeval timeout;
     timeout.tv_sec = TIMEOUT;
     timeout.tv_usec = 0;
-    if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
+    if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0 ||
+        setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
         throw std::runtime_error("[UDPSocket] setsockopt error");
     }
     #endif
