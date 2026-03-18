@@ -27,12 +27,15 @@ public:
     virtual Result<std::monostate, Error::InternalError> send_message(const std::vector<uint8_t>& data) = 0;
     virtual Result<std::vector<uint8_t>, Error::InternalError> receive_message() = 0;
     virtual Result<std::monostate, Error::InternalError> bind_socket() = 0;
+    virtual std::pair<uint32_t, uint16_t> get_local_info() = 0;
+
+    std::pair<uint32_t, uint16_t> local_ip_port;  
 
 protected:
     int sockfd;               // The socket file descriptor
     bool isOpen;
     sockaddr_in address;      // The client/server address | Note this class assume the instance be either a client or server. 
-    std::pair<std::string, uint16_t> local_ip_port;  
+   
 };
 
 }

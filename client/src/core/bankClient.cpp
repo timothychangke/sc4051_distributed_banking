@@ -283,10 +283,10 @@ void BankClient::send_to_server(const Protocol::Command& req) {
     } else{
         msg.id.request_id = 0; 
     }
-
-    msg.id.ipv4_address = 0; // might need to bind local ip
-    msg.id.port = 0;         // might need to bind local port
-
+    
+    auto [local_ip, local_port] = socket->local_ip_port;
+    msg.id.ipv4_address = local_ip;
+    msg.id.port = local_port;
     msg.payload.status_code = 0;
     msg.payload.content = res_enc.value(); 
 
@@ -297,7 +297,7 @@ void BankClient::send_to_server(const Protocol::Command& req) {
         return;
     }
 
-    // 4. send via socket || TODO: implement timeout
+    // 4. send via socket
     auto res_send = socket->send_message(res_ser.value()); 
     if (!res_send) {
          bankIO->print_error("[Client] Network error: " + Error::to_string(res_send.error()));

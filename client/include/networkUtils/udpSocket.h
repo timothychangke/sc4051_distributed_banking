@@ -16,8 +16,9 @@ public:
     virtual Result<std::monostate, Error::InternalError> send_message(const std::vector<uint8_t>& data) override;
     virtual Result<std::vector<uint8_t>, Error::InternalError> receive_message() override;
     virtual Result<std::monostate, Error::InternalError> bind_socket() override;
+    virtual std::pair<uint32_t, uint16_t> NetworkUtils::UDPSocket::get_local_info() override;
     void connect_socket();
-    std::pair<std::string, uint16_t> get_local_info();
+
 };
 
 }

@@ -10,8 +10,13 @@ NetworkUtils::UDPSocket::UDPSocket(const std::string& ipv4_address, uint16_t por
     } 
 
     /*
-    given we need the specific IP address rather than the wildcard (0.0.0.0),
-    need to bind() the socket to desired local IP before calling sendto().
+    For a UDP client, we call connect() to:
+    - let the OS assign a local port (implicit bind)
+    - select the correct outgoing network interface (local IP)
+    - associate a default remote peer (serverAddr)
+
+    This allows us to retrieve the actual local IP/port via getsockname()
+    without needing an explicit bind().
     */
 
     connect_socket();
@@ -82,7 +87,7 @@ void NetworkUtils::UDPSocket::connect_socket() {
     }
 }
 
-std::pair<std::string, uint16_t> NetworkUtils::UDPSocket::get_local_info() {
+std::pair<uint32_t, uint16_t> NetworkUtils::UDPSocket::get_local_info() {
     sockaddr_in local{};
     socklen_t len = sizeof(local);
 
@@ -90,8 +95,8 @@ std::pair<std::string, uint16_t> NetworkUtils::UDPSocket::get_local_info() {
         throw std::runtime_error("getsockname failed");
     }
 
-    char ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &local.sin_addr, ip, sizeof(ip));
+    uint32_t ip = ntohl(local.sin_addr.s_addr); // convert to host order
+    uint16_t port = ntohs(local.sin_port);
 
-    return {ip, ntohs(local.sin_port)};
+    return {ip, port};
 }
