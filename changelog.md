@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file. Have the ch
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### Fixed and Improved
+2026-03-18 (Jing)
+
+- **UDPSocket Fixes & Enhancement (`client/src/networkUtils/udpSocket.cpp`)**:
+  - Implemented `SO_REUSEADDR` to facilitate rapid socket address reuse during testing and deployment, especially on Windows systems.
+  - Added optional `should_connect` parameter to the `UDPSocket` constructor to prevent implicit binding on Windows during `connect()`, which previously caused failures for explicitly bound receiver sockets.
+  - Implemented `SO_RCVTIMEO` in addition to `SO_SNDTIMEO`, ensuring a 3-second `TIMEOUT` for both sending and receiving operations.
+  - Updated `bind_socket()` to refresh `local_ip_port` after a successful bind, ensuring accurate local address reporting via `get_local_info()`.
+- **Improved Integration Testing (`client/tests/test_networkUtils.cpp`)**:
+  - Updated `NetworkIntegrationTest` to use non-connecting receiver sockets, resolving port binding conflicts on the loopback interface.
+  - Verified and finalized 58 high-fidelity unit and integration tests across the client codebase, achieving a 100% pass rate.
+- **Protocol Status Handling (`client/include/utils/protocolStatus.h`)**:
+  - Added a comprehensive list of `ProtocolStatus` codes (SUCCESS, ACCOUNT_NOT_FOUND, INVALID_CREDENTIALS, etc.) to match the server's business logic requirements.
+  - Implemented a centralized `to_string` helper for user-friendly error display in the client UI.
+- **Client Request Orchestrator (`client/src/core/bankClient.cpp`)**:
+  - Created the `send_to_server(const Protocol::Command&)` function to formalize the end-to-end communication lifecycle.
+  - This function encapsulates: command encoding, message construction (including dynamic request ID and local socket info), binary serialization, network transmission with exponential backoff (up to 3 tries), response reception with timeout protection, and automated decoding of server payloads (e.g., balance and account number updates).
+
 ### Added
 2026-03-16 (Jing)
 
