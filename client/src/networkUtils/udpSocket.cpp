@@ -1,6 +1,6 @@
 #include "udpSocket.h"
 
-NetworkUtils::UDPSocket::UDPSocket(const std::string& ipv4_address, uint16_t port) 
+NetworkUtils::UDPSocket::UDPSocket(const std::string& ipv4_address, uint16_t port, bool should_connect) 
     : BaseSocket(ipv4_address, port) 
 {   
     // AF_INET = IPv4, SOCK_DGRAM = UDP
@@ -9,18 +9,25 @@ NetworkUtils::UDPSocket::UDPSocket(const std::string& ipv4_address, uint16_t por
         throw std::runtime_error("[UDPSocket] Invalid sockfd");
     } 
 
-    /*
-    For a UDP client, we call connect() to:
-    - let the OS assign a local port (implicit bind)
-    - select the correct outgoing network interface (local IP)
-    - associate a default remote peer (serverAddr)
+    // Set SO_REUSEADDR to allow immediate reuse of the port
+    int reuse = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) < 0) {
+        throw std::runtime_error("[UDPSocket] setsockopt(SO_REUSEADDR) failed");
+    }
 
-    This allows us to retrieve the actual local IP/port via getsockname()
-    without needing an explicit bind().
-    */
+    if (should_connect) {
+        /*
+        For a UDP client, we call connect() to:
+        - let the OS assign a local port (implicit bind)
+        - select the correct outgoing network interface (local IP)
+        - associate a default remote peer (serverAddr)
 
-    connect_socket();
-    local_ip_port = get_local_info();
+        This allows us to retrieve the actual local IP/port via getsockname()
+        without needing an explicit bind().
+        */
+        connect_socket();
+        local_ip_port = get_local_info();
+    }
 
     #ifdef _WIN32
     DWORD timeout_ms = TIMEOUT * 1000;
@@ -87,6 +94,7 @@ NetworkUtils::UDPSocket::bind_socket() {
                 Error::InternalError::BIND_FAILED);
         }
   
+    local_ip_port = get_local_info();
     return std::monostate{};
 
 } 

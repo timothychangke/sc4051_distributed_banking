@@ -33,4 +33,5 @@ public:
     virtual void print_box_bottom();
     virtual void print_service_menu();
     virtual void wait_for_enter();
+    virtual void clear_ui();
 };

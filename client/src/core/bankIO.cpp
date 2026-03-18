@@ -60,3 +60,7 @@ void BankIO::wait_for_enter() {
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     std::cin.get();
 }
+
+void BankIO::clear_ui() { 
+    std::cout << "\033[2J\033[1;1H";
+}

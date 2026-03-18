@@ -12,7 +12,7 @@
 namespace NetworkUtils{
 class UDPSocket : public BaseSocket {
 public:
-    UDPSocket(const std::string& ipv4_address, uint16_t port);
+    UDPSocket(const std::string& ipv4_address, uint16_t port, bool should_connect = true);
     virtual ~UDPSocket();
 
     virtual Result<std::monostate, Error::InternalError> send_message(const std::vector<uint8_t>& data) override;

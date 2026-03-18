@@ -33,8 +33,8 @@ BankClient::stringToCurrency = {
 void BankClient::run() {
 
     while (true) {
-        // std::cout << "\033[2J\033[1;1H"; // Clear screen
         
+        bankIO->clear_ui();
         bankIO->print_service_menu();
         auto req = collect_user_input();
         if(!req){

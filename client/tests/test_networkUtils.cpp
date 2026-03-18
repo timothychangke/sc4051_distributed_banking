@@ -34,7 +34,7 @@ TEST_F(NetworkIntegrationTest, SendAndReceiveLoopback) {
     uint16_t test_port = 9999;
     
     // Create Receiver - it will listen on test_port
-    NetworkUtils::UDPSocket receiver("127.0.0.1", test_port);
+    NetworkUtils::UDPSocket receiver("127.0.0.1", test_port, false);
     auto bind_res = receiver.bind_socket();
     ASSERT_TRUE(bind_res.ok()) << "Failed to bind receiver socket to port " << test_port;
 
@@ -58,7 +58,7 @@ TEST_F(NetworkIntegrationTest, SendAndReceiveLoopback) {
 TEST_F(NetworkIntegrationTest, ReceiveTimeoutOrFailure) {
     
     uint16_t test_port = 9998;
-    NetworkUtils::UDPSocket receiver("127.0.0.1", test_port);
+    NetworkUtils::UDPSocket receiver("127.0.0.1", test_port, false);
     ASSERT_TRUE(receiver.bind_socket().ok());
 
     NetworkUtils::UDPSocket sender("127.0.0.1", test_port);
