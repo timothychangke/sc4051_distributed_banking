@@ -18,7 +18,8 @@ enum class InternalError {
     SOCKET_CREATE_FAILED,               // socket() syscall returned -1 (fd creation failed)
     SEND_FAILED,                        // sendto() returned a negative value
     RECEIVE_FAILED,                     // recvfrom() returned a negative value
-    BIND_FAILED,                         // bind() syscall returned -1 (failed to bind to specifiec address) 
+    BIND_FAILED,                        // bind() syscall returned -1 (failed to bind to specifiec address) 
+    CONNECT_FAILED,                     // connect() syscall returned -1 (failed to connect)
 
     // Request / Response
     REQUEST_TIMEOUT,                    // No response received within the retry window

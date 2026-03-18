@@ -22,5 +22,6 @@ NetworkUtils::BaseSocket::~BaseSocket(){
     }
     isOpen = false;
     address = {};
+    local_ip_port = {};
 }
 

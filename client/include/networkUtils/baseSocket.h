@@ -29,10 +29,10 @@ public:
     virtual Result<std::monostate, Error::InternalError> bind_socket() = 0;
 
 protected:
-    int sockfd;                // The socket file descriptor
-    sockaddr_in address;       // The socket address
+    int sockfd;               // The socket file descriptor
     bool isOpen;
-
+    sockaddr_in address;      // The client/server address | Note this class assume the instance be either a client or server. 
+    std::pair<std::string, uint16_t> local_ip_port;  
 };
 
 }

@@ -17,6 +17,7 @@ std::string Error::to_string(Error::InternalError err) {
         case Error::InternalError::SEND_FAILED:                        return "SEND_FAILED";
         case Error::InternalError::RECEIVE_FAILED:                     return "RECEIVE_FAILED";
         case Error::InternalError::BIND_FAILED:                        return "BIND_FAILED";
+        case Error::InternalError::CONNECT_FAILED:                     return "CONNECT_FAILED";
 
         // Request / Response
         case Error::InternalError::REQUEST_TIMEOUT:                    return "REQUEST_TIMEOUT";

@@ -8,6 +8,14 @@ NetworkUtils::UDPSocket::UDPSocket(const std::string& ipv4_address, uint16_t por
     if (sockfd == -1){
          throw std::runtime_error("[UDPSocket] Invalid sockfd");
     } 
+
+    /*
+    given we need the specific IP address rather than the wildcard (0.0.0.0),
+    need to bind() the socket to desired local IP before calling sendto().
+    */
+
+    connect_socket();
+    local_ip_port = get_local_info();
 }
 
 NetworkUtils::UDPSocket::~UDPSocket(){}
@@ -63,3 +71,27 @@ NetworkUtils::UDPSocket::bind_socket() {
     return std::monostate{};
 
 } 
+
+void NetworkUtils::UDPSocket::connect_socket() {
+    if (connect(
+        sockfd,
+        (struct sockaddr*)&address,
+        sizeof(address)
+    ) < 0) {
+        throw std::runtime_error("getsockname failed");
+    }
+}
+
+std::pair<std::string, uint16_t> NetworkUtils::UDPSocket::get_local_info() {
+    sockaddr_in local{};
+    socklen_t len = sizeof(local);
+
+    if (getsockname(sockfd, (sockaddr*)&local, &len) < 0) {
+        throw std::runtime_error("getsockname failed");
+    }
+
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &local.sin_addr, ip, sizeof(ip));
+
+    return {ip, ntohs(local.sin_port)};
+}
