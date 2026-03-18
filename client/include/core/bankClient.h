@@ -15,6 +15,9 @@
 #include <optional>
 #include <unordered_map>
 #include <memory>
+#include <chrono>
+#include <thread>
+#include <cmath>
 
 #include "protocol.h"
 #include "message.h"
@@ -26,9 +29,11 @@
 #include "result.h"
 #include "internalError.h"
 #include "semantics.h"
+#include "protocolStatus.h"
 
 #define MAX_TRIES 3
 #define MAX_PW_LEN 8
+#define BACKOFF 2
 
 class BankClient{
 public:

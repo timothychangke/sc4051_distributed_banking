@@ -266,10 +266,10 @@ Result<std::monostate, Error::InternalError> BankClient::fill_transfer_account_d
     return std::monostate{};
 }
 
-void BankClient::send_to_server(const Protocol::Command& req) {
+void BankClient::send_to_server(const Protocol::Command& req_com) {
     
     // 1. encode the Command struct
-    auto res_enc = cmdEncoder->encode_message(req);
+    auto res_enc = cmdEncoder->encode_message(req_com);
     if (!res_enc) {
         bankIO->print_error("[Client] Failed to encode command: " + Error::to_string(res_enc.error()));
         return;
@@ -291,20 +291,72 @@ void BankClient::send_to_server(const Protocol::Command& req) {
     msg.payload.content = res_enc.value(); 
 
     // 3. serialize the Message
-    auto res_ser = msgSerializer->serialize(msg);
-    if (!res_ser) {
-        bankIO->print_error("[Client] Failed to serialize message: " + Error::to_string(res_ser.error()));
+    auto request = msgSerializer->serialize(msg);
+    if (!request) {
+        bankIO->print_error("[Client] Failed to serialize message: " + Error::to_string(request.error()));
         return;
     }
 
-    // 4. send via socket
-    auto res_send = socket->send_message(res_ser.value()); 
-    if (!res_send) {
-         bankIO->print_error("[Client] Network error: " + Error::to_string(res_send.error()));
-         return;
+    // 4. send via socket with exponential backoff 
+    int cur_backoff = BACKOFF;
+    bool sent_success = false;
+    for (int i=0; i<MAX_TRIES; i++){
+        auto res_send = socket->send_message(request.value()); 
+        if (!res_send) {
+            bankIO->print_error("[Client] Network error: " + Error::to_string(res_send.error())); 
+            if (i < MAX_TRIES - 1) { // Don't sleep after the last attempt
+                std::this_thread::sleep_for(std::chrono::seconds(cur_backoff));
+                cur_backoff = std::pow(cur_backoff, 2);
+            }
+        } else{
+            bankIO->print("[SUCCESS: Message sent to server]", Colour::CYAN);
+            sent_success = true;
+            break; 
+        }
     }
 
-    bankIO->print("[ SUCCESS: Message sent to server ]", Colour::CYAN);
+    if (!sent_success) return;
+
+    // 5. receive response via socket
+    auto response = socket->receive_message(); 
+    if (!response) {
+        bankIO->print_error("[Client] Network error: " + Error::to_string(response.error())); 
+        return;
+    }
+
+    // 6. deserialize the response Message
+    auto res_msg_res = msgSerializer->deserialize(response.value());
+    if (!res_msg_res) {
+        bankIO->print_error("[Client] Failed to deserialize response: " + Error::to_string(res_msg_res.error()));
+        return;
+    }
+    const auto& res_msg = res_msg_res.value();
+
+    // 7. handle status code and display result
+    Protocol::ProtocolStatus status = static_cast<Protocol::ProtocolStatus>(res_msg.payload.status_code);
+    bankIO->print("[ SERVER RESPONSE STATUS : " + Protocol::to_string(status) + " ]", 
+                  status == Protocol::ProtocolStatus::SUCCESS ? Colour::GREEN : Colour::RED);
+
+    if (status != Protocol::ProtocolStatus::SUCCESS) {
+        return;
+    }
+
+    // 8. if success, decode the command content to show results (e.g. balance, account no)
+    if (!res_msg.payload.content.empty()) {
+        auto res_cmd_res = cmdEncoder->decode_message(res_msg.payload.content);
+        if (!res_cmd_res) {
+             bankIO->print_error("[Client] Failed to decode response content: " + Error::to_string(res_cmd_res.error()));
+             return;
+        }
+        
+        const auto& res_cmd = res_cmd_res.value();
+        bankIO->print_box_top();
+        if (res_cmd.account_number) 
+            bankIO->print("Account Number : " + std::to_string(*res_cmd.account_number));
+        if (res_cmd.monetary_value) 
+            bankIO->print("Balance        : " + std::to_string(*res_cmd.monetary_value));
+        bankIO->print_box_bottom();
+    }
 }
 
 void BankClient::monitor_server_updates(){
