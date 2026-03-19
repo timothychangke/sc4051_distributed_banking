@@ -361,4 +361,11 @@ void BankClient::send_to_server(const Protocol::Command& req_com) {
 
 void BankClient::monitor_server_updates(){
     //TODO
+    /*
+        when this function gets called, craft the message stuct and the command struct 
+        send to server 
+        blocking receive .... until timeout specified by user (or default to one)
+        print out the messages until timeoout completed. 
+    
+    */
 }
