@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed and Improved
+2026-03-19 (Jing)
+
+- **Client Unit Testing Alignment (`client/tests/test_bankClient.cpp`)**:
+  - Synchronized `BankClientTestWrapper` and test cases with the latest `BankClient` method names, replacing `isValidString` with `isAlpha` and `isValidStringLength` with `isWithinMaxLength`.
+  - Added comprehensive validation for alphanumeric passwords in `getValidatedPassword`, ensuring special characters are rejected while letters and numbers are accepted.
+  - Verified all 23 tests in the `BankClientTest` suite pass with 100% success rate on Windows.
+
+### Fixed and Improved
 2026-03-18 (Jing)
 
 - **UDPSocket Fixes & Enhancement (`client/src/networkUtils/udpSocket.cpp`)**:
