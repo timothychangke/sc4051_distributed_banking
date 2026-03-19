@@ -133,7 +133,7 @@ void BankClient::trimString(std::string& str) {
     }).base(), str.end());
 }
 
-bool BankClient::isValidString(const std::string& str) {
+bool BankClient::isAlpha(const std::string& str) {
     if (str.empty()) return false;
 
     for (char c : str) {
@@ -144,7 +144,15 @@ bool BankClient::isValidString(const std::string& str) {
     return true;
 }
 
-bool BankClient::isValidStringLength(const std::string& str) {
+bool BankClient::isAlphaNumeric(const std::string& str) {
+    if (str.empty()) return false;
+
+    return std::all_of(str.begin(), str.end(), [](unsigned char c) {
+        return std::isalnum(c); 
+    });
+}
+
+bool BankClient::isWithinMaxLength(const std::string& str) {
     if (str.empty()) return false;
     return str.length() <= MAX_PW_LEN ? true : false;
 }
@@ -160,7 +168,7 @@ Result<std::string, Error::InternalError> BankClient::getValidatedString(const s
                 Error::InternalError::USER_CANCELED);
         }
 
-        if(isValidString(input)){
+        if(isAlpha(input)){
             return input;
         }
 
@@ -173,11 +181,26 @@ Result<std::string, Error::InternalError> BankClient::getValidatedString(const s
 }
 
 Result<std::string, Error::InternalError> BankClient::getValidatedPassword(const std::string& prompt){
-    auto maybe_pw = getValidatedString(prompt);
-    if (!maybe_pw) return Result<std::string, Error::InternalError>::fail(maybe_pw.error());
-    if (!isValidStringLength(maybe_pw.value())) return Result<std::string, Error::InternalError>::fail(Error::InternalError::BAD_PW_LEN);
+    for(int i=0; i < MAX_TRIES; i++) {
+        bankIO->print_prompt(prompt + " (or type 'quit' to cancel)");
+        std::string input = bankIO->read_line(); 
 
-    return maybe_pw;
+        trimString(input);
+        if (input == "quit") {
+            return Result<std::string, Error::InternalError>::fail(
+                Error::InternalError::USER_CANCELED);
+        }
+
+        if(isAlphaNumeric(input) && isWithinMaxLength(input)){
+            return input;
+        }
+
+        bankIO->print_error("Invalid " + prompt + " string. Try again.");
+    }
+    bankIO->print_error("Exceeded Maximum Tries");
+    
+    return Result<std::string, Error::InternalError>::fail(
+                Error::InternalError::BAD_INPUT);
 }
 
 Result<Protocol::CurrencyType, Error::InternalError> BankClient::getValidatedCurrency(const std::string& prompt){
@@ -207,7 +230,7 @@ Result<std::monostate, Error::InternalError> BankClient::fill_account_creation_d
     if (!maybe_acc) return Result<std::monostate, Error::InternalError>::fail(maybe_acc.error());
     req.account_owner_name = maybe_acc.value();
 
-    auto maybe_pwd = getValidatedString("Set Password");
+    auto maybe_pwd = getValidatedPassword("Set Password");
     if (!maybe_pwd) return Result<std::monostate, Error::InternalError>::fail(maybe_pwd.error());
     req.account_password = maybe_pwd.value();
 
@@ -231,7 +254,7 @@ Result<std::monostate, Error::InternalError> BankClient::fill_auth_details(Proto
     if (!maybe_acc_num) return Result<std::monostate, Error::InternalError>::fail(maybe_acc_num.error());
     req.account_number = maybe_acc_num.value();
 
-    auto maybe_pwd = getValidatedString("Account Password");
+    auto maybe_pwd = getValidatedPassword("Account Password");
     if (!maybe_pwd) return Result<std::monostate, Error::InternalError>::fail(maybe_pwd.error());
     req.account_password = maybe_pwd.value();
     

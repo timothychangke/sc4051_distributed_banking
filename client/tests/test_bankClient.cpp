@@ -198,7 +198,7 @@ TEST_F(BankClientTest, getValidatedPassword_invalidLength) {
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(2);
     EXPECT_CALL(*mockIO, print_error(testing::_)).Times(1);
     EXPECT_CALL(*mockIO, read_line())
-        .WillOnce(testing::Return("toolong12"))
+        .WillOnce(testing::Return("toolongaaaaa"))
         .WillOnce(testing::Return("quit"));
 
     auto result = client->getValidatedPassword("Password");
