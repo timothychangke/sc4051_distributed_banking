@@ -37,12 +37,12 @@ LEGEND: [ ] = To Do | [/] = In Progress | [X] = Completed
 4. FAULT TOLERANCE (INVOCATION SEMANTICS)
 -----------------------------------------------------------------
 [ ] CLI TOGGLE: Switch between At-Least-Once and At-Most-Once.
-[ ] LOSS SIMULATOR: Logic to "drop" packets randomly implemented.
-[ ] AT-LEAST-ONCE: Retransmission + Timeout logic functioning.
-[ ] AT-MOST-ONCE: 
-    - [ ] Request IDs generated and tracked.
-    - [ ] Duplicate Filtering logic at server.
-    - [ ] Reply History buffer implemented for re-sending.
+[ ✓ ] LOSS SIMULATOR: Logic to "drop" packets randomly implemented.
+[ ✓ ] AT-LEAST-ONCE: Retransmission + Timeout logic functioning.
+[ ✓ ] AT-MOST-ONCE: 
+    - [ ✓ ] Request IDs generated and tracked.
+    - [ ✓ ] Duplicate Filtering logic at server.
+    - [ ✓ ] Reply History buffer implemented for re-sending.
 
 
 5. INTERFACE & OUTPUT
