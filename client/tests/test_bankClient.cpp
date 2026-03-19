@@ -76,8 +76,9 @@ public:
     ) : BankClient(std::move(io), std::move(socket), std::move(encoder), std::move(serializer), flag) {}
     
     // expose methods for testing
-    using BankClient::isValidString;
-    using BankClient::isValidStringLength;
+    using BankClient::isAlpha;
+    using BankClient::isAlphaNumeric;
+    using BankClient::isWithinMaxLength;
 
     using BankClient::getValidatedString;
     using BankClient::getValidatedPassword;
@@ -127,26 +128,36 @@ protected:
 };
 
 
-TEST_F(BankClientTest, IsValidString_AcceptsValidStrings) {
-    EXPECT_TRUE(client->isValidString("John"));
-    EXPECT_TRUE(client->isValidString("Doe"));
-    EXPECT_TRUE(client->isValidString("ValidName"));
+TEST_F(BankClientTest, IsAlpha_AcceptsValidStrings) {
+    EXPECT_TRUE(client->isAlpha("John"));
+    EXPECT_TRUE(client->isAlpha("Doe"));
+    EXPECT_TRUE(client->isAlpha("ValidName"));
 }
 
-TEST_F(BankClientTest, IsValidString_RejectsInvalidStrings) {
-    EXPECT_FALSE(client->isValidString(""));  
-    EXPECT_FALSE(client->isValidString("John123"));  
-    EXPECT_FALSE(client->isValidString("John Doe")); 
-    EXPECT_FALSE(client->isValidString("Jane~Doe")); 
+TEST_F(BankClientTest, IsAlpha_RejectsInvalidStrings) {
+    EXPECT_FALSE(client->isAlpha(""));  
+    EXPECT_FALSE(client->isAlpha("John123"));  
+    EXPECT_FALSE(client->isAlpha("John Doe")); 
+    EXPECT_FALSE(client->isAlpha("Jane~Doe")); 
 }
 
-TEST_F(BankClientTest, IsValidStringLength_ChecksLengthCorrectly) {
+TEST_F(BankClientTest, IsWithinMaxLength_ChecksLengthCorrectly) {
     // MAX_PW_LEN is 8
-    EXPECT_TRUE(client->isValidStringLength("12345678")); 
-    EXPECT_TRUE(client->isValidStringLength("123"));      
+    EXPECT_TRUE(client->isWithinMaxLength("12345678")); 
+    EXPECT_TRUE(client->isWithinMaxLength("123"));      
     
-    EXPECT_FALSE(client->isValidStringLength("123456789")); 
-    EXPECT_FALSE(client->isValidStringLength(""));      
+    EXPECT_FALSE(client->isWithinMaxLength("123456789")); 
+    EXPECT_FALSE(client->isWithinMaxLength(""));      
+}
+
+TEST_F(BankClientTest, IsAlphaNumeric_AcceptsAlphanumeric) {
+    EXPECT_TRUE(client->isAlphaNumeric("pass123"));
+    EXPECT_TRUE(client->isAlphaNumeric("123456"));
+    EXPECT_TRUE(client->isAlphaNumeric("ABCD12"));
+    
+    EXPECT_FALSE(client->isAlphaNumeric(""));
+    EXPECT_FALSE(client->isAlphaNumeric("pass 123")); // space is not alphanumeric
+    EXPECT_FALSE(client->isAlphaNumeric("pass!123")); // ! is not alphanumeric
 }
 
 TEST_F(BankClientTest, getValidatedString_valid) {
@@ -190,6 +201,13 @@ TEST_F(BankClientTest, getValidatedPassword_valid) {
     EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("pass"));
     
     EXPECT_EQ(client->getValidatedPassword("Password"), "pass");
+}
+
+TEST_F(BankClientTest, getValidatedPassword_alphanumeric) {
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("pass123"));
+    
+    EXPECT_EQ(client->getValidatedPassword("Password"), "pass123");
 }
 
 TEST_F(BankClientTest, getValidatedPassword_invalidLength) {
