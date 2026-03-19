@@ -11,10 +11,11 @@
 #include <vector>
 #include <optional>
 
-#include "helper.h"
-#include "message.h"
 #include "result.h"
+#include "safemath.h"
+#include "message.h"
 #include "baseMsgSerializer.h"
+
 namespace Protocol{
 
 class MessageSerializer : public BaseMessageSerializer {

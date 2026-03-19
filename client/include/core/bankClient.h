@@ -11,10 +11,13 @@
 #endif
 
 #include <cstdint>
-#include <string>
+#include <vector>
 #include <optional>
 #include <unordered_map>
 #include <memory>
+#include <chrono>
+#include <thread>
+#include <cmath>
 
 #include "protocol.h"
 #include "message.h"
@@ -25,9 +28,12 @@
 
 #include "result.h"
 #include "internalError.h"
+#include "semantics.h"
+#include "protocolStatus.h"
 
 #define MAX_TRIES 3
 #define MAX_PW_LEN 8
+#define BACKOFF 2
 
 class BankClient{
 public:
@@ -36,7 +42,8 @@ public:
         std::unique_ptr<BankIO> bankIO,
         std::unique_ptr<NetworkUtils::BaseSocket> socket,
         std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder,
-        std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer
+        std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer,
+        Semantics::InvocationFlag flag 
     );
     
     virtual ~BankClient();
@@ -48,6 +55,7 @@ protected:
     std::unique_ptr<NetworkUtils::BaseSocket> socket;
     std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder;
     std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer;
+    Semantics::InvocationFlag flag;
     static const std::unordered_map<std::string, Protocol::CurrencyType> stringToCurrency;
     
     void send_to_server(const Protocol::Command& req);
@@ -113,4 +121,7 @@ protected:
         return Result<T, Error::InternalError>::fail(
                 Error::InternalError::BAD_INPUT);
     }
+
+private:
+    uint32_t current_request_id = 0;
 };

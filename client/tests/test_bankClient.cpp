@@ -44,10 +44,13 @@ public:
 
 class MockSocket : public NetworkUtils::BaseSocket {
 public:
-    MockSocket() : NetworkUtils::BaseSocket("127.0.0.1", 8080) {}
+    MockSocket() : NetworkUtils::BaseSocket("127.0.0.1", 8080) {
+        local_ip_port = {0, 0};
+    }
     MOCK_METHOD((Result<std::monostate, Error::InternalError>), send_message, (const std::vector<uint8_t>&), (override));
     MOCK_METHOD((Result<std::vector<uint8_t>, Error::InternalError>), receive_message, (), (override));
     MOCK_METHOD((Result<std::monostate, Error::InternalError>), bind_socket, (), (override));
+    MOCK_METHOD((std::pair<uint32_t, uint16_t>), get_local_info, (), (override));
 };
 
 class MockEncoder : public Protocol::BaseCommandEncoder {
@@ -68,8 +71,9 @@ public:
         std::unique_ptr<BankIO> io,
         std::unique_ptr<NetworkUtils::BaseSocket> socket,
         std::unique_ptr<Protocol::BaseCommandEncoder> encoder,
-        std::unique_ptr<Protocol::BaseMessageSerializer> serializer
-    ) : BankClient(std::move(io), std::move(socket), std::move(encoder), std::move(serializer)) {}
+        std::unique_ptr<Protocol::BaseMessageSerializer> serializer,
+        Semantics::InvocationFlag flag
+    ) : BankClient(std::move(io), std::move(socket), std::move(encoder), std::move(serializer), flag) {}
     
     // expose methods for testing
     using BankClient::isValidString;
@@ -87,6 +91,11 @@ public:
     using BankClient::fill_transfer_account_details;
 
     using BankClient::collect_user_input;
+    using BankClient::send_to_server;
+
+    Protocol::BaseCommandEncoder* get_encoder() { return cmdEncoder.get(); }
+    Protocol::BaseMessageSerializer* get_serializer() { return msgSerializer.get(); }
+    NetworkUtils::BaseSocket* get_socket() { return socket.get(); }
 };
 
 class BankClientTest : public ::testing::Test {
@@ -109,7 +118,8 @@ protected:
             std::move(uniqueMockIO),
             std::move(uniqueMockSocket),
             std::move(uniqueMockEncoder),
-            std::move(uniqueMockSerializer)
+            std::move(uniqueMockSerializer),
+            Semantics::InvocationFlag::AT_LEAST_ONCE
         );
     }
    
@@ -349,4 +359,102 @@ TEST_F(BankClientTest, collect_user_input_QUIT) {
     auto res = client->collect_user_input();
     ASSERT_FALSE(res.ok());
     EXPECT_EQ(res.error(), Error::InternalError::USER_QUIT);
+}
+
+TEST_F(BankClientTest, SendToServer_Success) {
+    Protocol::Command req;
+    req.service = Protocol::Service::GET_BALANCE;
+    
+    std::vector<uint8_t> encoded_cmd = {1, 2, 3};
+    std::vector<uint8_t> serialized_msg = {4, 5, 6};
+    std::vector<uint8_t> serialized_reply = {7, 8, 9};
+
+    // 1. Mock Encoder: encode_message
+    auto mockEncoder = static_cast<MockEncoder*>(client->get_encoder());
+    EXPECT_CALL(*mockEncoder, encode_message(testing::_))
+        .WillOnce(testing::Return(encoded_cmd));
+
+    // 2. Mock Serializer: serialize request
+    auto mockSerializer = static_cast<MockSerializer*>(client->get_serializer());
+    EXPECT_CALL(*mockSerializer, serialize(testing::_))
+        .WillOnce(testing::Return(serialized_msg));
+
+    // 3. Mock Socket: send and receive
+    auto mockSocket = static_cast<MockSocket*>(client->get_socket());
+    EXPECT_CALL(*mockSocket, send_message(serialized_msg))
+        .WillOnce(testing::Return(std::monostate{}));
+    EXPECT_CALL(*mockSocket, receive_message())
+        .WillOnce(testing::Return(serialized_reply));
+
+    // 4. Mock Serializer: deserialize reply
+    Protocol::Message reply_msg;
+    reply_msg.type = Protocol::MessageType::Reply;
+    reply_msg.payload.status_code = static_cast<uint16_t>(Protocol::ProtocolStatus::SUCCESS);
+    reply_msg.payload.content = {10, 11}; // Response content
+    EXPECT_CALL(*mockSerializer, deserialize(serialized_reply))
+        .WillOnce(testing::Return(reply_msg));
+
+    // 5. Mock Encoder: decode response content
+    Protocol::Command res_cmd;
+    res_cmd.account_number = 12345;
+    res_cmd.monetary_value = 1000.0;
+    EXPECT_CALL(*mockEncoder, decode_message(reply_msg.payload.content))
+        .WillOnce(testing::Return(res_cmd));
+
+    // Expectations for IO
+    EXPECT_CALL(*mockIO, print("[SUCCESS: Message sent to server]", Colour::CYAN)).Times(1);
+    EXPECT_CALL(*mockIO, print("[ SERVER RESPONSE STATUS : SUCCESS ]", Colour::GREEN)).Times(1);
+    EXPECT_CALL(*mockIO, print_box_top()).Times(1);
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("Account Number : 12345"), testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("Balance        : 1000.000000"), testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, print_box_bottom()).Times(1);
+
+    client->send_to_server(req);
+}
+
+TEST_F(BankClientTest, SendToServer_ServerError) {
+    Protocol::Command req;
+    req.service = Protocol::Service::WITHDRAW;
+    
+    std::vector<uint8_t> serialized_reply = {7, 8, 9};
+
+    auto mockEncoder = static_cast<MockEncoder*>(client->get_encoder());
+    EXPECT_CALL(*mockEncoder, encode_message(testing::_)).WillOnce(testing::Return(std::vector<uint8_t>{1}));
+    
+    auto mockSerializer = static_cast<MockSerializer*>(client->get_serializer());
+    EXPECT_CALL(*mockSerializer, serialize(testing::_)).WillOnce(testing::Return(std::vector<uint8_t>{2}));
+
+    auto mockSocket = static_cast<MockSocket*>(client->get_socket());
+    EXPECT_CALL(*mockSocket, send_message(testing::_)).WillOnce(testing::Return(std::monostate{}));
+    EXPECT_CALL(*mockSocket, receive_message()).WillOnce(testing::Return(serialized_reply));
+
+    Protocol::Message reply_msg;
+    reply_msg.type = Protocol::MessageType::Reply;
+    reply_msg.payload.status_code = static_cast<uint16_t>(Protocol::ProtocolStatus::INSUFFICIENT_FUNDS);
+    EXPECT_CALL(*mockSerializer, deserialize(serialized_reply)).WillOnce(testing::Return(reply_msg));
+
+    EXPECT_CALL(*mockIO, print("[SUCCESS: Message sent to server]", Colour::CYAN)).Times(1);
+    EXPECT_CALL(*mockIO, print("[ SERVER RESPONSE STATUS : INSUFFICIENT_FUNDS ]", Colour::RED)).Times(1);
+
+    client->send_to_server(req);
+}
+
+TEST_F(BankClientTest, SendToServer_NetworkFailure) {
+    Protocol::Command req;
+    
+    auto mockEncoder = static_cast<MockEncoder*>(client->get_encoder());
+    EXPECT_CALL(*mockEncoder, encode_message(testing::_)).WillOnce(testing::Return(std::vector<uint8_t>{1}));
+    
+    auto mockSerializer = static_cast<MockSerializer*>(client->get_serializer());
+    EXPECT_CALL(*mockSerializer, serialize(testing::_)).WillOnce(testing::Return(std::vector<uint8_t>{2}));
+
+    auto mockSocket = static_cast<MockSocket*>(client->get_socket());
+    // Fail all send tries (MAX_TRIES is 3)
+    EXPECT_CALL(*mockSocket, send_message(testing::_))
+        .Times(3)
+        .WillRepeatedly(testing::Return(Result<std::monostate, Error::InternalError>::fail(Error::InternalError::SEND_FAILED)));
+
+    EXPECT_CALL(*mockIO, print_error(testing::HasSubstr("Network error"))).Times(3);
+
+    client->send_to_server(req);
 }

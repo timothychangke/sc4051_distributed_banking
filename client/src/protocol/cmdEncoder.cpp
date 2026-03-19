@@ -146,6 +146,8 @@ std::optional<Protocol::FieldID> Protocol::CommandEncoder::to_field_id(uint8_t v
         case FieldID::TxAccountOwnerName:
         case FieldID::MonetaryValue:
         case FieldID::Currency:
+        case FieldID::MonitorUpdates:
+        case FieldID::MonitorTimeoutSeconds:
             return static_cast<FieldID>(value);
         default:
             return std::nullopt;
@@ -207,7 +209,9 @@ const std::unordered_map<Protocol::FieldID, Protocol::EncoderFunc> Protocol::Com
     {Protocol::FieldID::TxAccountNumber, &Protocol::CommandEncoder::encode_tx_account_number},
     {Protocol::FieldID::TxAccountOwnerName, &Protocol::CommandEncoder::encode_tx_account_owner_name},
     {Protocol::FieldID::MonetaryValue, &Protocol::CommandEncoder::encode_monetary_value},
-    {Protocol::FieldID::Currency, &Protocol::CommandEncoder::encode_currency}
+    {Protocol::FieldID::Currency, &Protocol::CommandEncoder::encode_currency},
+    {Protocol::FieldID::MonitorUpdates, &Protocol::CommandEncoder::encode_monitor_updates},
+    {Protocol::FieldID::MonitorTimeoutSeconds, &Protocol::CommandEncoder::encode_monitor_timeout_seconds}
 };
 
 Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::encode_service(std::vector<uint8_t>& buffer, const Protocol::Command& data){
@@ -306,6 +310,30 @@ Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::encode_cu
     return std::monostate{};
 }
 
+Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::encode_monitor_updates(std::vector<uint8_t>& buffer, const Protocol::Command& data){
+    uint8_t field_id = static_cast<uint8_t>(FieldID::MonitorUpdates);
+    std::string value = data.monitor_updates.value();
+    uint32_t length = static_cast<uint32_t>(value.size());
+
+    CommandEncoder::append_uint8(buffer, field_id);
+    CommandEncoder::append_uint32(buffer, length);
+    CommandEncoder::append_string(buffer, value);
+
+    return std::monostate{};
+}
+
+Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::encode_monitor_timeout_seconds(std::vector<uint8_t>& buffer, const Protocol::Command& data){
+    uint8_t field_id = static_cast<uint8_t>(FieldID::MonitorTimeoutSeconds);
+    uint32_t value = data.monitor_timeout_seconds.value();
+    uint32_t length = sizeof(uint32_t);
+
+    CommandEncoder::append_uint8(buffer, field_id);
+    CommandEncoder::append_uint32(buffer, length);
+    CommandEncoder::append_uint32(buffer, value);
+
+    return std::monostate{};
+}
+
 const std::unordered_map<Protocol::FieldID, Protocol::DecoderFunc> Protocol::CommandEncoder::decodeFuncMap = {
     {Protocol::FieldID::Service, &Protocol::CommandEncoder::decode_service},
     {Protocol::FieldID::AccountNumber, &Protocol::CommandEncoder::decode_account_number},
@@ -314,7 +342,9 @@ const std::unordered_map<Protocol::FieldID, Protocol::DecoderFunc> Protocol::Com
     {Protocol::FieldID::TxAccountNumber, &Protocol::CommandEncoder::decode_tx_account_number},
     {Protocol::FieldID::TxAccountOwnerName, &Protocol::CommandEncoder::decode_tx_account_owner_name},
     {Protocol::FieldID::MonetaryValue, &Protocol::CommandEncoder::decode_monetary_value},
-    {Protocol::FieldID::Currency, &Protocol::CommandEncoder::decode_currency}
+    {Protocol::FieldID::Currency, &Protocol::CommandEncoder::decode_currency},
+    {Protocol::FieldID::MonitorUpdates, &Protocol::CommandEncoder::decode_monitor_updates},
+    {Protocol::FieldID::MonitorTimeoutSeconds, &Protocol::CommandEncoder::decode_monitor_timeout_seconds}
 };
 
 Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::decode_service(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer){  
@@ -435,6 +465,34 @@ Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::decode_cu
     uint8_t cur{};
     std::memcpy(&cur, buffer.data() + offset, length);
     data.currency = static_cast<Protocol::CurrencyType>(cur);
+
+    return std::monostate{};
+}
+
+Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::decode_monitor_updates(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer){
+    if (length > MAX_STRING_LENGTH) {
+        return Result<std::monostate, Error::InternalError>::fail(
+            Error::InternalError::DECODE_STRING_TOO_LONG);
+    }
+    
+    std::string monitor_updates{};
+    monitor_updates.resize(length);
+    std::memcpy(monitor_updates.data(), buffer.data() + offset, length);
+    data.monitor_updates = monitor_updates;
+
+    return std::monostate{};
+}
+
+Result<std::monostate, Error::InternalError> Protocol::CommandEncoder::decode_monitor_timeout_seconds(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer){
+    if (length != sizeof(uint32_t)) {
+        return Result<std::monostate, Error::InternalError>::fail(
+            Error::InternalError::DECODE_FIELD_OVERFLOW);
+    }
+    
+    uint32_t monitor_timeout{};
+    std::memcpy(&monitor_timeout, buffer.data() + offset, length);
+    monitor_timeout = ntohl(monitor_timeout);
+    data.monitor_timeout_seconds = monitor_timeout;
 
     return std::monostate{};
 }

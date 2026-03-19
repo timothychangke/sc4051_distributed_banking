@@ -9,6 +9,7 @@ std::string Error::to_string(Error::InternalError err) {
         case Error::InternalError::BAD_PW_LEN:                         return "BAD_PW_LEN";
         case Error::InternalError::INVALID_SERVICE:                    return "INVALID_SERVICE";
         case Error::InternalError::INVALID_CURRENCY:                   return "INVALID_CURRENCY";
+        case Error::InternalError::INVALID_INVOCATION_FLAG:            return "INVALID_INVOCATION_FLAG";
 
         // Network / Socket
         case Error::InternalError::INVALID_ADDRESS:                    return "INVALID_ADDRESS";
@@ -16,6 +17,7 @@ std::string Error::to_string(Error::InternalError err) {
         case Error::InternalError::SEND_FAILED:                        return "SEND_FAILED";
         case Error::InternalError::RECEIVE_FAILED:                     return "RECEIVE_FAILED";
         case Error::InternalError::BIND_FAILED:                        return "BIND_FAILED";
+        case Error::InternalError::CONNECT_FAILED:                     return "CONNECT_FAILED";
 
         // Request / Response
         case Error::InternalError::REQUEST_TIMEOUT:                    return "REQUEST_TIMEOUT";

@@ -34,7 +34,9 @@
     encode_tx_account_owner_name(std::vector<uint8_t>& buffer, const Command& data);
     encode_monetary_value(std::vector<uint8_t>& buffer, const Command& data);
     encode_currency(std::vector<uint8_t>& buffer, const Command& data);
-    
+    encode_monitor_updates(std::vector<uint8_t>& buffer, const Command& data);
+    encode_monitor_timeout_seconds(std::vector<uint8_t>& buffer, const Command& data);
+
     decode_service(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
     decode_account_number(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
     decode_account_owner_name(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
@@ -43,6 +45,8 @@
     decode_tx_account_owner_name(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
     decode_monetary_value(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
     decode_currency(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    decode_monitor_updates(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
+    decode_monitor_timeout_seconds(Command& data, size_t& offset, uint32_t length, const std::vector<uint8_t>& buffer);
 */
 
 
@@ -73,6 +77,10 @@ public:
     using CommandEncoder::decode_monetary_value;
     using CommandEncoder::encode_currency;
     using CommandEncoder::decode_currency;
+    using CommandEncoder::encode_monitor_updates;
+    using CommandEncoder::decode_monitor_updates;
+    using CommandEncoder::encode_monitor_timeout_seconds;
+    using CommandEncoder::decode_monitor_timeout_seconds;
 };
 
 class CommandEncoderTest : public ::testing::Test {
@@ -147,8 +155,23 @@ TEST_F(CommandEncoderTest, to_field_id_valid) {
     EXPECT_EQ(*res, Protocol::FieldID::Currency);
 }
 
-TEST_F(CommandEncoderTest, to_field_id_invalid) {
+TEST_F(CommandEncoderTest, to_field_id_valid_monitor_fields) {
+    // FieldID 9 = MonitorUpdates, 10 = MonitorTimeoutSeconds
     auto res = encoder.to_field_id(9);
+    ASSERT_TRUE(res.has_value());
+    EXPECT_EQ(*res, Protocol::FieldID::MonitorUpdates);
+
+    res = encoder.to_field_id(10);
+    ASSERT_TRUE(res.has_value());
+    EXPECT_EQ(*res, Protocol::FieldID::MonitorTimeoutSeconds);
+}
+
+TEST_F(CommandEncoderTest, to_field_id_invalid) {
+    // 0 is not a defined FieldID, 11 is out of range
+    auto res = encoder.to_field_id(0);
+    EXPECT_FALSE(res.has_value());
+
+    res = encoder.to_field_id(11);
     EXPECT_FALSE(res.has_value());
 }
 
@@ -313,6 +336,87 @@ TEST_F(CommandEncoderTest, encode_decode_currency) {
     EXPECT_EQ(decoded_cmd.currency.value(), Protocol::CurrencyType::USD);
 }
 
+TEST_F(CommandEncoderTest, encode_decode_monitor_updates) {
+    Protocol::Command cmd;
+    cmd.monitor_updates = "account_updated";
+    std::string value = cmd.monitor_updates.value();
+    uint32_t str_len = static_cast<uint32_t>(value.size()); // 15
+    std::vector<uint8_t> buffer;
+
+    auto res_enc = encoder.encode_monitor_updates(buffer, cmd);
+    ASSERT_TRUE(res_enc.ok());
+    // Total: 1 (ID) + 4 (Len) + 15 (string) = 20 bytes
+    ASSERT_EQ(buffer.size(), 1 + 4 + str_len);
+    EXPECT_EQ(buffer[0], static_cast<uint8_t>(Protocol::FieldID::MonitorUpdates));
+
+    Protocol::Command decoded_cmd;
+    size_t offset = 5; // skip field_id + field_length
+    auto res_dec = encoder.decode_monitor_updates(decoded_cmd, offset, str_len, buffer);
+    ASSERT_TRUE(res_dec.ok());
+    ASSERT_TRUE(decoded_cmd.monitor_updates.has_value());
+    EXPECT_EQ(decoded_cmd.monitor_updates.value(), "account_updated");
+}
+
+TEST_F(CommandEncoderTest, encode_decode_monitor_updates_empty_string) {
+    // An empty monitor_updates string should encode/decode cleanly (length = 0)
+    Protocol::Command cmd;
+    cmd.monitor_updates = "";
+    std::vector<uint8_t> buffer;
+
+    auto res_enc = encoder.encode_monitor_updates(buffer, cmd);
+    ASSERT_TRUE(res_enc.ok());
+    // Total: 1 (ID) + 4 (Len) + 0 = 5 bytes
+    ASSERT_EQ(buffer.size(), 5);
+
+    Protocol::Command decoded_cmd;
+    size_t offset = 5;
+    auto res_dec = encoder.decode_monitor_updates(decoded_cmd, offset, 0, buffer);
+    ASSERT_TRUE(res_dec.ok());
+    ASSERT_TRUE(decoded_cmd.monitor_updates.has_value());
+    EXPECT_EQ(decoded_cmd.monitor_updates.value(), "");
+}
+
+TEST_F(CommandEncoderTest, decode_monitor_updates_string_too_long) {
+    // length > MAX_STRING_LENGTH (1024) should fail
+    Protocol::Command decoded_cmd;
+    std::vector<uint8_t> dummy_buffer(100, 0);
+    size_t offset = 0;
+    uint32_t bad_length = 1025;
+    auto res = encoder.decode_monitor_updates(decoded_cmd, offset, bad_length, dummy_buffer);
+    ASSERT_FALSE(res.ok());
+    EXPECT_EQ(res.error(), Error::InternalError::DECODE_STRING_TOO_LONG);
+}
+
+TEST_F(CommandEncoderTest, encode_decode_monitor_timeout_seconds) {
+    Protocol::Command cmd;
+    cmd.monitor_timeout_seconds = 300;
+    std::vector<uint8_t> buffer;
+
+    auto res_enc = encoder.encode_monitor_timeout_seconds(buffer, cmd);
+    ASSERT_TRUE(res_enc.ok());
+    // Total: 1 (ID) + 4 (Len) + 4 (uint32) = 9 bytes
+    ASSERT_EQ(buffer.size(), 9);
+    EXPECT_EQ(buffer[0], static_cast<uint8_t>(Protocol::FieldID::MonitorTimeoutSeconds));
+
+    Protocol::Command decoded_cmd;
+    size_t offset = 5; // skip field_id + field_length
+    uint32_t length = 4;
+    auto res_dec = encoder.decode_monitor_timeout_seconds(decoded_cmd, offset, length, buffer);
+    ASSERT_TRUE(res_dec.ok());
+    ASSERT_TRUE(decoded_cmd.monitor_timeout_seconds.has_value());
+    EXPECT_EQ(decoded_cmd.monitor_timeout_seconds.value(), 300u);
+}
+
+TEST_F(CommandEncoderTest, decode_monitor_timeout_seconds_wrong_length) {
+    // length != sizeof(uint32_t) should fail
+    Protocol::Command decoded_cmd;
+    std::vector<uint8_t> dummy_buffer(10, 0);
+    size_t offset = 0;
+    auto res = encoder.decode_monitor_timeout_seconds(decoded_cmd, offset, 3, dummy_buffer);
+    ASSERT_FALSE(res.ok());
+    EXPECT_EQ(res.error(), Error::InternalError::DECODE_FIELD_OVERFLOW);
+}
+
 // Integration Tests (encode_message / decode_message)
 
 TEST_F(CommandEncoderTest, full_cycle_success) {
@@ -338,6 +442,29 @@ TEST_F(CommandEncoderTest, full_cycle_success) {
     EXPECT_DOUBLE_EQ(decoded.monetary_value.value(), cmd.monetary_value.value());
     EXPECT_EQ(decoded.account_owner_name, cmd.account_owner_name);
     EXPECT_EQ(decoded.currency, cmd.currency);
+}
+
+TEST_F(CommandEncoderTest, full_cycle_monitor_success) {
+    Protocol::Command cmd;
+    cmd.service = Protocol::Service::MONITOR;
+    cmd.account_number = 5555;
+    cmd.monitor_updates = "balance_changed";
+    cmd.monitor_timeout_seconds = 60;
+
+    auto res_enc = encoder.encode_message(cmd);
+    ASSERT_TRUE(res_enc.ok());
+    std::vector<uint8_t> encoded = res_enc.value();
+
+    auto res_dec = encoder.decode_message(encoded);
+    ASSERT_TRUE(res_dec.ok());
+    Protocol::Command decoded = res_dec.value();
+
+    EXPECT_EQ(decoded.service, cmd.service);
+    EXPECT_EQ(decoded.account_number, cmd.account_number);
+    ASSERT_TRUE(decoded.monitor_updates.has_value());
+    EXPECT_EQ(decoded.monitor_updates.value(), "balance_changed");
+    ASSERT_TRUE(decoded.monitor_timeout_seconds.has_value());
+    EXPECT_EQ(decoded.monitor_timeout_seconds.value(), 60u);
 }
 
 TEST_F(CommandEncoderTest, encode_empty_fail) {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
+#include <vector>
 
 #include "protocol.h"
 #define HEADER_SIZE 17
@@ -14,14 +14,14 @@ enum class MessageType: uint8_t {
 };
 
 struct MessageId {
-    uint32_t request_id;
+    uint32_t request_id;    // generated on client side 
     uint32_t ipv4_address;
     uint16_t port;
 }; 
 
 struct Payload {
     uint16_t status_code; 
-    std::string content; 
+    std::vector<uint8_t> content; 
 };
 
 /** 
