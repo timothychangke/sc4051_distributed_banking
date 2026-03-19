@@ -97,3 +97,11 @@ forgot which date oops (Tim)
 * `NotifyAll(update)`: Implemented the broadcast engine. Optimized to marshal the payload exactly once per update (saving CPU cycles) and features "lazy eviction" to prune expired subscribers dynamically during the iteration loop.
 * `periodicSweep()`: Added a dedicated background goroutine that routinely sweeps and deletes expired clients, preventing memory leaks during periods of low transactional activity.
 * `MarshalUpdateFunc`: Introduced a dependency injection pattern for payload marshalling. This cleanly decouples the network broadcasting logic from the specific byte-level wire format used by the handler layer.
+
+
+2026-03-19 (Tim)
+Invocation Semantics Package (internal/semantics/): Implemented a fully decoupled fault tolerance layer to support at-least-once and at-most-once invocation semantics.
+* `RequestHeader & ParseHeader` (header.go): Defined the 5-byte wire format contract — [ServiceID: uint8][RequestID: uint32 BE] — for all incoming UDP packets. The parser maintains a clean boundary with the marshalling layer by extracting only the header and passing the remaining payload untouched to the handler.
+* `ReplyHistory (history.go)`: Built a thread-safe, two-level reply cache (sync.RWMutex over map[clientAddr]map[requestID][]byte) that stores defensive copies of raw reply bytes. It supports Lookup for duplicate detection and EvictBefore for sliding-window eviction based on monotonic request IDs.
+* `Dispatcher (dispatcher.go)`: Developed the core semantics engine positioned between the UDP read loop and the handler. It manages the logic for at-most-once mode, checking the ReplyHistory to prevent non-idempotent side effects (like double-deposits) by returning cached replies for duplicate requests.
+* `LossSimulator (losssim.go`): Added a configurable packet loss simulator with a dedicated rand.Rand source to avoid global lock contention. It is designed to provoke retransmission scenarios at both request-receive and reply-send points to support reproducible lab report experiments.
