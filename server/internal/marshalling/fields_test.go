@@ -1,0 +1,77 @@
+package marshal
+
+import "testing"
+
+func TestFieldIDValues(t *testing.T) {
+	// These values are the cross-language contract with the C++ client.
+	// If any of them change, TLV encoding breaks silently. This test
+	// exists so that a careless refactor doesn't shift the constants
+	// and cost someone two hours of hex-dump debugging.
+	tests := []struct {
+		name string
+		got  uint8
+		want uint8
+	}{
+		{"Service", FieldService, 0x01},
+		{"AccountNumber", FieldAccountNumber, 0x02},
+		{"AccountOwnerName", FieldAccountOwnerName, 0x03},
+		{"AccountPassword", FieldAccountPassword, 0x04},
+		{"TxAccountNumber", FieldTxAccountNumber, 0x05},
+		{"TxAccountOwnerName", FieldTxAccountOwnerName, 0x06},
+		{"MonetaryValue", FieldMonetaryValue, 0x07},
+		{"Currency", FieldCurrency, 0x08},
+		{"MonitorUpdates", FieldMonitorUpdates, 0x09},
+		{"MonitorTimeoutSeconds", FieldMonitorTimeoutSeconds, 0x0A},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.got != tt.want {
+				t.Errorf("Field%s = 0x%02X, want 0x%02X", tt.name, tt.got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTLVHeaderSize(t *testing.T) {
+	// 1 byte FieldID + 4 bytes Length = 5 bytes total
+	if TLVHeaderSize != 5 {
+		t.Errorf("TLVHeaderSize = %d, want 5", TLVHeaderSize)
+	}
+}
+
+func TestIsValidFieldID(t *testing.T) {
+	// Every defined field should be valid
+	validIDs := []uint8{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A}
+	for _, id := range validIDs {
+		if !IsValidFieldID(id) {
+			t.Errorf("IsValidFieldID(0x%02X) = false, want true", id)
+		}
+	}
+
+	// Anything outside our enum should be rejected
+	invalidIDs := []uint8{0x00, 0x0B, 0x0C, 0xFF, 0x10, 0x80}
+	for _, id := range invalidIDs {
+		if IsValidFieldID(id) {
+			t.Errorf("IsValidFieldID(0x%02X) = true, want false", id)
+		}
+	}
+}
+
+func TestFieldIDsAreUnique(t *testing.T) {
+	// Paranoia check: make sure no two constants accidentally share a value
+	all := []uint8{
+		FieldService, FieldAccountNumber, FieldAccountOwnerName,
+		FieldAccountPassword, FieldTxAccountNumber, FieldTxAccountOwnerName,
+		FieldMonetaryValue, FieldCurrency,
+		FieldMonitorUpdates, FieldMonitorTimeoutSeconds,
+	}
+
+	seen := make(map[uint8]bool)
+	for _, id := range all {
+		if seen[id] {
+			t.Errorf("duplicate FieldID value: 0x%02X", id)
+		}
+		seen[id] = true
+	}
+}

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed and Improved
+2026-03-20 (Jing)
+
+- **Go Server Test Alignment (`server/internal/handler/handler_test.go`)**:
+  - Refactored `buildRequest` and `parseReplyBytes` to support the updated 18-byte header format (Type, Flag, RequestID, IPv4, Port, StatusCode, ContentLen).
+  - Synchronized all 21 handler integration tests with the new 18-byte wire format, achieving parity with the C++ client's serialization logic.
+- **Branch Management**:
+  - Merged `feature/marshalling` into `feat/integration`.
+
+### Fixed and Improved
 2026-03-19 (Jing)
 
 - **Client Unit Testing Alignment (`client/tests/test_msgSerializer.cpp`)**:

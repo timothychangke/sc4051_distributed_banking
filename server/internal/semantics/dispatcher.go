@@ -91,8 +91,8 @@ func (d *Dispatcher) Dispatch(data []byte, addr *net.UDPAddr) ([]byte, error) {
 
 	clientKey := addr.String()
 
-	log.Printf("[Dispatcher] Received request: service=%d, requestID=%d, client=%s, mode=%s",
-		header.ServiceID, header.RequestID, clientKey, d.mode)
+	log.Printf("[Dispatcher] Received request: requestID=%d, client=%s, mode=%s",
+		header.RequestID, clientKey, d.mode)
 
 	// At-least-once: always execute. It does no filtering and no caching.
 	// If the client retransmits, we just run the operation again.

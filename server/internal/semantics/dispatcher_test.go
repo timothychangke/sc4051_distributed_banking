@@ -7,13 +7,16 @@ import (
 	"testing"
 )
 
-// buildTestPacket creates a minimal valid request packet with the given
-// service ID and request ID. The payload is empty because the dispatcher
-// never looks past byte 4 — that's the marshalling layer's job.
-func buildTestPacket(serviceID uint8, requestID uint32) []byte {
+// buildTestPacket creates a minimal valid 18-byte request packet with the given
+// request ID. The ServiceID is NO LONGER part of the header; it is expected
+// to be inside the TLV payload (which these minimal tests don't simulate
+// as they only test the dispatcher's deduplication logic).
+func buildTestPacket(unusedServiceID uint8, requestID uint32) []byte {
 	data := make([]byte, HeaderSize)
-	data[0] = serviceID
-	binary.BigEndian.PutUint32(data[1:5], requestID)
+	// Byte 0: Type=0 (Request)
+	// Byte 1: Flag=0
+	// Bytes 2-5: RequestID
+	binary.BigEndian.PutUint32(data[2:6], requestID)
 	return data
 }
 
