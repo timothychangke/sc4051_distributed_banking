@@ -3,8 +3,9 @@
 #include <cstdint>
 #include <vector>
 
+#include "semantics.h"
 #include "protocol.h"
-#define HEADER_SIZE 17
+#define HEADER_SIZE 18 // In Bytes
 
 namespace Protocol{
 
@@ -31,9 +32,10 @@ struct Payload {
 * The transport layer does not interpret the payload contents.
 */
 struct Message {
-    MessageType type;
-    MessageId   id;  // idempotent_id
-    Payload     payload;
+    MessageType               type;
+    Semantics::InvocationFlag flag;   
+    MessageId                 id;         // idempotent_id
+    Payload                   payload;
 };
 
 }

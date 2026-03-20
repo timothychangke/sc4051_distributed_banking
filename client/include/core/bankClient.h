@@ -18,6 +18,8 @@
 #include <chrono>
 #include <thread>
 #include <cmath>
+#include <algorithm>
+#include <cctype> 
 
 #include "protocol.h"
 #include "message.h"
@@ -61,8 +63,9 @@ protected:
     void send_to_server(const Protocol::Command& req);
     void monitor_server_updates();
     void trimString(std::string& str);
-    bool isValidString(const std::string& str);
-    bool isValidStringLength(const std::string& str);
+    bool isAlpha(const std::string& str);
+    bool isAlphaNumeric(const std::string& str);
+    bool isWithinMaxLength(const std::string& str);
  
     Result<Protocol::Command, Error::InternalError> collect_user_input();    
     Result<std::monostate, Error::InternalError> fill_account_creation_details(Protocol::Command& req);

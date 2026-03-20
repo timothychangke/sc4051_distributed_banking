@@ -17,9 +17,10 @@
 
 
 namespace Semantics { 
-enum class InvocationFlag {
+enum class InvocationFlag : uint8_t {
+    NONE          = 0,
     AT_LEAST_ONCE = 1,
-    AT_MOST_ONCE = 2,
+    AT_MOST_ONCE  = 2,
 };
 
 Result<InvocationFlag, Error::InternalError> getInvocationFlag(int argc, char* argv[]);
