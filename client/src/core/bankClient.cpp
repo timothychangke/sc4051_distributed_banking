@@ -301,6 +301,8 @@ void BankClient::send_to_server(const Protocol::Command& req_com) {
     // 2. build the Message struct
     Protocol::Message msg{};
     msg.type = Protocol::MessageType::Request;
+    msg.flag = flag;
+    
     if (BankClient::flag == Semantics::InvocationFlag::AT_MOST_ONCE){
         msg.id.request_id = ++current_request_id; // can use Semantics::generateRandomUint32() for actual prod 
     } else{
