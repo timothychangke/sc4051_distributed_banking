@@ -11,13 +11,14 @@ import (
 // byte layout for every reply. If any field is the wrong size or at the
 // wrong offset, the client reads garbage for all subsequent fields.
 //
-// ┌──────────┬──────────────┬──────────┬──────────┬────────────────┬─────────────────┐
-// │ MsgType  │ RequestID    │ IPv4     │ Port     │ StatusCode     │ Content          │
-// │ (1 byte) │ (4 bytes BE) │ (4B BE)  │ (2B BE)  │ (2 bytes BE)   │ [4B len][N data] │
-// │ 0x01     │              │          │          │                │                  │
-// └──────────┴──────────────┴──────────┴──────────┴────────────────┴─────────────────┘
 //
-// Total fixed header = 1 + 4 + 4 + 2 + 2 + 4 = 17 bytes minimum (with empty content).
+// ┌──────────┬──────────┬──────────────┬──────────┬──────────┬────────────────┬─────────────────┐
+// │ MsgType  │ Flag     │ RequestID    │ IPv4     │ Port     │ StatusCode     │ Content          │
+// │ (1 byte) │ (1 byte) │ (4 bytes BE) │ (4B BE)  │ (2B BE)  │ (2 bytes BE)   │ [4B len][N data] │
+// │ 0x01     │ 0x00     │              │          │          │                │                  │
+// └──────────┴──────────┴──────────────┴──────────┴──────────┴────────────────┴─────────────────┘
+//
+// Total fixed header = 1 + 1 + 4 + 4 + 2 + 2 + 4 = 18 bytes minimum (with empty content).
 //
 // GOTCHA #1: StatusCode is 2 bytes (uint16) on the wire, even though our
 // protocol.go defines them as uint8. The C++ deserializer reads with ntohs().
@@ -30,7 +31,7 @@ import (
 // ─────────────────────────────────────────────────────────────────────
 
 // ReplyHeaderSize is the minimum size of a reply packet with zero-length content.
-const ReplyHeaderSize = 17
+const ReplyHeaderSize = 18
 
 // MsgTypeReply is the message type byte for standard request/response replies.
 // Duplicated here to avoid a circular import with the protocol package.
@@ -57,28 +58,32 @@ func BuildReply(requestID uint32, clientAddr *net.UDPAddr, statusCode uint8, con
 	// Byte 0: Message type — always 0x01 for a normal reply
 	enc.PutUint8(MsgTypeReply)
 
-	// Bytes 1-4: Echo back the request ID so the client can match it
+	// Byte 1: Invocation flag. The C++ client expects an 18-byte header including
+	// this flag byte. For replies, we use 0 (normal).
+	enc.PutUint8(0)
+
+	// Bytes 2-5: Echo back the request ID so the client can match it
 	enc.PutUint32(requestID)
 
-	// Bytes 5-8: Client's IPv4 address as a big-endian uint32.
+	// Bytes 6-9: Client's IPv4 address as a big-endian uint32.
 	// The C++ side doesn't really use this for routing (it already knows
 	// its own address), but the bytes MUST be here or the fixed-offset
 	// deserialization breaks. We echo back the client's IP.
 	enc.PutUint32(IPv4ToUint32(clientAddr))
 
-	// Bytes 9-10: Client's port as a big-endian uint16.
+	// Bytes 10-11: Client's port as a big-endian uint16.
 	// Same deal — must be present for alignment even if unused.
 	enc.PutUint16(uint16(clientAddr.Port))
 
-	// Bytes 11-12: Status code widened to uint16.
+	// Bytes 12-13: Status code widened to uint16.
 	// Our protocol.go uses uint8, but the C++ MessageSerializer reads 2 bytes
 	// with ntohs(). Writing only 1 byte here is the #1 most common bug.
 	enc.PutUint16(uint16(statusCode))
 
-	// Bytes 13-16: Content length as big-endian uint32
+	// Bytes 14-17: Content length as big-endian uint32
 	enc.PutUint32(uint32(contentLen))
 
-	// Bytes 17+: The actual response body (if any)
+	// Bytes 18+: The actual response body (if any)
 	if contentLen > 0 {
 		enc.PutBytes(content)
 	}

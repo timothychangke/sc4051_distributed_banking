@@ -342,6 +342,8 @@ void BankClient::send_to_server(const Protocol::Command& req_com) {
 
     if (!sent_success) return;
 
+    // TODO : need to apply retry logic to the receive message  
+
     // 5. receive response via socket
     auto response = socket->receive_message(); 
     if (!response) {

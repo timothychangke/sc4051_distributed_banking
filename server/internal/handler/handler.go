@@ -56,11 +56,18 @@ func BuildHandler(svc banking.Service, mon *monitor.Manager) semantics.RequestHa
 			return marshal.BuildErrorReply(header.RequestID, addr, protocol.StatusErrInternal)
 		}
 
-		// 4. Route to the appropriate service handler based on ServiceID.
-		//    We use header.ServiceID (from the outer packet), NOT cmd.Service
-		//    (from the TLV payload). The header is what the semantics layer
-		//    validated and dispatched on; the TLV Service field is redundant.
-		switch header.ServiceID {
+		// 4. Route to the appropriate service handler based on the Service field
+		//    in the TLV payload. In the new protocol, the 18-byte header no
+		//    longer contains the ServiceID; it's now a TLV field inside the
+		//    command payload (Tag 0x01).
+		if cmd.Service == nil {
+			log.Printf("[Handler] Request %d from %s: missing ServiceID in TLV payload",
+				header.RequestID, addr)
+			return marshal.BuildErrorReply(header.RequestID, addr, protocol.StatusErrInternal)
+		}
+
+		serviceID := *cmd.Service
+		switch serviceID {
 		case protocol.ServiceOpenAccount:
 			return handleOpen(cmd, header.RequestID, addr, svc, mon)
 		case protocol.ServiceCloseAccount:
@@ -76,7 +83,7 @@ func BuildHandler(svc banking.Service, mon *monitor.Manager) semantics.RequestHa
 		case protocol.ServiceTransferFunds:
 			return handleTransfer(cmd, header.RequestID, addr, svc, mon)
 		default:
-			log.Printf("[Handler] Unknown service ID %d from %s", header.ServiceID, addr)
+			log.Printf("[Handler] Unknown service ID %d from %s", serviceID, addr)
 			return marshal.BuildErrorReply(header.RequestID, addr, protocol.StatusErrInternal)
 		}
 	}

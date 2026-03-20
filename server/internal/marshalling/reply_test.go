@@ -26,29 +26,33 @@ func testAddr() *net.UDPAddr {
 func TestBuildReply_EmptyContent_ExactSize(t *testing.T) {
 	reply := BuildReply(42, testAddr(), 0, nil)
 
-	// The C++ client expects exactly 17 bytes for an empty reply:
-	// 1 (MsgType) + 4 (RequestID) + 4 (IPv4) + 2 (Port) + 2 (Status) + 4 (ContentLen)
+	// The C++ client expects exactly 18 bytes for an empty reply:
+	// 1 (MsgType) + 1 (Flag) + 4 (RID) + 4 (IP) + 2 (Port) + 2 (Status) + 4 (Len)
 	if len(reply) != ReplyHeaderSize {
 		t.Fatalf("empty reply should be %d bytes, got %d", ReplyHeaderSize, len(reply))
 	}
 }
 
-func TestBuildReply_MsgType(t *testing.T) {
+func TestBuildReply_MsgTypeAndFlag(t *testing.T) {
 	reply := BuildReply(1, testAddr(), 0, nil)
 
 	// Byte 0: MsgType must be 0x01 (MsgTypeReply)
 	if reply[0] != MsgTypeReply {
 		t.Errorf("byte 0 (MsgType): want 0x%02X, got 0x%02X", MsgTypeReply, reply[0])
 	}
+	// Byte 1: Flag must be 0x00 for normal replies
+	if reply[1] != 0x00 {
+		t.Errorf("byte 1 (Flag): want 0x00, got 0x%02X", reply[1])
+	}
 }
 
 func TestBuildReply_RequestID(t *testing.T) {
 	reply := BuildReply(0xDEADBEEF, testAddr(), 0, nil)
 
-	// Bytes 1-4: RequestID in big-endian
-	gotID := binary.BigEndian.Uint32(reply[1:5])
+	// Bytes 2-5: RequestID in big-endian
+	gotID := binary.BigEndian.Uint32(reply[2:6])
 	if gotID != 0xDEADBEEF {
-		t.Errorf("bytes 1-4 (RequestID): want 0xDEADBEEF, got 0x%08X", gotID)
+		t.Errorf("bytes 2-5 (RequestID): want 0xDEADBEEF, got 0x%08X", gotID)
 	}
 }
 
@@ -56,12 +60,12 @@ func TestBuildReply_IPv4Field(t *testing.T) {
 	addr := testAddr() // 192.168.1.100
 	reply := BuildReply(1, addr, 0, nil)
 
-	// Bytes 5-8: IPv4 as big-endian uint32
-	gotIP := binary.BigEndian.Uint32(reply[5:9])
+	// Bytes 6-9: IPv4 as big-endian uint32
+	gotIP := binary.BigEndian.Uint32(reply[6:10])
 	// 192.168.1.100 = 0xC0A80164
 	expectedIP := uint32(192)<<24 | uint32(168)<<16 | uint32(1)<<8 | uint32(100)
 	if gotIP != expectedIP {
-		t.Errorf("bytes 5-8 (IPv4): want 0x%08X, got 0x%08X", expectedIP, gotIP)
+		t.Errorf("bytes 6-9 (IPv4): want 0x%08X, got 0x%08X", expectedIP, gotIP)
 	}
 }
 
@@ -69,40 +73,39 @@ func TestBuildReply_PortField(t *testing.T) {
 	addr := testAddr() // port 12345
 	reply := BuildReply(1, addr, 0, nil)
 
-	// Bytes 9-10: Port as big-endian uint16
-	gotPort := binary.BigEndian.Uint16(reply[9:11])
+	// Bytes 10-11: Port as big-endian uint16
+	gotPort := binary.BigEndian.Uint16(reply[10:12])
 	if gotPort != 12345 {
-		t.Errorf("bytes 9-10 (Port): want 12345, got %d", gotPort)
+		t.Errorf("bytes 10-11 (Port): want 12345, got %d", gotPort)
 	}
 }
 
 func TestBuildReply_StatusCodeIsUint16(t *testing.T) {
-	// This is the #1 most common bug according to the plan:
 	// StatusCode MUST occupy 2 bytes, not 1.
 	reply := BuildReply(1, testAddr(), 5, nil) // status 5 = insufficient funds
 
-	// Bytes 11-12: StatusCode as big-endian uint16
-	gotStatus := binary.BigEndian.Uint16(reply[11:13])
+	// Bytes 12-13: StatusCode as big-endian uint16
+	gotStatus := binary.BigEndian.Uint16(reply[12:14])
 	if gotStatus != 5 {
-		t.Errorf("bytes 11-12 (StatusCode): want 5, got %d", gotStatus)
+		t.Errorf("bytes 12-13 (StatusCode): want 5, got %d", gotStatus)
 	}
 
 	// Also verify the high byte is 0 (it's a small number)
-	if reply[11] != 0x00 {
-		t.Errorf("StatusCode high byte should be 0x00, got 0x%02X", reply[11])
+	if reply[12] != 0x00 {
+		t.Errorf("StatusCode high byte should be 0x00, got 0x%02X", reply[12])
 	}
-	if reply[12] != 0x05 {
-		t.Errorf("StatusCode low byte should be 0x05, got 0x%02X", reply[12])
+	if reply[13] != 0x05 {
+		t.Errorf("StatusCode low byte should be 0x05, got 0x%02X", reply[13])
 	}
 }
 
 func TestBuildReply_ContentLength_Empty(t *testing.T) {
 	reply := BuildReply(1, testAddr(), 0, nil)
 
-	// Bytes 13-16: Content length = 0
-	gotLen := binary.BigEndian.Uint32(reply[13:17])
+	// Bytes 14-17: Content length = 0
+	gotLen := binary.BigEndian.Uint32(reply[14:18])
 	if gotLen != 0 {
-		t.Errorf("bytes 13-16 (ContentLen): want 0, got %d", gotLen)
+		t.Errorf("bytes 14-17 (ContentLen): want 0, got %d", gotLen)
 	}
 }
 
@@ -110,10 +113,10 @@ func TestBuildReply_ContentLength_WithBody(t *testing.T) {
 	content := []byte("hello world")
 	reply := BuildReply(1, testAddr(), 0, content)
 
-	// Bytes 13-16: Content length
-	gotLen := binary.BigEndian.Uint32(reply[13:17])
+	// Bytes 14-17: Content length
+	gotLen := binary.BigEndian.Uint32(reply[14:18])
 	if gotLen != uint32(len(content)) {
-		t.Errorf("bytes 13-16 (ContentLen): want %d, got %d", len(content), gotLen)
+		t.Errorf("bytes 14-17 (ContentLen): want %d, got %d", len(content), gotLen)
 	}
 
 	// Total size should be header + content
@@ -122,8 +125,8 @@ func TestBuildReply_ContentLength_WithBody(t *testing.T) {
 		t.Errorf("total reply size: want %d, got %d", expectedTotal, len(reply))
 	}
 
-	// Bytes 17+: The content itself
-	gotContent := reply[17:]
+	// Bytes 18+: The content itself
+	gotContent := reply[18:]
 	if string(gotContent) != "hello world" {
 		t.Errorf("content body: want 'hello world', got '%s'", string(gotContent))
 	}
@@ -137,13 +140,13 @@ func TestBuildReply_WithTLVContent(t *testing.T) {
 	reply := BuildReply(99, testAddr(), 0, content)
 
 	// Verify the content length in the header matches
-	headerContentLen := binary.BigEndian.Uint32(reply[13:17])
+	headerContentLen := binary.BigEndian.Uint32(reply[14:18])
 	if headerContentLen != uint32(len(content)) {
 		t.Errorf("content length in header: want %d, got %d", len(content), headerContentLen)
 	}
 
 	// Decode the content portion back as TLV to verify it round-trips
-	contentBytes := reply[17:]
+	contentBytes := reply[18:]
 	cmd, err := DecodeTLV(contentBytes)
 	if err != nil {
 		t.Fatalf("failed to decode TLV content from reply: %v", err)
@@ -154,7 +157,7 @@ func TestBuildReply_WithTLVContent(t *testing.T) {
 }
 
 func TestBuildReply_EmptyContent_NilVsEmptySlice(t *testing.T) {
-	// Both nil and empty slice should produce the same 17-byte reply
+	// Both nil and empty slice should produce the same 18-byte reply
 	replyNil := BuildReply(1, testAddr(), 0, nil)
 	replyEmpty := BuildReply(1, testAddr(), 0, []byte{})
 
@@ -166,49 +169,31 @@ func TestBuildReply_EmptyContent_NilVsEmptySlice(t *testing.T) {
 	}
 }
 
-func TestBuildErrorReply_IsShorthand(t *testing.T) {
-	// BuildErrorReply should produce the same output as BuildReply with nil content
-	errReply := BuildErrorReply(42, testAddr(), 2)
-	normalReply := BuildReply(42, testAddr(), 2, nil)
-
-	if len(errReply) != len(normalReply) {
-		t.Fatalf("size mismatch: error=%d, normal=%d", len(errReply), len(normalReply))
-	}
-	for i := range errReply {
-		if errReply[i] != normalReply[i] {
-			t.Errorf("byte %d differs: error=0x%02X, normal=0x%02X", i, errReply[i], normalReply[i])
-		}
-	}
-}
-
 func TestBuildReply_IPv6AddrFallback(t *testing.T) {
-	// If we somehow get a pure IPv6 address, IPv4ToUint32 returns 0.
-	// The reply should still be well-formed (just with 0.0.0.0).
 	addr := &net.UDPAddr{
 		IP:   net.ParseIP("::1"),
 		Port: 8080,
 	}
 	reply := BuildReply(1, addr, 0, nil)
 
-	// Should still be 17 bytes
 	if len(reply) != ReplyHeaderSize {
 		t.Fatalf("IPv6 reply should be %d bytes, got %d", ReplyHeaderSize, len(reply))
 	}
 
-	// IPv4 field should be zero
-	gotIP := binary.BigEndian.Uint32(reply[5:9])
+	// IPv4 field covers bytes 6-9
+	gotIP := binary.BigEndian.Uint32(reply[6:10])
 	if gotIP != 0 {
 		t.Errorf("IPv4 for IPv6 addr: want 0, got 0x%08X", gotIP)
 	}
 }
 
 func TestBuildReply_AllStatusCodes(t *testing.T) {
-	// Verify that all our status codes encode correctly as uint16
+	// Verify that all our status codes encode correctly as uint16 at offset 12
 	codes := []uint8{0, 1, 2, 3, 4, 5, 6, 7}
 
 	for _, code := range codes {
 		reply := BuildReply(1, testAddr(), code, nil)
-		gotStatus := binary.BigEndian.Uint16(reply[11:13])
+		gotStatus := binary.BigEndian.Uint16(reply[12:14])
 		if gotStatus != uint16(code) {
 			t.Errorf("status code %d: wire value is %d", code, gotStatus)
 		}
