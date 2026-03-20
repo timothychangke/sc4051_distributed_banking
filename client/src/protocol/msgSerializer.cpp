@@ -9,6 +9,9 @@ Protocol::MessageSerializer::serialize(const Protocol::Message& message){
 
     // m_type (1 Byte)
     data.push_back(static_cast<uint8_t>(message.type));
+    
+    // m_Invocation_flag (1 Byte)
+    data.push_back(static_cast<uint8_t>(message.flag));
 
     // request_id (4 Bytes)
     uint32_t rid = htonl(message.id.request_id);
@@ -61,6 +64,10 @@ Protocol::MessageSerializer::deserialize(const std::vector<uint8_t>& data){
     
     // m_type (1 Byte)
     msg.type = static_cast<Protocol::MessageType>(data[offset]);
+    offset ++;
+    
+    // m_Invocation_flag (1 Byte)
+    msg.flag = static_cast<Semantics::InvocationFlag>(data[offset]);
     offset ++;
 
     // request_id (4 Bytes)
