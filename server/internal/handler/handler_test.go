@@ -55,12 +55,28 @@ func clientAddr() *net.UDPAddr {
 // buildRequest constructs a full request packet with the semantics header
 // prepended, exactly as the C++ client sends on the wire.
 //
-//	[ServiceID(1)] [RequestID(4 BE)] [TLV payload...]
-func buildRequest(serviceID uint8, requestID uint32, tlvFields []marshal.TLVField) []byte {
-	enc := marshal.NewEncoder()
-	enc.PutUint8(serviceID)
-	enc.PutUint32(requestID)
-	enc.PutBytes(marshal.EncodeTLVFields(tlvFields))
+//	[Type(1B)] [Flag(1B)] [RequestID(4B BE)] [IPv4(4B BE)] [Port(2B BE)] [StatusCode(2B BE)] [ContentLen(4B BE)] [TLV payload...]
+func buildRequest(requestID uint32, tlvFields []marshal.TLVField) []byte {
+	tlvBytes := marshal.EncodeTLVFields(tlvFields)
+	contentLen := len(tlvBytes)
+
+	// Pre-allocate the full 18-byte header + payload
+	enc := marshal.NewEncoderWithCap(semantics.HeaderSize + contentLen)
+
+	// 18-byte header
+	enc.PutUint8(marshal.MsgTypeReply) // Type (0x01)
+	enc.PutUint8(0)                  // Flag
+	enc.PutUint32(requestID)         // RequestID
+	enc.PutUint32(0)                  // IPv4 (empty for test)
+	enc.PutUint16(0)                  // Port
+	enc.PutUint16(0)                  // StatusCode
+	enc.PutUint32(uint32(contentLen)) // ContentLen
+
+	// Payload
+	if contentLen > 0 {
+		enc.PutBytes(tlvBytes)
+	}
+
 	return enc.Bytes()
 }
 
@@ -77,20 +93,20 @@ type parsedReply struct {
 
 func parseReplyBytes(t *testing.T, data []byte) parsedReply {
 	t.Helper()
-	if len(data) < marshal.ReplyHeaderSize {
-		t.Fatalf("reply too short: %d bytes (need at least %d)", len(data), marshal.ReplyHeaderSize)
+	if len(data) < semantics.HeaderSize {
+		t.Fatalf("reply too short: %d bytes (need at least %d)", len(data), semantics.HeaderSize)
 	}
 
 	r := parsedReply{
 		MsgType:    data[0],
-		RequestID:  binary.BigEndian.Uint32(data[1:5]),
-		IPv4:       binary.BigEndian.Uint32(data[5:9]),
-		Port:       binary.BigEndian.Uint16(data[9:11]),
-		StatusCode: binary.BigEndian.Uint16(data[11:13]),
-		ContentLen: binary.BigEndian.Uint32(data[13:17]),
+		RequestID:  binary.BigEndian.Uint32(data[2:6]),
+		IPv4:       binary.BigEndian.Uint32(data[6:10]),
+		Port:       binary.BigEndian.Uint16(data[10:12]),
+		StatusCode: binary.BigEndian.Uint16(data[12:14]),
+		ContentLen: binary.BigEndian.Uint32(data[14:18]),
 	}
-	if len(data) > marshal.ReplyHeaderSize {
-		r.Content = data[17:]
+	if len(data) > semantics.HeaderSize {
+		r.Content = data[18:]
 	}
 	return r
 }
@@ -100,7 +116,7 @@ func parseReplyBytes(t *testing.T, data []byte) parsedReply {
 func TestHandleOpen_Success(t *testing.T) {
 	handler, _ := testSetup(t)
 
-	req := buildRequest(protocol.ServiceOpenAccount, 1, []marshal.TLVField{
+	req := buildRequest(1, []marshal.TLVField{
 		marshal.TLVUint8(marshal.FieldService, protocol.ServiceOpenAccount),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Alice"),
 		marshal.TLVString(marshal.FieldAccountPassword, "secret12"),
@@ -136,7 +152,8 @@ func TestHandleOpen_MissingFields(t *testing.T) {
 	handler, _ := testSetup(t)
 
 	// Missing password and currency
-	req := buildRequest(protocol.ServiceOpenAccount, 2, []marshal.TLVField{
+	req := buildRequest(2, []marshal.TLVField{
+		marshal.TLVUint8(marshal.FieldService, protocol.ServiceOpenAccount),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Bob"),
 		marshal.TLVFloat64(marshal.FieldMonetaryValue, 100.0),
 	})
@@ -158,7 +175,8 @@ func TestHandleClose_Success(t *testing.T) {
 	pw := marshal.PasswordStringToFixed("close_me")
 	accNo := svc.OpenAccount("Dave", pw, models.USD, 0.0)
 
-	req := buildRequest(protocol.ServiceCloseAccount, 10, []marshal.TLVField{
+	req := buildRequest(10, []marshal.TLVField{
+		marshal.TLVUint8(marshal.FieldService, protocol.ServiceCloseAccount),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Dave"),
 		marshal.TLVUint32(marshal.FieldAccountNumber, accNo),
 		marshal.TLVString(marshal.FieldAccountPassword, "close_me"),
@@ -182,7 +200,8 @@ func TestHandleClose_WrongPassword(t *testing.T) {
 	pw := marshal.PasswordStringToFixed("rightpwd")
 	accNo := svc.OpenAccount("Eve", pw, models.SGD, 100.0)
 
-	req := buildRequest(protocol.ServiceCloseAccount, 11, []marshal.TLVField{
+	req := buildRequest(11, []marshal.TLVField{
+		marshal.TLVUint8(marshal.FieldService, protocol.ServiceCloseAccount),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Eve"),
 		marshal.TLVUint32(marshal.FieldAccountNumber, accNo),
 		marshal.TLVString(marshal.FieldAccountPassword, "wrongpwd"),
@@ -204,7 +223,8 @@ func TestHandleDeposit_Success(t *testing.T) {
 	pw := marshal.PasswordStringToFixed("deposit1")
 	accNo := svc.OpenAccount("Frank", pw, models.SGD, 100.0)
 
-	req := buildRequest(protocol.ServiceDeposit, 20, []marshal.TLVField{
+	req := buildRequest(20, []marshal.TLVField{
+		marshal.TLVUint8(marshal.FieldService, protocol.ServiceDeposit),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Frank"),
 		marshal.TLVUint32(marshal.FieldAccountNumber, accNo),
 		marshal.TLVString(marshal.FieldAccountPassword, "deposit1"),
@@ -239,7 +259,8 @@ func TestHandleDeposit_CurrencyMismatch(t *testing.T) {
 	accNo := svc.OpenAccount("Grace", pw, models.SGD, 100.0)
 
 	// Try to deposit USD into an SGD account
-	req := buildRequest(protocol.ServiceDeposit, 21, []marshal.TLVField{
+	req := buildRequest(21, []marshal.TLVField{
+		marshal.TLVUint8(marshal.FieldService, protocol.ServiceDeposit),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Grace"),
 		marshal.TLVUint32(marshal.FieldAccountNumber, accNo),
 		marshal.TLVString(marshal.FieldAccountPassword, "currmis1"),
@@ -264,7 +285,8 @@ func TestHandleWithdraw_Success(t *testing.T) {
 	pw := marshal.PasswordStringToFixed("withdraw")
 	accNo := svc.OpenAccount("Hank", pw, models.EUR, 1000.0)
 
-	req := buildRequest(protocol.ServiceWithdraw, 30, []marshal.TLVField{
+	req := buildRequest(30, []marshal.TLVField{
+		marshal.TLVUint8(marshal.FieldService, protocol.ServiceWithdraw),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Hank"),
 		marshal.TLVUint32(marshal.FieldAccountNumber, accNo),
 		marshal.TLVString(marshal.FieldAccountPassword, "withdraw"),
@@ -291,7 +313,8 @@ func TestHandleWithdraw_InsufficientFunds(t *testing.T) {
 	pw := marshal.PasswordStringToFixed("insuffi1")
 	accNo := svc.OpenAccount("Ivy", pw, models.SGD, 50.0)
 
-	req := buildRequest(protocol.ServiceWithdraw, 31, []marshal.TLVField{
+	req := buildRequest(31, []marshal.TLVField{
+		marshal.TLVUint8(marshal.FieldService, protocol.ServiceWithdraw),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Ivy"),
 		marshal.TLVUint32(marshal.FieldAccountNumber, accNo),
 		marshal.TLVString(marshal.FieldAccountPassword, "insuffi1"),
@@ -316,7 +339,8 @@ func TestHandleGetBalance_Success(t *testing.T) {
 	pw := marshal.PasswordStringToFixed("balance1")
 	accNo := svc.OpenAccount("Jack", pw, models.USD, 777.77)
 
-	req := buildRequest(protocol.ServiceGetBalance, 40, []marshal.TLVField{
+	req := buildRequest(40, []marshal.TLVField{
+		marshal.TLVUint8(marshal.FieldService, protocol.ServiceGetBalance),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Jack"),
 		marshal.TLVUint32(marshal.FieldAccountNumber, accNo),
 		marshal.TLVString(marshal.FieldAccountPassword, "balance1"),
@@ -346,7 +370,8 @@ func TestHandleTransfer_Success(t *testing.T) {
 	dstPw := marshal.PasswordStringToFixed("xfer_dst")
 	dstAccNo := svc.OpenAccount("Leo", dstPw, models.SGD, 500.0)
 
-	req := buildRequest(protocol.ServiceTransferFunds, 50, []marshal.TLVField{
+	req := buildRequest(50, []marshal.TLVField{
+		marshal.TLVUint8(marshal.FieldService, protocol.ServiceTransferFunds),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Kate"),
 		marshal.TLVUint32(marshal.FieldAccountNumber, srcAccNo),
 		marshal.TLVString(marshal.FieldAccountPassword, "xfer_src"),
@@ -374,7 +399,8 @@ func TestHandleTransfer_SameAccount(t *testing.T) {
 	pw := marshal.PasswordStringToFixed("self_xfr")
 	accNo := svc.OpenAccount("Mike", pw, models.SGD, 500.0)
 
-	req := buildRequest(protocol.ServiceTransferFunds, 51, []marshal.TLVField{
+	req := buildRequest(51, []marshal.TLVField{
+		marshal.TLVUint8(marshal.FieldService, protocol.ServiceTransferFunds),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Mike"),
 		marshal.TLVUint32(marshal.FieldAccountNumber, accNo),
 		marshal.TLVString(marshal.FieldAccountPassword, "self_xfr"),
@@ -396,7 +422,7 @@ func TestHandleTransfer_SameAccount(t *testing.T) {
 func TestHandleMonitor_Success(t *testing.T) {
 	handler, _ := testSetup(t)
 
-	req := buildRequest(protocol.ServiceMonitor, 60, []marshal.TLVField{
+	req := buildRequest(60, []marshal.TLVField{
 		marshal.TLVUint8(marshal.FieldService, protocol.ServiceMonitor),
 		marshal.TLVUint32(marshal.FieldMonitorTimeoutSeconds, 30),
 	})
@@ -417,7 +443,7 @@ func TestHandleMonitor_MissingTimeout(t *testing.T) {
 	handler, _ := testSetup(t)
 
 	// No MonitorTimeoutSeconds field — should fail
-	req := buildRequest(protocol.ServiceMonitor, 61, []marshal.TLVField{
+	req := buildRequest(61, []marshal.TLVField{
 		marshal.TLVUint8(marshal.FieldService, protocol.ServiceMonitor),
 	})
 
@@ -431,14 +457,14 @@ func TestHandleMonitor_MissingTimeout(t *testing.T) {
 
 // --- Reply format sanity checks ---
 
-func TestReplyFormat_AlwaysHas17ByteHeader(t *testing.T) {
+func TestReplyFormat_AlwaysHas18ByteHeader(t *testing.T) {
 	handler, _ := testSetup(t)
 
 	// Even a bad request should produce a well-formed reply
-	req := buildRequest(255, 99, nil) // unknown service ID
+	req := buildRequest(99, nil) // unknown service ID
 
 	reply := handler(req, clientAddr())
-	if len(reply) < marshal.ReplyHeaderSize {
+	if len(reply) < semantics.HeaderSize {
 		t.Fatalf("reply too short: %d bytes", len(reply))
 	}
 
@@ -455,7 +481,8 @@ func TestReplyFormat_RequestIDEchoed(t *testing.T) {
 	handler, _ := testSetup(t)
 
 	// Use a distinctive request ID and make sure it comes back
-	req := buildRequest(protocol.ServiceOpenAccount, 0xCAFEBABE, []marshal.TLVField{
+	req := buildRequest(0xCAFEBABE, []marshal.TLVField{
+		marshal.TLVUint8(marshal.FieldService, protocol.ServiceOpenAccount),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Test"),
 		marshal.TLVString(marshal.FieldAccountPassword, "testtest"),
 		marshal.TLVUint8(marshal.FieldCurrency, uint8(models.SGD)),
