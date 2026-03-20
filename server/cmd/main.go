@@ -2,198 +2,163 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net"
+	"os"
+	"strconv"
+	"time"
+
+	"bank-server/internal/banking"
+	"bank-server/internal/handler"
+	marshal "bank-server/internal/marshalling"
+	"bank-server/internal/monitor"
+	"bank-server/internal/semantics"
+	"bank-server/internal/store"
+)
+
+// ─────────────────────────────────────────────────────────────────────
+// Distributed Banking Server
+//
+// Usage:
+//   ./server <at-least-once|at-most-once> [loss-rate]
+//
+// Examples:
+//   ./server at-most-once           # no simulated loss
+//   ./server at-least-once 0.3      # 30% reply loss
+//   ./server at-most-once 0.5       # 50% reply loss
+//
+// The loss rate is a float between 0.0 and 1.0 that controls how often
+// replies are silently dropped. This is how we provoke retransmissions
+// for the fault tolerance experiment.
+// ─────────────────────────────────────────────────────────────────────
+
+const (
+	defaultPort         = 2222
+	defaultSweepSeconds = 5
+	maxPacketSize       = 4096
+	lossSeed            = 42 // fixed seed so experiments are reproducible
 )
 
 func main() {
-	fmt.Println("Distributed Banking Server starting...")
+	// ──────────────────────────────────────────────────────
+	// 0. PARSE CLI ARGUMENTS
+	// ──────────────────────────────────────────────────────
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <at-least-once|at-most-once> [loss-rate]\n", os.Args[0])
+		os.Exit(1)
+	}
+
+	mode, err := semantics.ParseMode(os.Args[1])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	lossRate := parseLossRate(os.Args)
+
+	log.Printf("[Server] Invocation semantics: %s", mode)
+	log.Printf("[Server] Simulated reply loss rate: %.0f%%", lossRate*100)
 
 	// ──────────────────────────────────────────────────────
 	// 1. UDP SOCKET SETUP
 	// ──────────────────────────────────────────────────────
-	// addr := &net.UDPAddr{IP: net.IPv4zero, Port: 2222}
-	// conn, err := net.ListenUDP("udp", addr)
-	// if err != nil { log.Fatalf("Failed to bind: %v", err) }
-	// defer conn.Close()
+	addr := &net.UDPAddr{IP: net.IPv4zero, Port: defaultPort}
+	conn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		log.Fatalf("[Server] Failed to bind UDP on port %d: %v", defaultPort, err)
+	}
+	defer conn.Close()
+
+	log.Printf("[Server] Listening on %s", conn.LocalAddr())
 
 	// ──────────────────────────────────────────────────────
 	// 2. DEPENDENCY WIRING
 	// ──────────────────────────────────────────────────────
-	// memStore := store.NewMemoryStore()
-	// bankingSvc := banking.NewService(memStore)
+	memStore := store.NewMemoryStore()
+	bankingSvc := banking.NewService(memStore)
 
 	// ──────────────────────────────────────────────────────
-	// 3. CALLBACK MONITOR SETUP (zhixuan's integration point)
+	// 3. CALLBACK MONITOR SETUP
 	//
-	// The monitor.Manager needs:
-	//   - conn: the server's UDP socket (reused for sending callbacks)
-	//   - marshalCallbackUpdate: a function with signature:
-	//       func(models.AccountUpdate) ([]byte, error)
-	//     This must produce a callback packet using MsgTypeCallback (0x02).
-	//     See protocol.go for the message type constants.
-	//   - sweepInterval: how often to reap expired subscribers (e.g., 5s)
-	//
-	// NOTE FOR ZHIXUAN:
-	//   You need to implement marshalCallbackUpdate() using the Encoder.
-	//   The callback packet layout should be:
-	//     [1 byte ] MsgTypeCallback (0x02)
-	//     [1 byte ] ServiceID (which op triggered this: 1-4, 7)
-	//     [4 bytes] AccountNumber (big-endian uint32)
-	//     [4+N bytes] HolderName (length-prefixed string)
-	//     [1 byte ] CurrencyType (uint8)
-	//     [8 bytes] NewBalance (big-endian IEEE 754 float64)
-	//   Coordinate with the C++ client teammate — they need to deserialize
-	//   this exact layout in their monitor_server_updates() loop.
+	// The monitor manager reuses the server's UDP socket to push
+	// callback packets to subscribed clients. MarshalCallbackUpdate
+	// is injected so the monitor layer stays decoupled from wire format.
 	// ──────────────────────────────────────────────────────
-	// monitorMgr := monitor.NewManager(conn, marshalCallbackUpdate, 5*time.Second)
-	// defer monitorMgr.Stop()
-
-	// ══════════════════════════════════════════════════════
-	// ██  CRITICAL CONTRACT: REQUEST/REPLY WIRE FORMAT    ██
-	// ══════════════════════════════════════════════════════
-	//
-	// The invocation semantics layer (internal/semantics/) reads bytes 0–4
-	// of EVERY incoming request to extract the ServiceID and RequestID.
-	// If the client doesn't put these in the right place, duplicate
-	// filtering breaks silently and at-most-once won't work.
-	//
-	// ┌─────────────────────────────────────────────────────┐
-	// │                  REQUEST PACKET                     │
-	// ├──────────┬──────────────┬───────────────────────────┤
-	// │ Byte 0   │ Bytes 1–4   │ Bytes 5+                  │
-	// │ ServiceID│ RequestID   │ Payload (varies by service)│
-	// │ (uint8)  │ (uint32 BE) │ (zhixuan owns this)       │
-	// └──────────┴──────────────┴───────────────────────────┘
-	//
-	// ZHIXUAN — YOUR HANDLER RECEIVES THE FULL PACKET (bytes 0 through N).
-	// The dispatcher does NOT strip the header before calling you. So when
-	// you unmarshal inside the handler, skip the first 5 bytes to get to
-	// your service-specific payload. Example:
-	//
-	//   func handleRequest(data []byte, addr *net.UDPAddr) []byte {
-	//       serviceID := data[0]
-	//       // requestID := binary.BigEndian.Uint32(data[1:5]) // if you need it
-	//       payload := data[semantics.HeaderSize:]  // your fields start here
-	//       ...
-	//   }
-	//
-	// REQUEST ID RULES (these matter for at-most-once to work):
-	//   - The C++ client must set a unique, monotonically increasing
-	//     RequestID (uint32, big-endian) in bytes 1–4 of every request.
-	//   - Retransmissions of the same request MUST reuse the same RequestID.
-	//   - A new logical request MUST use a new RequestID.
-	//   - If the client gets this wrong, duplicates won't be detected.
-	//
-	// ┌─────────────────────────────────────────────────────┐
-	// │                   REPLY PACKET                      │
-	// ├──────────┬──────────────┬──────────┬────────────────┤
-	// │ Byte 0   │ Bytes 1–4   │ Byte 5   │ Bytes 6+       │
-	// │ MsgType  │ RequestID   │ Status   │ Response body   │
-	// │ (0x01)   │ (uint32 BE) │ (uint8)  │ (varies)       │
-	// └──────────┴──────────────┴──────────┴────────────────┘
-	//
-	// ZHIXUAN — YOUR HANDLER MUST RETURN THE COMPLETE REPLY (bytes 0+).
-	// The dispatcher caches whatever []byte you return, verbatim. It does
-	// NOT prepend any header for you. So your handler is responsible for
-	// building the full reply including MsgType, RequestID, and StatusCode.
-	//
-	// WHY THE REQUESTID MUST BE IN THE REPLY:
-	//   The C++ client needs to match replies to outstanding requests.
-	//   Without it, a cached reply from a retransmission looks identical
-	//   to a reply for a completely different request. Echo it back.
-	//
-	// HANDLER FUNCTION SIGNATURE (defined in internal/semantics/dispatcher.go):
-	//
-	//   type RequestHandler func(data []byte, addr *net.UDPAddr) []byte
-	//
-	// Your handler must ALWAYS return a non-nil []byte. Even for errors,
-	// return a reply with the appropriate StatusCode (see protocol.go).
-	// If you return nil, the dispatcher will send nothing and the client
-	// will time out and retransmit forever.
-	//
-	// ══════════════════════════════════════════════════════
+	sweepInterval := defaultSweepSeconds * time.Second
+	monitorMgr := monitor.NewManager(conn, marshal.MarshalCallbackUpdate, sweepInterval)
+	defer monitorMgr.Stop()
 
 	// ──────────────────────────────────────────────────────
 	// 4. HANDLER + INVOCATION SEMANTICS
-	//
-	// NOTE FOR ZHIXUAN:
-	//   When building the handler, the request dispatcher needs to call
-	//   monitorMgr.NotifyAll(update) after every SUCCESSFUL mutation
-	//   (Open, Close, Deposit, Withdraw, Transfer).
-	//
-	//   Do NOT notify on:
-	//     - Failed operations (wrong password, insufficient funds, etc.)
-	//     - Read-only operations (GetBalance)
-	//     - Monitor registration itself
-	//
-	//   The AccountUpdate struct lives in pkg/models/update.go.
-	//   Example after a successful deposit:
-	//
-	//     monitorMgr.NotifyAll(models.AccountUpdate{
-	//         ServiceID:     protocol.ServiceDeposit,
-	//         AccountNumber: accNo,
-	//         HolderName:    name,
-	//         CurrencyType:  currency,
-	//         NewBalance:    newBalance,
-	//     })
-	//
-	//   For Transfer, consider notifying twice (once per affected account)
-	//   so monitoring clients see both sides of the transfer.
 	// ──────────────────────────────────────────────────────
-	// mode, _ := semantics.ParseMode(os.Args[1])     // "at-least-once" or "at-most-once"
-	// lossRate := parseLossRate(os.Args)               // e.g., 0.3 for 30% simulated loss
-	// handler := buildYourHandler(bankingSvc, monitorMgr) // zhixuan's code
-	// dispatcher := semantics.NewDispatcher(mode, handler)
-	// replyLoss := semantics.NewLossSimulator(lossRate, 42)
+	requestHandler := handler.BuildHandler(bankingSvc, monitorMgr)
+	dispatcher := semantics.NewDispatcher(mode, requestHandler)
+	replyLoss := semantics.NewLossSimulator(lossRate, lossSeed)
 
 	// ──────────────────────────────────────────────────────
 	// 5. MAIN REQUEST LOOP
 	//
-	// NOTE FOR ZHIXUAN:
-	//   Monitor registration (ServiceID=5) needs special handling:
-	//     1. Unmarshal the interval (uint32 seconds) from the request
-	//     2. Call monitorMgr.Register(clientAddr, interval)
-	//     3. Send back an ack reply so the C++ client enters its
-	//        blocking recvfrom loop
-	//
-	//   The client's addr comes from ReadFromUDP — we don't need
-	//   the client to tell us their IP/port in the payload.
-	//
-	//   Callback packets bypass the normal reply path entirely.
-	//   They're sent directly by monitorMgr.NotifyAll() through
-	//   the shared conn, so the main loop doesn't touch them.
-	//
-	// NOTE ON LOSS SIMULATION:
-	//   We simulate loss at two points:
-	//     - requestLoss.ShouldDrop() BEFORE dispatching = request never processed
-	//     - replyLoss.ShouldDrop() AFTER dispatching = reply never sent
-	//   For the experiment, you probably only need reply loss to demonstrate
-	//   the retransmission scenario. But having both gives flexibility.
-	//   The seed is fixed (42) so experiments are reproducible across runs.
+	// Reads datagrams, runs them through the dispatcher (which
+	// handles duplicate filtering in at-most-once mode), then
+	// sends the reply — unless the loss simulator says to drop it.
 	// ──────────────────────────────────────────────────────
-	// buf := make([]byte, 4096)
-	// for {
-	// 		n, clientAddr, err := conn.ReadFromUDP(buf)
-	//		if err != nil {
-	//			log.Printf("[Server] ReadFromUDP error: %v", err)
-	//			continue
-	//		}
-	//		log.Printf("[Server] Received %d bytes from %s", n, clientAddr)
-	//
-	// 		reply, err := dispatcher.Dispatch(buf[:n], clientAddr)
-	//		if err != nil {
-	//			log.Printf("[Server] Dispatch error: %v", err)
-	//			continue
-	//		}
-	//
-	// 		if replyLoss.ShouldDrop() {
-	//			log.Printf("[Server] Simulated reply loss for request from %s", clientAddr)
-	//			continue
-	//		}
-	//
-	//		if _, err := conn.WriteToUDP(reply, clientAddr); err != nil {
-	//			log.Printf("[Server] WriteToUDP error: %v", err)
-	//		}
-	// }
+	log.Println("[Server] Ready to accept requests")
 
-	fmt.Println("Server shut down.")
+	buf := make([]byte, maxPacketSize)
+	for {
+		n, clientAddr, err := conn.ReadFromUDP(buf)
+		if err != nil {
+			log.Printf("[Server] ReadFromUDP error: %v", err)
+			continue
+		}
+		log.Printf("[Server] Received %d bytes from %s", n, clientAddr)
+
+		reply, err := dispatcher.Dispatch(buf[:n], clientAddr)
+		if err != nil {
+			log.Printf("[Server] Dispatch error: %v", err)
+			continue
+		}
+
+		// Simulate reply loss for fault tolerance experiments.
+		// When the reply is dropped, the client times out and retransmits.
+		// Under at-most-once, the dispatcher returns the cached reply.
+		// Under at-least-once, the handler re-executes (which is the bug
+		// we want to demonstrate for non-idempotent ops).
+		if replyLoss.ShouldDrop() {
+			log.Printf("[Server] Simulated reply loss for request from %s", clientAddr)
+			continue
+		}
+
+		if _, err := conn.WriteToUDP(reply, clientAddr); err != nil {
+			log.Printf("[Server] WriteToUDP error: %v", err)
+		} else {
+			log.Printf("[Server] Sent %d byte reply to %s", len(reply), clientAddr)
+		}
+	}
+}
+
+// parseLossRate extracts the optional loss rate from CLI args.
+// Returns 0.0 if not provided or invalid.
+func parseLossRate(args []string) float64 {
+	if len(args) < 3 {
+		return 0.0
+	}
+
+	rate, err := strconv.ParseFloat(args[2], 64)
+	if err != nil {
+		log.Printf("[Server] Warning: invalid loss rate %q, defaulting to 0.0", args[2])
+		return 0.0
+	}
+
+	if rate < 0.0 || rate > 1.0 {
+		log.Printf("[Server] Warning: loss rate %.2f out of range [0.0, 1.0], clamping", rate)
+		if rate < 0.0 {
+			rate = 0.0
+		}
+		if rate > 1.0 {
+			rate = 1.0
+		}
+	}
+
+	return rate
 }
