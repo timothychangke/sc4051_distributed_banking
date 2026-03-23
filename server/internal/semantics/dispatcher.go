@@ -8,10 +8,11 @@ import (
 
 // Mode represents which invocation semantic the server is running under
 // This gets set once at startup from a CLI flag and never changes
-type Mode int
+type Mode uint8
 
 const (
-	AtLeastOnce Mode = iota
+	None Mode = iota // Matches client default of 0
+	AtLeastOnce
 	AtMostOnce
 )
 
@@ -23,12 +24,12 @@ func (m Mode) String() string {
 	case AtMostOnce:
 		return "at-most-once"
 	default:
-		return "unknown"
+		return "none"
 	}
 }
 
 // ParseMode converts a CLI string into a Mode value
-// Accepts "at-least-once" and "at-most-once:
+// Accepts "at-least-once" and "at-most-once":
 func ParseMode(s string) (Mode, error) {
 	switch s {
 	case "at-least-once":
@@ -36,7 +37,7 @@ func ParseMode(s string) (Mode, error) {
 	case "at-most-once":
 		return AtMostOnce, nil
 	default:
-		return 0, fmt.Errorf("unknown invocation semantics mode: %q (expected \"at-least-once\" or \"at-most-once\")", s)
+		return None, fmt.Errorf("unknown invocation semantics mode: %q (expected \"at-least-once\" or \"at-most-once\")", s)
 	}
 }
 
@@ -87,6 +88,10 @@ func (d *Dispatcher) Dispatch(data []byte, addr *net.UDPAddr) ([]byte, error) {
 	header, err := ParseHeader(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse request header: %w", err)
+	}
+
+	if Mode(header.Flag) != d.mode {
+		return nil, fmt.Errorf("request flag %d does not match dispatcher mode %d", header.Flag, d.mode)
 	}
 
 	clientKey := addr.String()
