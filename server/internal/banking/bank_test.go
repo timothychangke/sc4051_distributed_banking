@@ -47,7 +47,7 @@ func TestService_Withdraw(t *testing.T) {
 		expectBalance float64
 	}{
 		{"Valid Withdrawal", "Bob", accNo, pw, models.USD, 100.0, nil, 400.0},
-		{"Wrong Password", "Bob", accNo, [8]byte{'w','r','o','n','g'}, models.USD, 50.0, ErrInvalidCredentials, 400.0},
+		{"Wrong Password", "Bob", accNo, [8]byte{'w', 'r', 'o', 'n', 'g'}, models.USD, 50.0, ErrInvalidCredentials, 400.0},
 		{"Wrong Name", "Eve", accNo, pw, models.USD, 50.0, ErrAccountMismatch, 400.0},
 		{"Wrong Currency", "Bob", accNo, pw, models.SGD, 50.0, ErrCurrencyMismatch, 400.0},
 		{"Insufficient Funds", "Bob", accNo, pw, models.USD, 1000.0, ErrInsufficientFunds, 400.0},
@@ -76,13 +76,13 @@ func TestService_Deposit(t *testing.T) {
 	accNo := svc.OpenAccount("Charlie", pw, models.EUR, 100.0)
 
 	tests := []struct {
-		name          string
-		holderName    string
-		accNo         uint32
-		attemptPw     [8]byte
-		currency      models.Currency
-		amount        float64
-		expectedErr   error
+		name        string
+		holderName  string
+		accNo       uint32
+		attemptPw   [8]byte
+		currency    models.Currency
+		amount      float64
+		expectedErr error
 	}{
 		{"Valid Deposit", "Charlie", accNo, pw, models.EUR, 50.0, nil},
 		{"Wrong Password", "Charlie", accNo, [8]byte{'0'}, models.EUR, 50.0, ErrInvalidCredentials},
@@ -105,7 +105,7 @@ func TestService_CloseAccount(t *testing.T) {
 	accNo := svc.OpenAccount("Dave", pw, models.SGD, 0.0)
 
 	// Attempt invalid closes
-	if err := svc.CloseAccount("Dave", accNo, [8]byte{'b','a','d'}); err != ErrInvalidCredentials {
+	if err := svc.CloseAccount("Dave", accNo, [8]byte{'b', 'a', 'd'}); err != ErrInvalidCredentials {
 		t.Errorf("Expected ErrInvalidCredentials on bad password, got %v", err)
 	}
 
@@ -123,7 +123,7 @@ func TestService_CloseAccount(t *testing.T) {
 func TestService_ConcurrentWithdrawals(t *testing.T) {
 	_, svc := setupTestEnvironment()
 	pw := defaultPassword()
-	
+
 	// Create an account with exactly $50
 	accNo := svc.OpenAccount("Eve", pw, models.SGD, 50.0)
 
@@ -135,7 +135,7 @@ func TestService_ConcurrentWithdrawals(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			// We ignore the error here because we EXPECT 50 of them to fail 
+			// We ignore the error here because we EXPECT 50 of them to fail
 			// with ErrInsufficientFunds once the balance hits 0.
 			_, _ = svc.Withdraw("Eve", accNo, pw, models.SGD, 1.0)
 		}()
@@ -146,7 +146,7 @@ func TestService_ConcurrentWithdrawals(t *testing.T) {
 	// The balance should be exactly $0, not negative, and not > $0 (which would mean a lost update).
 	// We do a deposit of $0 just to safely read the final balance via the service layer.
 	finalBalance, _ := svc.Deposit("Eve", accNo, pw, models.SGD, 0.0)
-	
+
 	if finalBalance != 0.0 {
 		t.Errorf("Expected final balance to be strictly 0.0 after concurrent overdraft attempts, got %f", finalBalance)
 	}
@@ -167,7 +167,7 @@ func TestService_CheckBalance(t *testing.T) {
 		expectBalance float64
 	}{
 		{"Valid Check", "Frank", accNo, pw, nil, 250.75},
-		{"Wrong Password", "Frank", accNo, [8]byte{'w','r','o','n','g'}, ErrInvalidCredentials, 0},
+		{"Wrong Password", "Frank", accNo, [8]byte{'w', 'r', 'o', 'n', 'g'}, ErrInvalidCredentials, 0},
 		{"Wrong Name", "NotFrank", accNo, pw, ErrAccountMismatch, 0},
 		{"Non-existent Account", "Frank", 99999, pw, ErrInvalidCredentials, 0},
 	}
@@ -189,9 +189,10 @@ func TestService_CheckBalance(t *testing.T) {
 func TestService_Transfer(t *testing.T) {
 	_, svc := setupTestEnvironment()
 	pw := defaultPassword()
-	
+
 	aliceAcc := svc.OpenAccount("Alice", pw, models.SGD, 500.0)
 	bobAcc := svc.OpenAccount("Bob", pw, models.SGD, 100.0)
+	charlieAcc := svc.OpenAccount("Charlie", pw, models.USD, 100.0)
 
 	tests := []struct {
 		name        string
@@ -205,9 +206,10 @@ func TestService_Transfer(t *testing.T) {
 		{"Valid Transfer", "Alice", aliceAcc, pw, bobAcc, 200.0, nil},
 		{"Insufficient Funds", "Alice", aliceAcc, pw, bobAcc, 1000.0, ErrInsufficientFunds},
 		{"Same Account Transfer", "Alice", aliceAcc, pw, aliceAcc, 50.0, ErrTransferSameAccount},
-		{"Wrong Password", "Alice", aliceAcc, [8]byte{'b','a','d'}, bobAcc, 50.0, ErrInvalidCredentials},
+		{"Wrong Password", "Alice", aliceAcc, [8]byte{'b', 'a', 'd'}, bobAcc, 50.0, ErrInvalidCredentials},
 		{"Wrong Sender Name", "NotAlice", aliceAcc, pw, bobAcc, 50.0, ErrAccountMismatch},
 		{"Invalid Receiver", "Alice", aliceAcc, pw, 99999, 50.0, ErrAccountNotFound},
+		{"Currency Mismatch", "Alice", aliceAcc, pw, charlieAcc, 50.0, ErrCurrencyMismatch},
 	}
 
 	for _, tt := range tests {
@@ -310,7 +312,7 @@ func TestService_ConcurrentCheckBalanceAndWithdraw(t *testing.T) {
 		t.Fatalf("Unexpected error checking final balance: %v", err)
 	}
 
-	// We started with 1000, withdrew 5 exactly 100 times. 
+	// We started with 1000, withdrew 5 exactly 100 times.
 	// 1000 - (100 * 5) = 500
 	expectedBal := 500.0
 	if finalBal != expectedBal {

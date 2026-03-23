@@ -6,6 +6,7 @@ import (
 	"bank-server/internal/store"
 	"bank-server/pkg/models"
 )
+
 // Sentinel Errors to reuse throughout the logic
 var (
 	ErrInvalidCredentials  = errors.New("invalid account number or password provided")
@@ -16,7 +17,7 @@ var (
 	ErrAccountNotFound     = errors.New("requested account record could not be found")
 )
 
-// Service defines the core banking operations 
+// Service defines the core banking operations
 type Service interface {
 	OpenAccount(name string, pw [8]byte, curr models.Currency, balance float64) uint32
 	CloseAccount(name string, accNo uint32, pw [8]byte) error
@@ -97,7 +98,7 @@ func (s *service) Deposit(name string, accNo uint32, pw [8]byte, curr models.Cur
 	}
 
 	acc.Balance += amount
-	
+
 	if err := s.store.UpdateAccount(acc); err != nil {
 		return 0, err
 	}
@@ -124,13 +125,13 @@ func (s *service) Withdraw(name string, accNo uint32, pw [8]byte, curr models.Cu
 		return 0, ErrCurrencyMismatch
 	}
 
-	// This prevents account balance from going negative 
+	// This prevents account balance from going negative
 	if acc.Balance < amount {
 		return 0, ErrInsufficientFunds
 	}
 
 	acc.Balance -= amount
-	
+
 	if err := s.store.UpdateAccount(acc); err != nil {
 		return 0, err
 	}
@@ -148,9 +149,9 @@ func (s *service) CheckBalance(name string, accNo uint32, pw [8]byte) (float64, 
 	if err := checkAuth(acc, name, pw); err != nil {
 		return 0, err
 	}
-	
+
 	// There must be a lock to the account to read balance, which is a mutable states.
-	acc.Mu.Lock() 
+	acc.Mu.Lock()
 	defer acc.Mu.Unlock()
 
 	// No locks needed here as we are only reading
@@ -175,6 +176,10 @@ func (s *service) Transfer(fromName string, fromAccNo uint32, pw [8]byte, toAccN
 
 	if err := checkAuth(fromAcc, fromName, pw); err != nil {
 		return 0, err
+	}
+
+	if fromAcc.CurrencyType != toAcc.CurrencyType {
+		return 0, ErrCurrencyMismatch
 	}
 
 	// Lock both accounts in order
