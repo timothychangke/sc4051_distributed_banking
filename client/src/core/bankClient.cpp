@@ -18,7 +18,7 @@ BankClient::BankClient(
         SetConsoleCP(CP_UTF8);
         SetConsoleOutputCP(CP_UTF8);
     #endif
-}; 
+};
 
 BankClient::~BankClient(){};
 
@@ -47,7 +47,7 @@ void BankClient::run() {
                 continue;
             }
         }
-        bankIO->print("[ SENDING REQUEST TO SERVER ]");
+        bankIO->print("[ SENDING REQUEST TO SERVER ]\n");
         send_to_server(req.value());
         bankIO->wait_for_enter();
 
@@ -303,7 +303,7 @@ void BankClient::send_to_server(const Protocol::Command& req_com) {
     msg.type = Protocol::MessageType::Request;
     msg.flag = flag;
     
-    if (BankClient::flag == Semantics::InvocationFlag::AT_MOST_ONCE){
+    if (flag == Semantics::InvocationFlag::AT_MOST_ONCE){
         msg.id.request_id = ++current_request_id; // can use Semantics::generateRandomUint32() for actual prod 
     } else{
         msg.id.request_id = 0; 
@@ -324,42 +324,44 @@ void BankClient::send_to_server(const Protocol::Command& req_com) {
 
     // 4. send via socket with exponential backoff 
     int cur_backoff = BACKOFF;
-    bool sent_success = false;
-    for (int i=0; i<MAX_TRIES; i++){
-        auto res_send = socket->send_message(request.value()); 
-        if (!res_send) {
-            bankIO->print_error("[Client] Network error: " + Error::to_string(res_send.error())); 
-            if (i < MAX_TRIES - 1) { // Don't sleep after the last attempt
-                std::this_thread::sleep_for(std::chrono::seconds(cur_backoff));
-                cur_backoff = std::pow(cur_backoff, 2);
-            }
-        } else{
-            bankIO->print("[SUCCESS: Message sent to server]", Colour::CYAN);
-            sent_success = true;
-            break; 
+    bool success = false;
+
+    Result<std::monostate, Error::InternalError> res_send;
+    Result<std::vector<uint8_t>, Error::InternalError> res_recv;
+
+    for (int i = 1; i <= MAX_TRIES; i++) {
+        res_send = socket->send_message(request.value());
+        if (res_send) {
+            res_recv = socket->receive_message();
+        }
+
+        if (res_send && res_recv) {
+            bankIO->print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN);
+            success = true;
+            break;
+        }
+
+        if (i < MAX_TRIES) {
+            bankIO->print("[!] Attempt " + std::to_string(i) + " failed. Retrying in " + std::to_string(cur_backoff) + "s...\n", Colour::YELLOW);
+            std::this_thread::sleep_for(std::chrono::seconds(cur_backoff));
+            cur_backoff *= 2;
+        } else {
+             if (!res_send) bankIO->print_error("Final send failure after " + std::to_string(MAX_TRIES) + " attempts: " + Error::to_string(res_send.error()));
+             else bankIO->print_error("Final receive failure after " + std::to_string(MAX_TRIES) + " attempts: " + Error::to_string(res_recv.error()));
         }
     }
 
-    if (!sent_success) return;
-
-    // TODO : need to apply retry logic to the receive message  
-
-    // 5. receive response via socket
-    auto response = socket->receive_message(); 
-    if (!response) {
-        bankIO->print_error("[Client] Network error: " + Error::to_string(response.error())); 
-        return;
-    }
-
-    // 6. deserialize the response Message
-    auto res_msg_res = msgSerializer->deserialize(response.value());
+    if (!success) return;
+    
+    // 5. deserialize the response Message
+    auto res_msg_res = msgSerializer->deserialize(res_recv.value());
     if (!res_msg_res) {
         bankIO->print_error("[Client] Failed to deserialize response: " + Error::to_string(res_msg_res.error()));
         return;
     }
     const auto& res_msg = res_msg_res.value();
 
-    // 7. handle status code and display result
+    // 6. handle status code and display result
     Protocol::ProtocolStatus status = static_cast<Protocol::ProtocolStatus>(res_msg.payload.status_code);
     bankIO->print("[ SERVER RESPONSE STATUS : " + Protocol::to_string(status) + " ]", 
                   status == Protocol::ProtocolStatus::SUCCESS ? Colour::GREEN : Colour::RED);
@@ -368,7 +370,7 @@ void BankClient::send_to_server(const Protocol::Command& req_com) {
         return;
     }
 
-    // 8. if success, decode the command content to show results (e.g. balance, account no)
+    // 7. if success, decode the command content to show results (e.g. balance, account no)
     if (!res_msg.payload.content.empty()) {
         auto res_cmd_res = cmdEncoder->decode_message(res_msg.payload.content);
         if (!res_cmd_res) {

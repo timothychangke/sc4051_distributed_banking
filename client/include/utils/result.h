@@ -18,9 +18,9 @@
 template <typename T, typename E>
 class Result {
     std::variant<T, E> _data;
+public:
     Result() = default;
 
-public:
     // Construct a success result (implicit, allows: return myValue;)
     Result(T val) : _data(std::move(val)) {}
 
