@@ -47,7 +47,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y build-essential cmake
  
       - name: Build Go server
-        working-directory: ./Server
+        working-directory: ./server
         run: |
           mkdir -p bin
           go build -o ./bin/server ./cmd/main.go
@@ -63,7 +63,7 @@ jobs:
       - name: Run integration tests
         working-directory: ./integration_test
         env:
-          SERVER_BIN: ../Server/bin/server
+          SERVER_BIN: ../server/bin/server
           CLIENT_BIN: ../Client/build/client
         run: go test -v -timeout 600s -count=1 . 2>&1 | tee integration-results.txt
  
