@@ -53,7 +53,7 @@ jobs:
           go build -o ./bin/server ./cmd/main.go
  
       - name: Build C++ client
-        working-directory: ./Client
+        working-directory: ./client
         run: |
           mkdir -p build
           cd build
@@ -64,7 +64,7 @@ jobs:
         working-directory: ./integration_test
         env:
           SERVER_BIN: ../server/bin/server
-          CLIENT_BIN: ../Client/build/client
+          CLIENT_BIN: ../client/build/client
         run: go test -v -timeout 600s -count=1 . 2>&1 | tee integration-results.txt
  
       - name: Upload test results
