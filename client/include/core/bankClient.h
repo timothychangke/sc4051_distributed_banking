@@ -20,6 +20,7 @@
 #include <cmath>
 #include <algorithm>
 #include <cctype> 
+#include <limits>
 
 #include "protocol.h"
 #include "message.h"

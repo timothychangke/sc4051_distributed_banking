@@ -420,7 +420,7 @@ TEST_F(BankClientTest, SendToServer_Success) {
         .WillOnce(testing::Return(res_cmd));
 
     // Expectations for IO
-    EXPECT_CALL(*mockIO, print("[SUCCESS: Message sent to server]", Colour::CYAN)).Times(1);
+    EXPECT_CALL(*mockIO, print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN)).Times(1);
     EXPECT_CALL(*mockIO, print("[ SERVER RESPONSE STATUS : SUCCESS ]", Colour::GREEN)).Times(1);
     EXPECT_CALL(*mockIO, print_box_top()).Times(1);
     EXPECT_CALL(*mockIO, print(testing::HasSubstr("Account Number : 12345"), testing::_)).Times(1);
@@ -451,7 +451,7 @@ TEST_F(BankClientTest, SendToServer_ServerError) {
     reply_msg.payload.status_code = static_cast<uint16_t>(Protocol::ProtocolStatus::INSUFFICIENT_FUNDS);
     EXPECT_CALL(*mockSerializer, deserialize(serialized_reply)).WillOnce(testing::Return(reply_msg));
 
-    EXPECT_CALL(*mockIO, print("[SUCCESS: Message sent to server]", Colour::CYAN)).Times(1);
+    EXPECT_CALL(*mockIO, print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN)).Times(1);
     EXPECT_CALL(*mockIO, print("[ SERVER RESPONSE STATUS : INSUFFICIENT_FUNDS ]", Colour::RED)).Times(1);
 
     client->send_to_server(req);
@@ -472,7 +472,8 @@ TEST_F(BankClientTest, SendToServer_NetworkFailure) {
         .Times(3)
         .WillRepeatedly(testing::Return(Result<std::monostate, Error::InternalError>::fail(Error::InternalError::SEND_FAILED)));
 
-    EXPECT_CALL(*mockIO, print_error(testing::HasSubstr("Network error"))).Times(3);
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("[!] Attempt"), Colour::YELLOW)).Times(2);
+    EXPECT_CALL(*mockIO, print_error(testing::HasSubstr("Final send failure after 3 attempts: SEND_FAILED"))).Times(1);
 
     client->send_to_server(req);
 }
