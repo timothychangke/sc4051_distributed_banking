@@ -18,9 +18,8 @@ std::string Error::to_string(Error::InternalError err) {
         case Error::InternalError::RECEIVE_FAILED:                     return "RECEIVE_FAILED";
         case Error::InternalError::BIND_FAILED:                        return "BIND_FAILED";
         case Error::InternalError::CONNECT_FAILED:                     return "CONNECT_FAILED";
-
-        // Request / Response
-        case Error::InternalError::REQUEST_TIMEOUT:                    return "REQUEST_TIMEOUT";
+        case Error::InternalError::SEND_TIMEOUT:                       return "SEND_TIMEOUT";
+        case Error::InternalError::RECEIVE_TIMEOUT:                    return "RECEIVE_TIMEOUT";
 
         // Protocol Encoding
         case Error::InternalError::ENCODE_UNKNOWN_FIELD:               return "ENCODE_UNKNOWN_FIELD";

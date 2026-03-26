@@ -34,7 +34,7 @@
 #include "semantics.h"
 #include "protocolStatus.h"
 
-#define MAX_TRIES 3
+#define MAX_TRIES 5
 #define MAX_PW_LEN 8
 #define BACKOFF 2
 

@@ -7,7 +7,7 @@
 #include "baseSocket.h"
 
 #define MAX_DATAGRAM_SIZE 65535
-#define TIMEOUT 3
+#define TIMEOUT 5 // IN SECONDS 
 
 namespace NetworkUtils{
 class UDPSocket : public BaseSocket {

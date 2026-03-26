@@ -20,10 +20,9 @@ enum class InternalError {
     RECEIVE_FAILED,                     // recvfrom() returned a negative value
     BIND_FAILED,                        // bind() syscall returned -1 (failed to bind to specifiec address) 
     CONNECT_FAILED,                     // connect() syscall returned -1 (failed to connect)
-
-    // Request / Response
-    REQUEST_TIMEOUT,                    // No response received within the retry window
-
+    SEND_TIMEOUT,                       // sendto() timeout within TIMEOUT window
+    RECEIVE_TIMEOUT,                    // recvfrom() timeout within TIMEOUT window
+    
     // Protocol Encoding Layer  
     ENCODING_ERROR,                     // General failure while encoding a Command to bytes
     DECODING_ERROR,                     // General failure while decoding bytes to a Command

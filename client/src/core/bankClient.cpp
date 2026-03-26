@@ -395,6 +395,9 @@ void BankClient::monitor_server_updates(){
         send to server 
         blocking receive .... until timeout specified by user (or default to one)
         print out the messages until timeoout completed. 
+
+
+        
     
     */
 }

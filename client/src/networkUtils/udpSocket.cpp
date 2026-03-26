@@ -57,6 +57,11 @@ NetworkUtils::UDPSocket::send_message(const std::vector<uint8_t>& data) {
         0,                                           // flags
         (struct sockaddr*)&address,                  // dest_addr
         sizeof(address)) < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                return Result<std::monostate, Error::InternalError>::fail(
+                Error::InternalError::SEND_TIMEOUT);
+            } 
+
             return Result<std::monostate, Error::InternalError>::fail(
                 Error::InternalError::SEND_FAILED);
         }
@@ -76,6 +81,10 @@ NetworkUtils::UDPSocket::receive_message() {
         nullptr
     );
     if (bytes_received < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return Result<std::vector<uint8_t>, Error::InternalError>::fail(
+            Error::InternalError::RECEIVE_TIMEOUT);
+        }   
         return Result<std::vector<uint8_t>, Error::InternalError>::fail(
             Error::InternalError::RECEIVE_FAILED);
     }
