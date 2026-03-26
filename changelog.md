@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed and Improved
+2026-03-24 (Jing)
+
+- **Client Reliability & Bug Fixes (`client/src/core/bankClient.cpp`, `client/include/core/bankClient.h`, `client/include/utils/result.h`)**:
+  - **Result Pattern Refinement**: Resolved critical compilation failure caused by `Result<void>` usage. Refactored to `Result<std::monostate>` to comply with `std::variant` requirements.
+  - **Core Utility Fixes**: Made `Result` default constructor public to support declaration before assignment in iterative logic.
+  - **Member Access Alignment**: Fixed illegal static access to the instance member `BankClient::flag`.
+  - **Dependency Correction**: Added missing `<limits>` header in `bankClient.h` for `std::numeric_limits` support in template methods.
+  - **Atomic Retry Mechanism**: Refactored the network communication loop to treat the send-receive cycle as an atomic unit with integrated exponential backoff (up to 3 tries).
+  - **UI/UX Enhancement**: Improved CLI feedback during retries with clear attempt count and delay status, and standardized newline formatting for status messages.
+
+### Fixed and Improved
 2026-03-20 (Jing)
 
 - **Go Server Test Alignment (`server/internal/handler/handler_test.go`)**:

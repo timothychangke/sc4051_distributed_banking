@@ -1,0 +1,276 @@
+% =============================================================================
+%  SC4051 Distributed Systems — Lab Report
+%  Design and Implementation of a Distributed Banking System
+% =============================================================================
+\documentclass[9pt,a4paper]{article}
+
+% ── Page geometry ────────────────────────────────────────────────────────────
+\usepackage[
+  top=2.0cm, bottom=2.0cm, left=2.2cm, right=2.2cm
+]{geometry}
+
+% ── Core packages ────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+% Font packages removed (not available in this TeX distribution)
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[table]{xcolor}
+
+% ── Byte-level wire diagrams ────────────────────────────────────────────────
+\usepackage{bytefield}
+
+% ── TikZ for architecture diagrams ──────────────────────────────────────────
+\usepackage{tikz}
+\usetikzlibrary{
+  arrows.meta,
+  positioning,
+  shapes.geometric,
+  fit,
+  calc,
+  backgrounds,
+  decorations.pathreplacing
+}
+
+% ── Code listings ────────────────────────────────────────────────────────────
+\usepackage{listings}
+\definecolor{codebg}{HTML}{F5F5F5}
+\definecolor{codeframe}{HTML}{CCCCCC}
+\definecolor{codecomment}{HTML}{6A737D}
+\definecolor{codekeyword}{HTML}{D73A49}
+\definecolor{codestring}{HTML}{032F62}
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  commentstyle=\color{codecomment}\itshape,
+  keywordstyle=\color{codekeyword}\bfseries,
+  stringstyle=\color{codestring},
+  breaklines=true,
+  showstringspaces=false,
+  tabsize=4,
+  xleftmargin=1em,
+  framexleftmargin=0.5em,
+  aboveskip=0.8em,
+  belowskip=0.5em,
+}
+
+% ── Headers and page numbering ───────────────────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small SC4051 Distributed Systems}
+\fancyhead[R]{\small Lab Report}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── Hyperlinks (load last) ──────────────────────────────────────────────────
+\usepackage[
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black
+]{hyperref}
+
+% ── Custom colours for diagrams ──────────────────────────────────────────────
+\definecolor{headerblue}{HTML}{3B82F6}
+\definecolor{tlvgreen}{HTML}{10B981}
+\definecolor{replypurple}{HTML}{8B5CF6}
+\definecolor{callbackorange}{HTML}{F59E0B}
+\definecolor{lightbluebg}{HTML}{EFF6FF}
+\definecolor{lightgreenbg}{HTML}{ECFDF5}
+\definecolor{lightpurplebg}{HTML}{F5F3FF}
+\definecolor{lightorangebg}{HTML}{FFFBEB}
+\definecolor{serverblue}{HTML}{2563EB}
+\definecolor{clientred}{HTML}{DC2626}
+
+% ── Compact section spacing ──────────────────────────────────────────────────
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{1.2em}{0.6em}
+\titlespacing*{\subsection}{0pt}{0.9em}{0.4em}
+\titlespacing*{\subsubsection}{0pt}{0.7em}{0.3em}
+
+% ── Paragraph spacing ───────────────────────────────────────────────────────
+\setlength{\parskip}{0.4em}
+\setlength{\parindent}{0em}
+
+% =============================================================================
+\begin{document}
+
+% ─────────────────────────────────────────────────────────────────────────────
+%  COVER PAGE
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{titlepage}
+    \centering
+    
+    \includegraphics[width=0.6\textwidth]{NTU_Logo-scaled.png}  
+    
+    \vfill 
+    
+    \vspace{1.5cm}
+    {\Large \textbf{Assignment: Distributed Banking System}} \\
+    
+    % Commented out Project Code
+    % \vspace{0.5cm}
+    % CCDS26-\\
+    
+    \vspace{1cm}
+    
+    % Author Block
+    {\large by\\}
+    \vspace{0.5cm}
+    \begin{tabular}{l l l}
+      \toprule
+      \textbf{Name} & \textbf{Matric No.} & \textbf{Work \%} \\
+      \midrule
+      Timothy Chang  & \textit{U2220136J} & 33.33\% \\
+      O Jing         & \textit{UXXXXXXX} & 33.33\% \\
+      Neo Zhi Xuan   & \textit{UXXXXXXX} & 33.33\% \\
+      \bottomrule
+      \end{tabular}
+    
+    
+    % Push the University/Date block to the very bottom
+    \vfill 
+    {\huge \textbf{SC4051 Distributed Systems }}\\
+    \vfill
+    
+    % University Name (Standard size, bold - removed \Large)
+    {\large \textbf{NANYANG TECHNOLOGICAL UNIVERSITY}}\\
+    \vspace{0.5cm}
+    {\large April 2026}
+
+\end{titlepage}
+
+\pagenumbering{gobble}
+
+\onecolumn
+\tableofcontents
+\newpage
+
+% ---------------------------------------------------------
+\section{Introduction \& System Overview}
+% ~1 page
+% - Brief problem statement (distributed banking over UDP, no frameworks).
+% - High-level architecture diagram: C++ Client <-> UDP <-> Go Server.
+% - Emphasize the cross-language decision and why (confronting real-world data representation mismatches: endianness, string encoding, float IEEE 754 agreement). 
+% - Technology choices: Go for server (goroutine-friendly, strong net package), C++ for client (low-level byte control, Winsock/POSIX portability).
+
+
+% ---------------------------------------------------------
+\section{Message Design \& Wire Protocol}
+% ~2.5 pages. Mandatory centrepiece.
+
+\subsection{Packet Header Format}
+% Byte-level diagram of the 5-byte semantics header [ServiceID(1B)][RequestID(4B BE)] 
+% and the 17-byte reply header [MsgType(1B)][ReqID(4B)][IPv4(4B)][Port(2B)][StatusCode(2B)][ContentLen(4B)].
+
+\subsection{TLV Payload Encoding}
+% Byte-level diagram of [FieldID(1B)][Length(4B BE)][Value(NB)]. 
+% Show a concrete worked example (e.g., OpenAccount request with name "Alice", password "pass1234", currency SGD, balance 1000.00). 
+% Lay out every byte in a hex table.
+
+\subsection{Callback Push Packet}
+% Separate wire format: [MsgType(1B)][ServiceID(1B)][AccNo(4B)][NameLen(4B)][Name(NB)][Currency(1B)][Balance(8B)].
+
+\subsection{Cross-Language Marshalling Challenges}
+% How Go's [8]byte password maps to C++'s variable-length string. 
+% How you agreed on IEEE 754 big-endian for float64 <-> double.
+
+
+% ---------------------------------------------------------
+\section{System Architecture \& Design}
+% ~2 pages
+
+\subsection{Server Architecture (Go)}
+% Layered diagram showing cmd/main.go -> semantics/dispatcher -> handler -> banking/service -> store/memory. 
+% Explain dependency wiring (closure for BuildHandler).
+
+\subsection{Client Architecture (C++)}
+% Three-layer diagram (Application -> Protocol -> Network). 
+% Highlight dependency injection pattern (BankClient takes interfaces). Explain why this matters (mocking, swappable transport).
+
+\subsection{Concurrency Model}
+% Server uses sync.RWMutex on the memory store (RLock for reads, Lock for writes). 
+% Monitor manager runs its own goroutine for subscriber sweep. 
+% Client is single-threaded (blocked during monitor interval, per spec).
+
+
+% ---------------------------------------------------------
+\section{Banking Services \& Custom Operations}
+% ~1.5 pages
+
+\subsection{Core Services (S1–S4)}
+% Brief description of each. Focus on error handling strategy and status code mapping table.
+
+\subsection{Monitor/Callback (S4)}
+% Explain registration, subscriber list, sweep goroutine, NotifyAll pushes. 
+% Sequence diagram: Client A operates -> Server notifies Client B.
+
+\subsection{Op 5: GetBalance (Idempotent)}
+% Define idempotency formally. Explain why GetBalance is safe under retransmission.
+
+\subsection{Op 6: Transfer (Non-Idempotent)}
+% Explain the two-account mutation. Show why retransmission is dangerous here. Sets up Section 5.
+
+
+% ---------------------------------------------------------
+\section{Fault Tolerance \& Invocation Semantics}
+% ~2.5 pages. Second mandatory centrepiece.
+
+\subsection{At-Least-Once Implementation}
+% Timeout + retransmission on client side. Dispatcher always executes. Diagram of flow.
+
+\subsection{At-Most-Once Implementation}
+% Request IDs, duplicate filtering at server, ReplyHistory cache. 
+% Diagram of cached reply retrieval vs re-execution.
+
+\subsection{Loss Simulator Design}
+% How LossSimulator works (configurable drop rate, seeded rand.Rand). 
+% Two injection points: request-receive loss and reply-send loss.
+
+\subsection{Experiment Design}
+% Table of experiments run (e.g., Deposit $100, loss rate 30%). Use concrete numbers.
+
+\subsection{Results \& Discussion}
+% Tables/charts showing outcomes. 
+% Punchline: at-least-once is fine for idempotent (GetBalance), dangerous for non-idempotent (Transfer). 
+% At-most-once handles everything correctly at the cost of server-side memory.
+
+
+% ---------------------------------------------------------
+\section{Testing Strategy}
+% ~1 page
+
+\subsection{Unit Tests}
+% C++ client unit tests using GoogleTest + mocks (MockSocket, MockEncoder, MockSerializer).
+
+\subsection{Integration Tests}
+% Integration\_test.go: end-to-end tests spawning real processes, validating all services/fault tolerance. 
+% Mention lockServer pattern for isolation.
+
+
+% ---------------------------------------------------------
+\section{Assumptions, Limitations \& Future Work}
+% ~0.5 pages
+% - Assumptions: single currency per account, in-memory only, basic auth.
+% - Limitations: reply history grows unbounded without eviction, no wire encryption.
+% - Future work: persistent storage, TLS/DTLS, multi-currency.
+
+
+% ---------------------------------------------------------
+\section{Conclusion}
+% ~0.5 pages
+% Crisp summary of what was built and key takeaways about distributed systems design.
+
+\end{document}
+
+\end{document}

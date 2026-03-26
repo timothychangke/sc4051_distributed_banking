@@ -52,6 +52,7 @@ func TestService_Withdraw(t *testing.T) {
 		{"Wrong Currency", "Bob", accNo, pw, models.SGD, 50.0, ErrCurrencyMismatch, 400.0},
 		{"Insufficient Funds", "Bob", accNo, pw, models.USD, 1000.0, ErrInsufficientFunds, 400.0},
 		{"Non-existent Account", "Bob", 99999, pw, models.USD, 50.0, ErrInvalidCredentials, 400.0},
+		{"Non-positive Amount", "Bob", 99999, pw, models.USD, -50.0, ErrNonPositiveAmount, 400.0},
 	}
 
 	for _, tt := range tests {
@@ -87,6 +88,7 @@ func TestService_Deposit(t *testing.T) {
 		{"Valid Deposit", "Charlie", accNo, pw, models.EUR, 50.0, nil},
 		{"Wrong Password", "Charlie", accNo, [8]byte{'0'}, models.EUR, 50.0, ErrInvalidCredentials},
 		{"Wrong Currency", "Charlie", accNo, pw, models.USD, 50.0, ErrCurrencyMismatch},
+		{"Non-positive Amount", "Charlie", accNo, pw, models.EUR, -50.0, ErrNonPositiveAmount},
 	}
 
 	for _, tt := range tests {
@@ -210,6 +212,7 @@ func TestService_Transfer(t *testing.T) {
 		{"Wrong Sender Name", "NotAlice", aliceAcc, pw, bobAcc, 50.0, ErrAccountMismatch},
 		{"Invalid Receiver", "Alice", aliceAcc, pw, 99999, 50.0, ErrAccountNotFound},
 		{"Currency Mismatch", "Alice", aliceAcc, pw, charlieAcc, 50.0, ErrCurrencyMismatch},
+		{"Non-positive Amount", "Alice", aliceAcc, pw, bobAcc, -50.0, ErrNonPositiveAmount},
 	}
 
 	for _, tt := range tests {

@@ -5,6 +5,7 @@
 
 #include "semantics.h"
 #include "protocol.h"
+
 #define HEADER_SIZE 18 // In Bytes
 
 namespace Protocol{
