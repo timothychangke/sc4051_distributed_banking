@@ -258,8 +258,48 @@ The client packs each numeric or string value  without additional padding, and t
 
 The server, upon receiving this TLV payload, unpacks each field by reading the ID and length, then extracts the number of bytes as the value. It interprets the raw bytes based on the field's type - converting an 8-byte double to Go's float64 in big-endian, or treating password bytes as an ASCII string.
 
+Meanwhile, certain fields are fixed-size. In the Go server, an 8-byte password field is enforced. Hence, the protocol allows a variable-length password on the wire up to 8 bytes, and manually truncates or pads the received password to fit this requirement.
+
+Hence, this format handles data cleanly. The use of ID and length allows for robust parsing. While the encoding is handcrafted in code, it creates an effective platform-independent message format.
+
 \subsection{Callback Push Packet}
 % Separate wire format: [MsgType(1B)][ServiceID(1B)][AccNo(4B)][NameLen(4B)][Name(NB)][Currency(1B)][Balance(8B)].
+
+When an account is opened, closed, deposited, or withdrawn as part of the “monitor” feature, the callback packet is triggered by the client to the server. It uses a different packet format:
+
+\begin{tabular}{|l|c|p{8cm}|}
+\hline
+\textbf{Field Name} & \textbf{Size} & \textbf{Description} \\
+\hline
+MsgType & 1 byte & Always set to 0x02 to indicate a server-initiated callback message. \\
+\hline
+Service ID & 1 byte & Identifies the service context (e.g., monitor update). \\
+\hline
+Account Number & 4 bytes & Integer account number encoded in big-endian format. \\
+\hline
+Name Length & 4 bytes & Length of the account holder’s name in bytes. \\
+\hline
+Name & Variable & UTF-8 encoded string representing the account holder’s name. \\
+\hline
+Currency Type & 1 byte & Encoded enumeration representing the account’s currency. \\
+\hline
+Balance & 8 bytes & IEEE-754 double precision floating-point value (big-endian) representing the updated balance. \\
+\hline
+\end{tabular}
+
+For example, if account 12345 (“Bob”) with currency USD (0x00) now has balance 250.75, the server might send:
+
+\begin{verbatim}
+02 05               [MsgType=0x02, ServiceID=0x05 (monitor update)]
+00 00 30 39        [Account#=12345 (big-endian)]
+00 00 00 03 42 6F 62   [NameLen=3, Name="Bob"]
+00                [Currency=0x00 (USD)]
+40 6F 40 00 00 00 00 00   [Balance=250.75 (IEEE-754)]
+\end{verbatim}
+
+The client’s UDP socket listens for these packets and, upon receipt, displays the updated account information to the user.
+
+...
 
 \subsection{Cross-Language Marshalling Challenges}
 % How Go's [8]byte password maps to C++'s variable-length string. 
