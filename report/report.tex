@@ -133,7 +133,7 @@
       \midrule
       Timothy Chang  & \textit{U2220136J} & 33.33\% \\
       O Jing         & \textit{UXXXXXXX} & 33.33\% \\
-      Neo Zhi Xuan   & \textit{UXXXXXXX} & 33.33\% \\
+      Neo Zhi Xuan   & \textit{U2222293E} & 33.33\% \\
       \bottomrule
       \end{tabular}
     
@@ -163,7 +163,19 @@
 % - High-level architecture diagram: C++ Client <-> UDP <-> Go Server.
 % - Emphasize the cross-language decision and why (confronting real-world data representation mismatches: endianness, string encoding, float IEEE 754 agreement). 
 % - Technology choices: Go for server (goroutine-friendly, strong net package), C++ for client (low-level byte control, Winsock/POSIX portability).
+The project implements a distributed banking application, using a custom client-server architecture that uses UDP-based inter-process communication. The system is cross-language interoperable and consists of a C++ client application and a Go-based server. These components communicate via a custom binary protocol, without Remote Procedure Call (RPC) frameworks. 
 
+\includegraphics{architecture.png}  
+
+Fig. 1. High-level architecture of the project
+
+At a high level, the client and server communicate via UDP datagrams, on known IP addresses and ports. The client constructs request messages and waits for responses, and may retry depending on the protocol. The server listens for requests and processes each one, before returning a response.
+
+The client is written in C++ due to the language's ability to handle low level byte control for packet construction, as well as portable socket handling across Windows and POSIX. Meanwhile, the choice of Go for the server provides an in-depth networking library and built-in synchronisation primitives for concurrency, to allow for simple implementation of UDP sockets and concurrent client handling.
+
+The presence of cross-language components necessitates handling of various constraints. Firstly, the data boundary and marshalling conventions for all data types must be aligned on both components. Next, it is important to standardise encodings so that both components interpret numeric bytes identically. Network byte order (big-endian) is used for all integer fields, whereas IEEE754 double format (64-bit) is used for floating-point balances.
+
+The report analyses the unreliability of UDP, and the trade-offs between using different semantic modes to handle it, using explicit retry and duplicate-detection mechanisms.
 
 % ---------------------------------------------------------
 \section{Message Design \& Wire Protocol}
@@ -172,11 +184,79 @@
 \subsection{Packet Header Format}
 % Byte-level diagram of the 5-byte semantics header [ServiceID(1B)][RequestID(4B BE)] 
 % and the 17-byte reply header [MsgType(1B)][ReqID(4B)][IPv4(4B)][Port(2B)][StatusCode(2B)][ContentLen(4B)].
+Each message sent between client and server begins with an 18-byte header, followed by a payload of variable length. It encodes information about protocol control, through these fields:
 
-\subsection{TLV Payload Encoding}
+Table 1. Packet Header Layout
+
+\begin{tabular}{|l|c|p{8cm}|}
+\hline
+\textbf{Field} & \textbf{Size} & \textbf{Description} \\
+\hline
+Type & 1 byte & Indicates whether the datagram is a request (0x00), a normal reply (0x01), or a server-initiated callback (0x02). \\
+\hline
+Semantics Flag & 1 byte & Encodes invocation semantics: 0x00 for at-least-once, 0x01 for at-most-once. \\
+\hline
+Request ID & 4 bytes & An identifier chosen by the client, used for duplicate detection and request-response matching. \\
+\hline
+Client IPv4 Address & 4 bytes & The sender’s IPv4 address. Explicitly informs the server about the client's identity. \\
+\hline
+Client Port & 2 bytes & The UDP port number of the sender. \\
+\hline
+Status Code & 2 bytes & Indicates success or error conditions in replies; non-zero values represent errors. \\
+\hline
+Content Length & 4 bytes & Length (in bytes) of the payload that follows. \\
+\hline
+\end{tabular}
+
+This header is inspired by traditional RPC or network protocol headers. A fixed header size allows the client and server to parse data with a consistent offset. It also allows for robust validation of datagrams that are truncated. Simultaneously, all multi-byte fields are in big-endian format, aligning the client and server's method of interpreting numeric values.
+
+\subsection{Type-Length-Value (TLV) Payload Encoding}
 % Byte-level diagram of [FieldID(1B)][Length(4B BE)][Value(NB)]. 
 % Show a concrete worked example (e.g., OpenAccount request with name "Alice", password "pass1234", currency SGD, balance 1000.00). 
 % Lay out every byte in a hex table.
+After the header, each message carries a TLV-encoded payload of application-specific fields. Fields are optional, and only serialised when it is present. Each field has this format:
+
+Table 2. TLV Payload Layout
+
+\begin{tabular}{|l|c|p{8cm}|}
+\hline
+\textbf{Field} & \textbf{Size} & \textbf{Description} \\
+\hline
+Field ID & 1 byte & Identifies the type of the field (e.g., account number, password, amount). \\
+\hline
+Length & 4 bytes & Specifies the length of the Value field in bytes, encoded in big-endian format. \\
+\hline
+Value & Variable & Contains the actual data corresponding to the Field ID. The size is determined by the Length field. \\
+\hline
+\end{tabular}
+
+For example, the request "OpenAccount (Alice, pass1234, SGD, 1000.00)" attempts to open an account, and might include these TLV fields:
+
+Table 3. OpenAccount Request Fields
+
+\begin{tabular}{|l|c|p{8cm}|}
+\hline
+\textbf{Field Name} & \textbf{Length} & \textbf{Description} \\
+\hline
+Account Holder Name & N bytes & UTF-8 encoded string representing the user's name. The length varies depending on the number of characters. \\
+\hline
+Password & Up to 8 bytes & Password represented as raw bytes. If shorter than 8 bytes, it is zero-padded to maintain a fixed maximum length. \\
+\hline
+Currency Type & 1 byte & Encoded as a predefined enumeration value representing supported currencies (e.g., SGD, USD). \\
+\hline
+Initial Balance & 8 bytes & IEEE-754 double precision floating-point number encoded in big-endian format. \\
+\hline
+\end{tabular}
+
+The client packs each numeric or string value  without additional padding, and the length specifies the exact number of bytes. For example, if the user “Alice” (5 letters) chooses password “pass1234” (8 chars), currency SGD (id=1), and balance 1000.00, the TLV encoding for that request would look like:
+\begin{verbatim}
+01 00 00 00 05 41 6C 69 63 65   [Name field: ID=1, Len=5, Value="Alice"]
+02 00 00 00 08 70 61 73 73 31 32 33 34   [Password field: ID=2, Len=8, Value="pass1234"]
+03 00 00 00 01 01                       [Currency field: ID=3, Len=1, Value=0x01 (SGD)]
+04 00 00 00 08 40 8F 40 00 00 00 00 00   [Balance field: ID=4, Len=8, Value=1000.00]
+\end{verbatim}
+
+The server, upon receiving this TLV payload, unpacks each field by reading the ID and length, then extracts the number of bytes as the value. It interprets the raw bytes based on the field's type - converting an 8-byte double to Go's float64 in big-endian, or treating password bytes as an ASCII string.
 
 \subsection{Callback Push Packet}
 % Separate wire format: [MsgType(1B)][ServiceID(1B)][AccNo(4B)][NameLen(4B)][Name(NB)][Currency(1B)][Balance(8B)].
