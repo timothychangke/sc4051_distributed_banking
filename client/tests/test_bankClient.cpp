@@ -91,8 +91,8 @@ public:
     using BankClient::fill_amount_details;
     using BankClient::fill_transfer_account_details;
 
-    using BankClient::collect_user_input;
-    using BankClient::send_to_server;
+    using BankClient::build_command;
+    using BankClient::execute_client_req;
 
     Protocol::BaseCommandEncoder* get_encoder() { return cmdEncoder.get(); }
     Protocol::BaseMessageSerializer* get_serializer() { return msgSerializer.get(); }
@@ -184,12 +184,11 @@ TEST_F(BankClientTest, getValidatedString_valid) {
 
 TEST_F(BankClientTest, getValidatedString_invalid) {
     
-    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(3); 
-    EXPECT_CALL(*mockIO, print_error(testing::_)).Times(4); // 3 invalid tries + 1 exceeded max tries
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(MAX_TRIES); 
+    EXPECT_CALL(*mockIO, print_error(testing::_)).Times(MAX_TRIES + 1); // MAX_TRIES invalid tries + 1 exceeded max tries
     EXPECT_CALL(*mockIO, read_line())
-        .WillOnce(testing::Return("123"))     // 1st attempt: invalid (has space)
-        .WillOnce(testing::Return("123"))     // 2nd attempt: invalid
-        .WillOnce(testing::Return("jo hn"));  // 3rd attempt: invalid
+        .Times(MAX_TRIES)
+        .WillRepeatedly(testing::Return("123")); // invalid
         
     auto result = client->getValidatedString("Enter Name");
     auto expected = Result<std::string, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
@@ -356,7 +355,7 @@ TEST_F(BankClientTest, fill_amount_details_success) {
     EXPECT_DOUBLE_EQ(req.monetary_value.value(), 75.25);
 }
 
-TEST_F(BankClientTest, collect_user_input_OPEN) {
+TEST_F(BankClientTest, build_command_OPEN) {
     EXPECT_CALL(*mockIO, read_int()).WillOnce(testing::Return(1));
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(4);
     EXPECT_CALL(*mockIO, read_line())
@@ -365,21 +364,21 @@ TEST_F(BankClientTest, collect_user_input_OPEN) {
         .WillOnce(testing::Return("USD"))
         .WillOnce(testing::Return("500"));
 
-    auto res = client->collect_user_input();
+    auto res = client->build_command();
     ASSERT_TRUE(res.ok());
     EXPECT_EQ(res.value().service, Protocol::Service::OPEN);
     EXPECT_EQ(res.value().account_owner_name, "John");
 }
 
-TEST_F(BankClientTest, collect_user_input_QUIT) {
+TEST_F(BankClientTest, build_command_QUIT) {
     EXPECT_CALL(*mockIO, read_int()).WillOnce(testing::Return(0));
     
-    auto res = client->collect_user_input();
+    auto res = client->build_command();
     ASSERT_FALSE(res.ok());
     EXPECT_EQ(res.error(), Error::InternalError::USER_QUIT);
 }
 
-TEST_F(BankClientTest, SendToServer_Success) {
+TEST_F(BankClientTest, ExecuteClientReq_Success) {
     Protocol::Command req;
     req.service = Protocol::Service::GET_BALANCE;
     
@@ -423,14 +422,14 @@ TEST_F(BankClientTest, SendToServer_Success) {
     EXPECT_CALL(*mockIO, print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN)).Times(1);
     EXPECT_CALL(*mockIO, print("[ SERVER RESPONSE STATUS : SUCCESS ]", Colour::GREEN)).Times(1);
     EXPECT_CALL(*mockIO, print_box_top()).Times(1);
-    EXPECT_CALL(*mockIO, print(testing::HasSubstr("Account Number : 12345"), testing::_)).Times(1);
-    EXPECT_CALL(*mockIO, print(testing::HasSubstr("Balance        : 1000.000000"), testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("Account Number   : 12345"), testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("Balance          : 1000.000000"), testing::_)).Times(1);
     EXPECT_CALL(*mockIO, print_box_bottom()).Times(1);
 
-    client->send_to_server(req);
+    client->execute_client_req(req);
 }
 
-TEST_F(BankClientTest, SendToServer_ServerError) {
+TEST_F(BankClientTest, ExecuteClientReq_ServerError) {
     Protocol::Command req;
     req.service = Protocol::Service::WITHDRAW;
     
@@ -454,11 +453,12 @@ TEST_F(BankClientTest, SendToServer_ServerError) {
     EXPECT_CALL(*mockIO, print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN)).Times(1);
     EXPECT_CALL(*mockIO, print("[ SERVER RESPONSE STATUS : INSUFFICIENT_FUNDS ]", Colour::RED)).Times(1);
 
-    client->send_to_server(req);
+    client->execute_client_req(req);
 }
 
-TEST_F(BankClientTest, SendToServer_NetworkFailure) {
+TEST_F(BankClientTest, ExecuteClientReq_NetworkFailure) {
     Protocol::Command req;
+    req.service = Protocol::Service::WITHDRAW;
     
     auto mockEncoder = static_cast<MockEncoder*>(client->get_encoder());
     EXPECT_CALL(*mockEncoder, encode_message(testing::_)).WillOnce(testing::Return(std::vector<uint8_t>{1}));
@@ -467,13 +467,13 @@ TEST_F(BankClientTest, SendToServer_NetworkFailure) {
     EXPECT_CALL(*mockSerializer, serialize(testing::_)).WillOnce(testing::Return(std::vector<uint8_t>{2}));
 
     auto mockSocket = static_cast<MockSocket*>(client->get_socket());
-    // Fail all send tries (MAX_TRIES is 3)
+    // Fail all send tries
     EXPECT_CALL(*mockSocket, send_message(testing::_))
-        .Times(3)
+        .Times(MAX_TRIES)
         .WillRepeatedly(testing::Return(Result<std::monostate, Error::InternalError>::fail(Error::InternalError::SEND_FAILED)));
 
-    EXPECT_CALL(*mockIO, print(testing::HasSubstr("[!] Attempt"), Colour::YELLOW)).Times(2);
-    EXPECT_CALL(*mockIO, print_error(testing::HasSubstr("Final send failure after 3 attempts: SEND_FAILED"))).Times(1);
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("[!] Attempt"), Colour::YELLOW)).Times(MAX_TRIES - 1);
+    EXPECT_CALL(*mockIO, print_error(testing::HasSubstr("Final send failure after " + std::to_string(MAX_TRIES) + " attempts: SEND_FAILED"))).Times(1);
 
-    client->send_to_server(req);
+    client->execute_client_req(req);
 }

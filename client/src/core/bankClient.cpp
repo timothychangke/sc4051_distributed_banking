@@ -359,7 +359,7 @@ Result<std::vector<uint8_t>, Error::InternalError> BankClient::send_to_server(co
     for (int i = 1; i <= MAX_TRIES; i++) {
         auto res_send = socket->send_message(data);
         if (res_send) {
-            auto res_recv = socket->receive_message();
+            res_recv = socket->receive_message();
         }
         if (res_send && res_recv) {
             bankIO->print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN);
@@ -376,46 +376,12 @@ Result<std::vector<uint8_t>, Error::InternalError> BankClient::send_to_server(co
             }
              else {
                 bankIO->print_error("Final receive failure after " + std::to_string(MAX_TRIES) + " attempts: " + Error::to_string(res_recv.error()));
-                err = res_send.error();
+                err = res_recv.error();
             } 
         }
     }
 
-    Result<std::vector<uint8_t>, Error::InternalError>::fail(err);
-}
-
-Result<std::vector<uint8_t>, Error::InternalError> BankClient::send_to_server(const std::vector<uint8_t>& data){
-
-    int cur_backoff = BACKOFF;
-    Result<std::vector<uint8_t>, Error::InternalError> res_recv;
-    Error::InternalError err; 
-
-    for (int i = 1; i <= MAX_TRIES; i++) {
-        auto res_send = socket->send_message(data);
-        if (res_send) {
-            auto res_recv = socket->receive_message();
-        }
-        if (res_send && res_recv) {
-            bankIO->print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN);
-            return res_recv;
-        }
-        if (i < MAX_TRIES) {
-            bankIO->print("[!] Attempt " + std::to_string(i) + " failed. Retrying in " + std::to_string(cur_backoff) + "s...\n", Colour::YELLOW);
-            std::this_thread::sleep_for(std::chrono::seconds(cur_backoff));
-            cur_backoff *= 2;
-        } else {
-             if (!res_send) {
-                bankIO->print_error("Final send failure after " + std::to_string(MAX_TRIES) + " attempts: " + Error::to_string(res_send.error()));
-                err = res_send.error();
-            }
-             else {
-                bankIO->print_error("Final receive failure after " + std::to_string(MAX_TRIES) + " attempts: " + Error::to_string(res_recv.error()));
-                err = res_send.error();
-            } 
-        }
-    }
-
-    Result<std::vector<uint8_t>, Error::InternalError>::fail(err);
+    return Result<std::vector<uint8_t>, Error::InternalError>::fail(err);
 }
 
 Result<Protocol::Message, Error::InternalError> BankClient::decode_message(const std::vector<uint8_t>& data){

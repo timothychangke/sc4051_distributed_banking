@@ -79,7 +79,7 @@ protected:
     bool isAlphaNumeric(const std::string& str);
     bool isWithinMaxLength(const std::string& str);
 
-    Protocol::Message BankClient::build_message(const std::vector<uint8_t>& data);
+    Protocol::Message build_message(const std::vector<uint8_t>& data);
     Result<Protocol::Command, Error::InternalError> build_command();    
     Result<std::monostate, Error::InternalError> fill_account_creation_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_auth_details(Protocol::Command& req);
