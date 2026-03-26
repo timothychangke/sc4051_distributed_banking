@@ -48,7 +48,12 @@ void BankClient::run() {
             }
         }
         bankIO->print("[ SENDING REQUEST TO SERVER ]\n");
-        execute_client_req(req.value());
+        if (req.value().service == Protocol::Service::MONITOR){
+            monitor_server_updates(req.value());
+        }   
+        else{
+            execute_client_req(req.value());
+        }
         bankIO->wait_for_enter();
 
     }
