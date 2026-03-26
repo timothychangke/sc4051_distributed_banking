@@ -345,7 +345,41 @@ Result<std::vector<uint8_t>, Error::InternalError> BankClient::prepare_message(c
     return res_ser;
 }
 
- Result<std::vector<uint8_t>, Error::InternalError> BankClient::send_to_server(const std::vector<uint8_t>& data){
+Result<std::vector<uint8_t>, Error::InternalError> BankClient::send_to_server(const std::vector<uint8_t>& data){
+
+    int cur_backoff = BACKOFF;
+    Result<std::vector<uint8_t>, Error::InternalError> res_recv;
+    Error::InternalError err; 
+
+    for (int i = 1; i <= MAX_TRIES; i++) {
+        auto res_send = socket->send_message(data);
+        if (res_send) {
+            auto res_recv = socket->receive_message();
+        }
+        if (res_send && res_recv) {
+            bankIO->print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN);
+            return res_recv;
+        }
+        if (i < MAX_TRIES) {
+            bankIO->print("[!] Attempt " + std::to_string(i) + " failed. Retrying in " + std::to_string(cur_backoff) + "s...\n", Colour::YELLOW);
+            std::this_thread::sleep_for(std::chrono::seconds(cur_backoff));
+            cur_backoff *= 2;
+        } else {
+             if (!res_send) {
+                bankIO->print_error("Final send failure after " + std::to_string(MAX_TRIES) + " attempts: " + Error::to_string(res_send.error()));
+                err = res_send.error();
+            }
+             else {
+                bankIO->print_error("Final receive failure after " + std::to_string(MAX_TRIES) + " attempts: " + Error::to_string(res_recv.error()));
+                err = res_send.error();
+            } 
+        }
+    }
+
+    Result<std::vector<uint8_t>, Error::InternalError>::fail(err);
+}
+
+Result<std::vector<uint8_t>, Error::InternalError> BankClient::send_to_server(const std::vector<uint8_t>& data){
 
     int cur_backoff = BACKOFF;
     Result<std::vector<uint8_t>, Error::InternalError> res_recv;
@@ -427,33 +461,68 @@ Result<std::monostate, Error::InternalError> BankClient::handle_status_code(cons
 
 }
 
-void BankClient::execute_client_req(const Protocol::Command& cmd) {
-    
+Result<Protocol::Message, Error::InternalError> BankClient::execute_request_pipeline(const Protocol::Command& cmd){
+
     auto request = prepare_message(cmd);
-    if (!request) return;
+    if (!request) return Result<Protocol::Message, Error::InternalError>::fail(request.error());
     
     auto response = send_to_server(request.value());
-    if (!response) return;
+    if (!response) return Result<Protocol::Message, Error::InternalError>::fail(response.error());
     
     auto msg = decode_message(response.value());
-    if (!msg) return;
+    if (!msg) return Result<Protocol::Message, Error::InternalError>::fail(msg.error());
 
     const auto& res_msg = msg.value();
     auto success = handle_status_code(res_msg);
-    if (!success) return;
+    if (!success) return Result<Protocol::Message, Error::InternalError>::fail(success.error());
 
-    decode_command(res_msg);
+    return res_msg;
 }
 
-void BankClient::monitor_server_updates(){
-    //TODO
-    /*
-        when this function gets called, craft the message stuct and the command struct 
-        send to server 
-        blocking receive .... until timeout specified by user (or default to one)
-        print out the messages until timeoout completed.     
-    */
+void BankClient::execute_client_req(const Protocol::Command& cmd) {
 
-    int monitor_time {};
+    if (cmd.service == Protocol::Service::MONITOR) return; // sanity check
+    
+    auto res = execute_request_pipeline(cmd);
+    if (!res) return;
 
+    decode_command(res.value());
+}
+
+void BankClient::listen_server(uint32_t time) {
+
+    auto start = std::chrono::steady_clock::now();
+    while (std::chrono::steady_clock::now() - start <
+        std::chrono::seconds(static_cast<long long>(time))) {
+        
+        auto response = socket->receive_message();
+        if (!response){
+            if (response.error() != Error::InternalError::RECEIVE_TIMEOUT){
+                bankIO->print_error("[Client] Failed to listen to server: " + Error::to_string(response.error()));
+            }
+            continue;
+        }
+
+        auto msg = decode_message(response.value());
+        if (!msg) continue;
+
+        const auto& res_msg = msg.value();
+        auto success = handle_status_code(res_msg);
+        if (!success) continue;
+
+        decode_command(res_msg);
+    
+    }
+
+}
+
+void BankClient::monitor_server_updates(const Protocol::Command& cmd) {
+
+    if (cmd.service != Protocol::Service::MONITOR) return; // sanity check
+
+    auto res = execute_request_pipeline(cmd);
+    if (!res) return;
+    decode_command(res.value());
+    
+    listen_server(cmd.monitor_timeout_seconds.value());
 }

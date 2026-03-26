@@ -21,6 +21,8 @@
 #include <algorithm>
 #include <cctype> 
 #include <limits>
+#include <chrono>
+
 
 #include "protocol.h"
 #include "message.h"
@@ -61,17 +63,16 @@ protected:
     Semantics::InvocationFlag flag;
     static const std::unordered_map<std::string, Protocol::CurrencyType> stringToCurrency;
     
+    Result<Protocol::Message, Error::InternalError> execute_request_pipeline(const Protocol::Command& cmd);
     void execute_client_req(const Protocol::Command& req);
+    void monitor_server_updates(const Protocol::Command& cmd);
+    void listen_server(uint32_t time);
+
     Result<std::vector<uint8_t>, Error::InternalError> prepare_message(const Protocol::Command& req);
     Result<std::vector<uint8_t>, Error::InternalError> send_to_server(const std::vector<uint8_t>& data);
     Result<Protocol::Message, Error::InternalError> decode_message(const std::vector<uint8_t>& data);
     Result<std::monostate, Error::InternalError> handle_status_code(const Protocol::Message& msg);
     void decode_command(const Protocol::Message& msg);
-
-    void monitor_server_updates();
-
-
-
 
     void trimString(std::string& str);
     bool isAlpha(const std::string& str);
