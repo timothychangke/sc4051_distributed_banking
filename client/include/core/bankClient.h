@@ -61,19 +61,32 @@ protected:
     Semantics::InvocationFlag flag;
     static const std::unordered_map<std::string, Protocol::CurrencyType> stringToCurrency;
     
-    void send_to_server(const Protocol::Command& req);
+    void execute_client_req(const Protocol::Command& req);
+    Result<std::vector<uint8_t>, Error::InternalError> prepare_message(const Protocol::Command& req);
+    Result<std::vector<uint8_t>, Error::InternalError> send_to_server(const std::vector<uint8_t>& data);
+    Result<Protocol::Message, Error::InternalError> decode_message(const std::vector<uint8_t>& data);
+    Result<std::monostate, Error::InternalError> handle_status_code(const Protocol::Message& msg);
+    void decode_command(const Protocol::Message& msg);
+
     void monitor_server_updates();
+
+
+
+
     void trimString(std::string& str);
     bool isAlpha(const std::string& str);
     bool isAlphaNumeric(const std::string& str);
     bool isWithinMaxLength(const std::string& str);
- 
-    Result<Protocol::Command, Error::InternalError> collect_user_input();    
+
+    Protocol::Message BankClient::build_message(const std::vector<uint8_t>& data);
+    Result<Protocol::Command, Error::InternalError> build_command();    
     Result<std::monostate, Error::InternalError> fill_account_creation_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_auth_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_currency_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_amount_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_transfer_account_details(Protocol::Command& req);
+    Result<std::monostate, Error::InternalError> fill_monitor_details(Protocol::Command& req);
+
     Result<std::string, Error::InternalError> getValidatedString(const std::string& prompt);
     Result<std::string, Error::InternalError> getValidatedPassword(const std::string& prompt);
     Result<Protocol::CurrencyType, Error::InternalError> getValidatedCurrency(const std::string& prompt);

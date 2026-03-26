@@ -9,6 +9,7 @@ enum class InternalError {
     USER_CANCELED,                      // User canceled the process
     BAD_INPUT,                          // User provided invalid or unparseable input
     BAD_PW_LEN,                         // User provided password exceeding MAX_PW_LEN
+    BAD_STATUS,                         // Server returned with a bad status code
     INVALID_SERVICE,                    // Service type selected is not recognised
     INVALID_CURRENCY,                   // Currency string does not map to a known CurrencyType
     INVALID_INVOCATION_FLAG,            // Invocation string does not map to a known InvocationFlag

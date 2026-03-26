@@ -7,6 +7,7 @@ std::string Error::to_string(Error::InternalError err) {
         case Error::InternalError::USER_CANCELED:                      return "USER_CANCELED";
         case Error::InternalError::BAD_INPUT:                          return "BAD_INPUT";
         case Error::InternalError::BAD_PW_LEN:                         return "BAD_PW_LEN";
+        case Error::InternalError::BAD_STATUS:                         return "BAD_STATUS";
         case Error::InternalError::INVALID_SERVICE:                    return "INVALID_SERVICE";
         case Error::InternalError::INVALID_CURRENCY:                   return "INVALID_CURRENCY";
         case Error::InternalError::INVALID_INVOCATION_FLAG:            return "INVALID_INVOCATION_FLAG";
