@@ -194,6 +194,7 @@ func TestService_Transfer(t *testing.T) {
 
 	aliceAcc := svc.OpenAccount("Alice", pw, models.SGD, 500.0)
 	bobAcc := svc.OpenAccount("Bob", pw, models.SGD, 100.0)
+	charlieAcc := svc.OpenAccount("Charlie", pw, models.USD, 100.0)
 
 	tests := []struct {
 		name        string
@@ -210,6 +211,7 @@ func TestService_Transfer(t *testing.T) {
 		{"Wrong Password", "Alice", aliceAcc, [8]byte{'b', 'a', 'd'}, bobAcc, 50.0, ErrInvalidCredentials},
 		{"Wrong Sender Name", "NotAlice", aliceAcc, pw, bobAcc, 50.0, ErrAccountMismatch},
 		{"Invalid Receiver", "Alice", aliceAcc, pw, 99999, 50.0, ErrAccountNotFound},
+		{"Currency Mismatch", "Alice", aliceAcc, pw, charlieAcc, 50.0, ErrCurrencyMismatch},
 		{"Non-positive Amount", "Alice", aliceAcc, pw, bobAcc, -50.0, ErrNonPositiveAmount},
 	}
 

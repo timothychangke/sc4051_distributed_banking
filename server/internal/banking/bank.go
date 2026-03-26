@@ -191,6 +191,10 @@ func (s *service) Transfer(fromName string, fromAccNo uint32, pw [8]byte, toAccN
 		return 0, err
 	}
 
+	if fromAcc.CurrencyType != toAcc.CurrencyType {
+		return 0, ErrCurrencyMismatch
+	}
+
 	// Lock both accounts in order
 	if fromAcc.AccountNumber < toAcc.AccountNumber {
 		fromAcc.Mu.Lock()
