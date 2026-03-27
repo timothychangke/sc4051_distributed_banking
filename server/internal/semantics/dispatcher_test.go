@@ -8,13 +8,15 @@ import (
 )
 
 // buildTestPacket creates a minimal valid 18-byte request packet with the given
-// request ID. The ServiceID is NO LONGER part of the header; it is expected
-// to be inside the TLV payload (which these minimal tests don't simulate
-// as they only test the dispatcher's deduplication logic).
-func buildTestPacket(unusedServiceID uint8, requestID uint32) []byte {
+// request ID and invocation flag.
+// The ServiceID is expected to be inside the TLV payload
+// (which these minimal tests don't simulate as they only test
+// the dispatcher's deduplication logic).
+func buildTestPacket(flag uint8, requestID uint32) []byte {
 	data := make([]byte, HeaderSize)
 	// Byte 0: Type=0 (Request)
-	// Byte 1: Flag=0
+	// Byte 1: Invocation flag
+	data[1] = flag
 	// Bytes 2-5: RequestID
 	binary.BigEndian.PutUint32(data[2:6], requestID)
 	return data
@@ -37,7 +39,7 @@ func TestDispatcher_AtLeastOnce_AlwaysExecutes(t *testing.T) {
 
 	d := NewDispatcher(AtLeastOnce, handler)
 	addr := fakeAddr(9001)
-	packet := buildTestPacket(3, 1) // service=Deposit, requestID=1
+	packet := buildTestPacket(uint8(AtLeastOnce), 1)
 
 	// Send the same request 5 times (simulating 4 retransmissions)
 	for i := 0; i < 5; i++ {
@@ -72,7 +74,7 @@ func TestDispatcher_AtMostOnce_DeduplicatesDuplicates(t *testing.T) {
 
 	d := NewDispatcher(AtMostOnce, handler)
 	addr := fakeAddr(9001)
-	packet := buildTestPacket(7, 1) // service=Transfer, requestID=1
+	packet := buildTestPacket(uint8(AtMostOnce), 1)
 
 	// First dispatch — should execute the handler
 	reply1, err := d.Dispatch(packet, addr)
@@ -120,7 +122,7 @@ func TestDispatcher_AtMostOnce_DifferentRequestIDs(t *testing.T) {
 
 	// 3 different request IDs from the same client
 	for reqID := uint32(1); reqID <= 3; reqID++ {
-		packet := buildTestPacket(6, reqID)
+		packet := buildTestPacket(uint8(AtMostOnce), reqID)
 		_, err := d.Dispatch(packet, addr)
 		if err != nil {
 			t.Fatalf("Request %d: unexpected error: %v", reqID, err)
@@ -143,7 +145,7 @@ func TestDispatcher_AtMostOnce_DifferentClients(t *testing.T) {
 	}
 
 	d := NewDispatcher(AtMostOnce, handler)
-	packet := buildTestPacket(3, 1) // same service, same request ID
+	packet := buildTestPacket(uint8(AtMostOnce), 1)
 
 	// Two different clients sending the same request ID
 	_, _ = d.Dispatch(packet, fakeAddr(9001))
@@ -182,7 +184,7 @@ func TestDispatcher_AtMostOnce_HistoryAccessible(t *testing.T) {
 	}
 
 	// Process one request so the cache has an entry
-	packet := buildTestPacket(1, 1)
+	packet := buildTestPacket(uint8(AtMostOnce), 1)
 	_, _ = d.Dispatch(packet, fakeAddr(9001))
 
 	if d.History().Size() != 1 {

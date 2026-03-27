@@ -6,6 +6,7 @@ import (
 	"bank-server/internal/store"
 	"bank-server/pkg/models"
 )
+
 // Sentinel Errors to reuse throughout the logic
 var (
 	ErrInvalidCredentials  = errors.New("invalid account number or password provided")
@@ -14,9 +15,10 @@ var (
 	ErrInsufficientFunds   = errors.New("transaction declined: insufficient funds for withdrawal")
 	ErrTransferSameAccount = errors.New("invalid transaction: source and destination accounts must be distinct")
 	ErrAccountNotFound     = errors.New("requested account record could not be found")
+	ErrNonPositiveAmount   = errors.New("invalid transaction: deposit amount must be positive")
 )
 
-// Service defines the core banking operations 
+// Service defines the core banking operations
 type Service interface {
 	OpenAccount(name string, pw [8]byte, curr models.Currency, balance float64) uint32
 	CloseAccount(name string, accNo uint32, pw [8]byte) error
@@ -79,6 +81,10 @@ func (s *service) CloseAccount(name string, accNo uint32, pw [8]byte) error {
 
 // Checks that account exists and credentials are correct before adding funds
 func (s *service) Deposit(name string, accNo uint32, pw [8]byte, curr models.Currency, amount float64) (float64, error) {
+	if amount <= 0.0 {
+		return 0, ErrNonPositiveAmount
+	}
+
 	acc, err := s.store.GetAccount(accNo)
 	if err != nil {
 		return 0, ErrInvalidCredentials
@@ -97,7 +103,7 @@ func (s *service) Deposit(name string, accNo uint32, pw [8]byte, curr models.Cur
 	}
 
 	acc.Balance += amount
-	
+
 	if err := s.store.UpdateAccount(acc); err != nil {
 		return 0, err
 	}
@@ -107,6 +113,10 @@ func (s *service) Deposit(name string, accNo uint32, pw [8]byte, curr models.Cur
 
 // Checks that account exists, credentials are correct and that there is sufficient funds before withdrawing funds
 func (s *service) Withdraw(name string, accNo uint32, pw [8]byte, curr models.Currency, amount float64) (float64, error) {
+	if amount <= 0.0 {
+		return 0, ErrNonPositiveAmount
+	}
+
 	acc, err := s.store.GetAccount(accNo)
 	if err != nil {
 		return 0, ErrInvalidCredentials
@@ -124,13 +134,13 @@ func (s *service) Withdraw(name string, accNo uint32, pw [8]byte, curr models.Cu
 		return 0, ErrCurrencyMismatch
 	}
 
-	// This prevents account balance from going negative 
+	// This prevents account balance from going negative
 	if acc.Balance < amount {
 		return 0, ErrInsufficientFunds
 	}
 
 	acc.Balance -= amount
-	
+
 	if err := s.store.UpdateAccount(acc); err != nil {
 		return 0, err
 	}
@@ -148,9 +158,9 @@ func (s *service) CheckBalance(name string, accNo uint32, pw [8]byte) (float64, 
 	if err := checkAuth(acc, name, pw); err != nil {
 		return 0, err
 	}
-	
+
 	// There must be a lock to the account to read balance, which is a mutable states.
-	acc.Mu.Lock() 
+	acc.Mu.Lock()
 	defer acc.Mu.Unlock()
 
 	// No locks needed here as we are only reading
@@ -159,6 +169,10 @@ func (s *service) CheckBalance(name string, accNo uint32, pw [8]byte) (float64, 
 
 // Transfer is the non-idempotent operation as per the projects requirements
 func (s *service) Transfer(fromName string, fromAccNo uint32, pw [8]byte, toAccNo uint32, amount float64) (float64, error) {
+	if amount <= 0.0 {
+		return 0, ErrNonPositiveAmount
+	}
+
 	if fromAccNo == toAccNo {
 		return 0, ErrTransferSameAccount
 	}
@@ -175,6 +189,10 @@ func (s *service) Transfer(fromName string, fromAccNo uint32, pw [8]byte, toAccN
 
 	if err := checkAuth(fromAcc, fromName, pw); err != nil {
 		return 0, err
+	}
+
+	if fromAcc.CurrencyType != toAcc.CurrencyType {
+		return 0, ErrCurrencyMismatch
 	}
 
 	// Lock both accounts in order
