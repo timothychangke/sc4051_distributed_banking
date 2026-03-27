@@ -363,8 +363,9 @@ void BankClient::send_to_server(const Protocol::Command& req_com) {
 
     // 6. handle status code and display result
     Protocol::ProtocolStatus status = static_cast<Protocol::ProtocolStatus>(res_msg.payload.status_code);
-    bankIO->print("[ SERVER RESPONSE STATUS : " + Protocol::to_string(status) + " ]", 
-                  status == Protocol::ProtocolStatus::SUCCESS ? Colour::GREEN : Colour::RED);
+    bankIO->print("[ SERVER RESPONSE STATUS : " + Protocol::to_string(status) + " ]\n", 
+              status == Protocol::ProtocolStatus::SUCCESS ?
+              Colour::GREEN : Colour::RED);
 
     if (status != Protocol::ProtocolStatus::SUCCESS) {
         return;
@@ -381,9 +382,9 @@ void BankClient::send_to_server(const Protocol::Command& req_com) {
         const auto& res_cmd = res_cmd_res.value();
         bankIO->print_box_top();
         if (res_cmd.account_number) 
-            bankIO->print("Account Number : " + std::to_string(*res_cmd.account_number));
+            bankIO->print("Account Number : " + std::to_string(*res_cmd.account_number) + "\n");
         if (res_cmd.monetary_value) 
-            bankIO->print("Balance        : " + std::to_string(*res_cmd.monetary_value));
+            bankIO->print("Balance        : " + std::to_string(*res_cmd.monetary_value) + "\n");
         bankIO->print_box_bottom();
     }
 }
