@@ -359,7 +359,18 @@ Result<std::vector<uint8_t>, Error::InternalError> BankClient::send_to_server(co
     for (int i = 1; i <= MAX_TRIES; i++) {
         auto res_send = socket->send_message(data);
         if (res_send) {
-            res_recv = socket->receive_message();
+            // Loop past any callback packets (0x02) that arrived out-of-order
+            // before our expected reply (0x01) — these are monitor push updates
+            // buffered in the socket while we were waiting or retrying.
+            while (true) {
+                res_recv = socket->receive_message();
+                if (!res_recv) break; // timeout/error — fall through to retry logic
+                const auto& raw = res_recv.value();
+                if (!raw.empty() && raw[0] == static_cast<uint8_t>(Protocol::MessageType::Callback)) {
+                    continue; // discard stale callback, wait for the real reply
+                }
+                break; // got a proper reply
+            }
         }
         if (res_send && res_recv) {
             bankIO->print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN);
@@ -411,8 +422,6 @@ void BankClient::decode_command(const Protocol::Message& msg){
             bankIO->print("Account Number   : " + std::to_string(*res_cmd.account_number));
         if (res_cmd.monetary_value) 
             bankIO->print("Balance          : " + std::to_string(*res_cmd.monetary_value));
-        if (res_cmd.monitor_updates) 
-            bankIO->print("Callback Update  : " + res_cmd.monitor_updates.value());
         bankIO->print_box_bottom();
     }
 }
@@ -465,7 +474,7 @@ void BankClient::listen_server(uint32_t time) {
     auto start = std::chrono::steady_clock::now();
     while (std::chrono::steady_clock::now() - start <
         std::chrono::seconds(static_cast<long long>(time))) {
-        
+
         auto response = socket->receive_message();
         if (!response){
             if (response.error() != Error::InternalError::RECEIVE_TIMEOUT){
@@ -474,17 +483,88 @@ void BankClient::listen_server(uint32_t time) {
             continue;
         }
 
-        auto msg = decode_message(response.value());
-        if (!msg) continue;
+        const auto& raw = response.value();
 
-        const auto& res_msg = msg.value();
-        auto success = handle_status_code(res_msg);
-        if (!success) continue;
+        // Debug: dump the full byte stream
+        std::string hex;
+        hex.reserve(raw.size() * 3);
+        char buf[4];
+        for (size_t i = 0; i < raw.size(); ++i) {
+            std::snprintf(buf, sizeof(buf), "%02X ", raw[i]);
+            hex += buf;
+        }
+        bankIO->print("[DEBUG] listen_server: " + std::to_string(raw.size()) +
+                      " bytes received | byte[0]=0x" +
+                      (raw.empty() ? "??" : (std::snprintf(buf, sizeof(buf), "%02X", raw[0]), std::string(buf))) +
+                      " | " + hex);
 
-        decode_command(res_msg);
-    
+        // Route based on first byte: 0x02 = flat callback, anything else = standard reply
+        if (!raw.empty() && raw[0] == static_cast<uint8_t>(Protocol::MessageType::Callback)) {
+            decode_callback(raw);
+            continue;
+        }
+    }
+}
+
+void BankClient::decode_callback(const std::vector<uint8_t>& data) {
+    // Server callback wire layout (flat, no standard 18-byte header):
+    // [MsgType=0x02(1)][ServiceID(1)][AccountNumber(4)][NameLen(4)][Name(N)][Currency(1)][Balance(8)]
+    // Minimum size with empty name: 19 bytes
+
+    constexpr size_t MIN_CALLBACK_SIZE = 1 + 1 + 4 + 4 + 0 + 1 + 8;
+    if (data.size() < MIN_CALLBACK_SIZE) {
+        bankIO->print_error("[Client] Callback packet too small");
+        return;
     }
 
+    size_t offset = 1; // skip MsgType byte already checked
+
+    uint8_t service_id = data[offset++];
+
+    uint32_t account_number{};
+    std::memcpy(&account_number, data.data() + offset, 4);
+    account_number = ntohl(account_number);
+    offset += 4;
+
+    uint32_t name_len{};
+    std::memcpy(&name_len, data.data() + offset, 4);
+    name_len = ntohl(name_len);
+    offset += 4;
+
+    // Bounds check: name + currency(1) + balance(8) must fit
+    if (offset + name_len + 1 + 8 > data.size()) {
+        bankIO->print_error("[Client] Callback packet malformed");
+        return;
+    }
+
+    std::string holder_name(reinterpret_cast<const char*>(data.data() + offset), name_len);
+    offset += name_len;
+
+    uint8_t currency_raw = data[offset++];
+
+    // Balance: big-endian IEEE 754 float64.
+    // Reconstruct as two ntohl'd 32-bit halves — ntohl is already available
+    // via winsock2.h / arpa/inet.h pulled in by bankClient.h.
+    uint32_t hi{}, lo{};
+    std::memcpy(&hi, data.data() + offset,     4);
+    std::memcpy(&lo, data.data() + offset + 4, 4);
+    uint64_t balance_bits = (static_cast<uint64_t>(ntohl(hi)) << 32) | ntohl(lo);
+    double balance{};
+    std::memcpy(&balance, &balance_bits, 8);
+
+    // Map server currency byte (1=SGD, 2=USD, 3=EUR) to string
+    auto currency_str = [](uint8_t c) -> std::string {
+        switch (c) { case 1: return "SGD"; case 2: return "USD"; case 3: return "EUR"; default: return "UNKNOWN"; }
+    };
+
+    bankIO->print_box_top();
+    bankIO->print("[ MONITOR CALLBACK UPDATE ]");
+    bankIO->print("Service          : " + Protocol::to_string(static_cast<Protocol::Service>(service_id)));
+    bankIO->print("Account Number   : " + std::to_string(account_number));
+    bankIO->print("Account Holder   : " + holder_name);
+    bankIO->print("Currency         : " + currency_str(currency_raw));
+    bankIO->print("New Balance      : " + std::to_string(balance));
+    bankIO->print_box_bottom();
 }
 
 void BankClient::monitor_server_updates(const Protocol::Command& cmd) {
@@ -494,6 +574,6 @@ void BankClient::monitor_server_updates(const Protocol::Command& cmd) {
     auto res = execute_request_pipeline(cmd);
     if (!res) return;
     decode_command(res.value());
-    
+    bankIO->print("[ Listening TO SERVER ]\n");
     listen_server(cmd.monitor_timeout_seconds.value());
 }

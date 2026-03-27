@@ -11,8 +11,9 @@
 namespace Protocol{
 
 enum class MessageType: uint8_t {
-    Request, 
+    Request,
     Reply,
+    Callback = 2, // flat push from server monitor (no 18-byte header)
 };
 
 struct MessageId {

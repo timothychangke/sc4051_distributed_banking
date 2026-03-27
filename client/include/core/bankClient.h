@@ -71,6 +71,7 @@ protected:
     Result<std::vector<uint8_t>, Error::InternalError> prepare_message(const Protocol::Command& req);
     Result<std::vector<uint8_t>, Error::InternalError> send_to_server(const std::vector<uint8_t>& data);
     Result<Protocol::Message, Error::InternalError> decode_message(const std::vector<uint8_t>& data);
+    void decode_callback(const std::vector<uint8_t>& data);
     Result<std::monostate, Error::InternalError> handle_status_code(const Protocol::Message& msg);
     void decode_command(const Protocol::Message& msg);
 
