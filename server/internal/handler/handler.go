@@ -317,11 +317,12 @@ func handleTransfer(cmd *marshal.ParsedCommand, reqID uint32, addr *net.UDPAddr,
 
 	pw := marshal.PasswordStringToFixed(*cmd.AccountPassword)
 
-	senderNewBalance, err := svc.Transfer(
+	senderNewBalance, receiverNewBalance, err := svc.Transfer(
 		*cmd.AccountOwnerName,
 		*cmd.AccountNumber,
 		pw,
 		*cmd.TxAccountNumber,
+		models.Currency(*cmd.Currency),
 		*cmd.MonetaryValue,
 	)
 	if err != nil {
@@ -350,6 +351,14 @@ func handleTransfer(cmd *marshal.ParsedCommand, reqID uint32, addr *net.UDPAddr,
 		HolderName:    *cmd.AccountOwnerName,
 		CurrencyType:  0, // sender's currency isn't in the Transfer params
 		NewBalance:    senderNewBalance,
+	})
+
+	mon.NotifyAll(models.AccountUpdate{
+		ServiceID:     protocol.ServiceTransferFunds,
+		AccountNumber: *cmd.TxAccountNumber,
+		HolderName:    *cmd.TxAccountOwnerName,
+		CurrencyType:  0, // receivers's currency isn't in the Transfer params
+		NewBalance:    receiverNewBalance,
 	})
 
 	return marshal.BuildReply(reqID, addr, protocol.StatusSuccess, content)
