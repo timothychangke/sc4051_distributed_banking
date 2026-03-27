@@ -29,6 +29,7 @@ public:
     virtual void print(const std::string &msg, Colour colour = Colour::RESET);
     virtual void print_prompt(const std::string &field_name);
     virtual void print_error(const std::string &msg);
+    virtual void print_loading(const std::string &msg);
     virtual void print_box_top();
     virtual void print_box_bottom();
     virtual void print_service_menu();

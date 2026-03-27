@@ -12,6 +12,10 @@ void BankIO::print_error(const std::string &msg) {
     print("[!] " + msg + "\n", Colour::RED);
 }
 
+void BankIO::print_loading(const std::string &msg) {
+    print("[@]" + msg + "\n", Colour::CYAN);
+}
+
 void BankIO::print_box_top()    { print("\n───────────────────────────────\n", Colour::BOLD); }
 void BankIO::print_box_bottom() { print("───────────────────────────────\n"); }
 
