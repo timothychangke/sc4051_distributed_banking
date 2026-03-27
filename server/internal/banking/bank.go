@@ -25,7 +25,7 @@ type Service interface {
 	Deposit(name string, accNo uint32, pw [8]byte, curr models.Currency, amount float64) (float64, error)
 	Withdraw(name string, accNo uint32, pw [8]byte, curr models.Currency, amount float64) (float64, error)
 	CheckBalance(name string, accNo uint32, pw [8]byte) (float64, error)
-	Transfer(fromName string, fromAccNo uint32, pw [8]byte, toAccNo uint32, amount float64) (float64, error)
+	Transfer(fromName string, fromAccNo uint32, pw [8]byte, toAccNo uint32, curr models.Currency, amount float64) (float64, float64, error)
 }
 
 // Private service struct
@@ -168,31 +168,31 @@ func (s *service) CheckBalance(name string, accNo uint32, pw [8]byte) (float64, 
 }
 
 // Transfer is the non-idempotent operation as per the projects requirements
-func (s *service) Transfer(fromName string, fromAccNo uint32, pw [8]byte, toAccNo uint32, amount float64) (float64, error) {
+func (s *service) Transfer(fromName string, fromAccNo uint32, pw [8]byte, toAccNo uint32, curr models.Currency, amount float64) (float64, float64, error) {
 	if amount <= 0.0 {
-		return 0, ErrNonPositiveAmount
+		return 0, 0, ErrNonPositiveAmount
 	}
 
 	if fromAccNo == toAccNo {
-		return 0, ErrTransferSameAccount
+		return 0, 0, ErrTransferSameAccount
 	}
 
 	fromAcc, err := s.store.GetAccount(fromAccNo)
 	if err != nil {
-		return 0, ErrInvalidCredentials
+		return 0, 0, ErrInvalidCredentials
 	}
 
 	toAcc, err := s.store.GetAccount(toAccNo)
 	if err != nil {
-		return 0, ErrAccountNotFound
+		return 0, 0, ErrAccountNotFound
 	}
 
 	if err := checkAuth(fromAcc, fromName, pw); err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	if fromAcc.CurrencyType != toAcc.CurrencyType {
-		return 0, ErrCurrencyMismatch
+	if fromAcc.CurrencyType != curr || fromAcc.CurrencyType != toAcc.CurrencyType {
+		return 0, 0, ErrCurrencyMismatch
 	}
 
 	// Lock both accounts in order
@@ -207,7 +207,7 @@ func (s *service) Transfer(fromName string, fromAccNo uint32, pw [8]byte, toAccN
 	defer toAcc.Mu.Unlock()
 
 	if fromAcc.Balance < amount {
-		return 0, ErrInsufficientFunds
+		return 0, 0, ErrInsufficientFunds
 	}
 
 	// Transfers can only decrement fromAcc balance
@@ -217,5 +217,5 @@ func (s *service) Transfer(fromName string, fromAccNo uint32, pw [8]byte, toAccN
 	s.store.UpdateAccount(fromAcc)
 	s.store.UpdateAccount(toAcc)
 
-	return fromAcc.Balance, nil
+	return fromAcc.Balance, toAcc.Balance, nil
 }
