@@ -27,3 +27,50 @@ jobs:
       - name: Run Tests 
         working-directory: ./server
         run: go test -v -race ./...
+
+  # ── Integration tests (informational, never blocks merge) ───────
+  integration-test:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [ test ]
+    continue-on-error: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+ 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+ 
+      - name: Install C++ build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake
+ 
+      - name: Build Go server
+        working-directory: ./server
+        run: |
+          mkdir -p bin
+          go build -o ./bin/server ./cmd/main.go
+ 
+      - name: Build C++ client
+        working-directory: ./client
+        run: |
+          mkdir -p build
+          cd build
+          cmake ..
+          make -j$(nproc)
+ 
+      - name: Run integration tests
+        working-directory: ./integration_test
+        env:
+          SERVER_BIN: ../server/bin/server
+          CLIENT_BIN: ../client/build/client
+        run: go test -v -timeout 600s -count=1 . 2>&1 | tee integration-results.txt
+ 
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: ./integration_test/integration-results.txt
+ 

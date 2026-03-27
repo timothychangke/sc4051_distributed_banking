@@ -161,3 +161,11 @@ Invocation Semantics Package (internal/semantics/): Implemented a fully decouple
 * `ReplyHistory (history.go)`: Built a thread-safe, two-level reply cache (sync.RWMutex over map[clientAddr]map[requestID][]byte) that stores defensive copies of raw reply bytes. It supports Lookup for duplicate detection and EvictBefore for sliding-window eviction based on monotonic request IDs.
 * `Dispatcher (dispatcher.go)`: Developed the core semantics engine positioned between the UDP read loop and the handler. It manages the logic for at-most-once mode, checking the ReplyHistory to prevent non-idempotent side effects (like double-deposits) by returning cached replies for duplicate requests.
 * `LossSimulator (losssim.go`): Added a configurable packet loss simulator with a dedicated rand.Rand source to avoid global lock contention. It is designed to provoke retransmission scenarios at both request-receive and reply-send points to support reproducible lab report experiments.
+
+2026-03-24 (Tim)
+- **End-to-end integration test suite** (`integration_test/integration_test.go`)
+  - Drives the real C++ client binary against the real Go server binary over UDP on localhost
+  - 38 test cases covering all 7 banking services: Open, Close, Deposit, Withdraw, Monitor, GetBalance, Transfer
+  - Fault tolerance tests under simulated packet loss for both at-least-once and at-most-once semantics
+  - Cross-language interoperability test exercising the full C++ → UDP → Go → UDP → C++ round-trip
+  - Stress test for rapid-fire operations
