@@ -53,10 +53,16 @@ public:
     MOCK_METHOD((std::pair<uint32_t, uint16_t>), get_local_info, (), (override));
 };
 
-class MockEncoder : public Protocol::BaseCommandEncoder {
+class MockCmdEncoder : public Protocol::BaseCommandEncoder {
 public:
     MOCK_METHOD((Result<std::vector<uint8_t>, Error::InternalError>), encode_message, (const Protocol::Command&), (override));
     MOCK_METHOD((Result<Protocol::Command, Error::InternalError>), decode_message, (const std::vector<uint8_t>&), (override));
+};
+
+class MockCallbackEncoder : public Protocol::BaseCallbackEncoder {
+public:
+    MOCK_METHOD((Result<std::vector<uint8_t>, Error::InternalError>), encode_message, (const Protocol::CallbackMessage&), (override));
+    MOCK_METHOD((Result<Protocol::CallbackMessage, Error::InternalError>), decode_message, (const std::vector<uint8_t>&), (override));
 };
 
 class MockSerializer : public Protocol::BaseMessageSerializer {
@@ -70,10 +76,11 @@ public:
     BankClientTestWrapper(
         std::unique_ptr<BankIO> io,
         std::unique_ptr<NetworkUtils::BaseSocket> socket,
-        std::unique_ptr<Protocol::BaseCommandEncoder> encoder,
+        std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder,
+        std::unique_ptr<Protocol::BaseCallbackEncoder> callbackEncoder,
         std::unique_ptr<Protocol::BaseMessageSerializer> serializer,
         Semantics::InvocationFlag flag
-    ) : BankClient(std::move(io), std::move(socket), std::move(encoder), std::move(serializer), flag) {}
+    ) : BankClient(std::move(io), std::move(socket), std::move(cmdEncoder), std::move(callbackEncoder), std::move(serializer), flag) {}
     
     // expose methods for testing
     using BankClient::isAlpha;
@@ -112,7 +119,8 @@ protected:
     
         auto uniqueMockIO = std::make_unique<MockBankIO>();
         auto uniqueMockSocket = std::make_unique<MockSocket>();
-        auto uniqueMockEncoder = std::make_unique<MockEncoder>();
+        auto uniqueMockCmdEncoder = std::make_unique<MockCmdEncoder>();
+        auto uniqueMockCallbackEncoder = std::make_unique<MockCallbackEncoder>();
         auto uniqueMockSerializer = std::make_unique<MockSerializer>();
         
         mockIO = uniqueMockIO.get();
@@ -121,7 +129,8 @@ protected:
         client = std::make_unique<BankClientTestWrapper>(
             std::move(uniqueMockIO),
             std::move(uniqueMockSocket),
-            std::move(uniqueMockEncoder),
+            std::move(uniqueMockCmdEncoder),
+            std::move(uniqueMockCallbackEncoder),
             std::move(uniqueMockSerializer),
             Semantics::InvocationFlag::AT_LEAST_ONCE
         );
@@ -418,8 +427,8 @@ TEST_F(BankClientTest, ExecuteClientReq_Success) {
     std::vector<uint8_t> serialized_reply = {7, 8, 9};
 
     // 1. Mock Encoder: encode_message
-    auto mockEncoder = static_cast<MockEncoder*>(client->get_encoder());
-    EXPECT_CALL(*mockEncoder, encode_message(testing::_))
+    auto mockCmdEncoder = static_cast<MockCmdEncoder*>(client->get_encoder());
+    EXPECT_CALL(*mockCmdEncoder, encode_message(testing::_))
         .WillOnce(testing::Return(encoded_cmd));
 
     // 2. Mock Serializer: serialize request
@@ -446,7 +455,7 @@ TEST_F(BankClientTest, ExecuteClientReq_Success) {
     Protocol::Command res_cmd;
     res_cmd.account_number = 12345;
     res_cmd.monetary_value = 1000.0;
-    EXPECT_CALL(*mockEncoder, decode_message(reply_msg.payload.content))
+    EXPECT_CALL(*mockCmdEncoder, decode_message(reply_msg.payload.content))
         .WillOnce(testing::Return(res_cmd));
 
     // Expectations for IO
@@ -466,8 +475,8 @@ TEST_F(BankClientTest, ExecuteClientReq_ServerError) {
     
     std::vector<uint8_t> serialized_reply = {7, 8, 9};
 
-    auto mockEncoder = static_cast<MockEncoder*>(client->get_encoder());
-    EXPECT_CALL(*mockEncoder, encode_message(testing::_)).WillOnce(testing::Return(std::vector<uint8_t>{1}));
+    auto mockCmdEncoder = static_cast<MockCmdEncoder*>(client->get_encoder());
+    EXPECT_CALL(*mockCmdEncoder, encode_message(testing::_)).WillOnce(testing::Return(std::vector<uint8_t>{1}));
     
     auto mockSerializer = static_cast<MockSerializer*>(client->get_serializer());
     EXPECT_CALL(*mockSerializer, serialize(testing::_)).WillOnce(testing::Return(std::vector<uint8_t>{2}));
@@ -491,8 +500,8 @@ TEST_F(BankClientTest, ExecuteClientReq_NetworkFailure) {
     Protocol::Command req;
     req.service = Protocol::Service::WITHDRAW;
     
-    auto mockEncoder = static_cast<MockEncoder*>(client->get_encoder());
-    EXPECT_CALL(*mockEncoder, encode_message(testing::_)).WillOnce(testing::Return(std::vector<uint8_t>{1}));
+    auto mockCmdEncoder = static_cast<MockCmdEncoder*>(client->get_encoder());
+    EXPECT_CALL(*mockCmdEncoder, encode_message(testing::_)).WillOnce(testing::Return(std::vector<uint8_t>{1}));
     
     auto mockSerializer = static_cast<MockSerializer*>(client->get_serializer());
     EXPECT_CALL(*mockSerializer, serialize(testing::_)).WillOnce(testing::Return(std::vector<uint8_t>{2}));
@@ -518,8 +527,8 @@ TEST_F(BankClientTest, monitor_server_updates_Success) {
     std::vector<uint8_t> serialized_msg = {2};
     std::vector<uint8_t> serialized_reply = {3};
 
-    auto mockEncoder = static_cast<MockEncoder*>(client->get_encoder());
-    EXPECT_CALL(*mockEncoder, encode_message(testing::_))
+    auto mockCmdEncoder = static_cast<MockCmdEncoder*>(client->get_encoder());
+    EXPECT_CALL(*mockCmdEncoder, encode_message(testing::_))
         .WillOnce(testing::Return(encoded_cmd));
 
     auto mockSerializer = static_cast<MockSerializer*>(client->get_serializer());
@@ -543,7 +552,7 @@ TEST_F(BankClientTest, monitor_server_updates_Success) {
 
     Protocol::Command res_cmd;
     res_cmd.monitor_updates = "Updates started";
-    EXPECT_CALL(*mockEncoder, decode_message(reply_msg.payload.content))
+    EXPECT_CALL(*mockCmdEncoder, decode_message(reply_msg.payload.content))
         .WillOnce(testing::Return(res_cmd));
 
     EXPECT_CALL(*mockIO, print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN)).Times(1);

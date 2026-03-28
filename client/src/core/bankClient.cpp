@@ -5,12 +5,14 @@ BankClient::BankClient(
     std::unique_ptr<BankIO> bankIO,
     std::unique_ptr<NetworkUtils::BaseSocket> socket,
     std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder,
+    std::unique_ptr<Protocol::BaseCallbackEncoder> callbackEncoder,
     std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer,
     Semantics::InvocationFlag flag
 )
     : bankIO(std::move(bankIO)),
       socket(std::move(socket)),
       cmdEncoder(std::move(cmdEncoder)),
+      callbackEncoder(std::move(callbackEncoder)),
       msgSerializer(std::move(msgSerializer)),
       flag(flag),
       current_request_id(0){
@@ -423,7 +425,7 @@ void BankClient::decode_command(const Protocol::Message& msg){
     }
 }
 
-Result<std::monostate, Error::InternalError> BankClient::handle_status_code(const Protocol::Message& msg){
+Result<std::monostate, Error::InternalError> BankClient::decode_status_code(const Protocol::Message& msg){
 
     Protocol::ProtocolStatus status = static_cast<Protocol::ProtocolStatus>(msg.payload.status_code);
     bankIO->print("[ SERVER RESPONSE STATUS : " + Protocol::to_string(status) + " ]", 
@@ -450,7 +452,7 @@ Result<Protocol::Message, Error::InternalError> BankClient::execute_request_pipe
     if (!msg) return Result<Protocol::Message, Error::InternalError>::fail(msg.error());
 
     const auto& res_msg = msg.value();
-    auto success = handle_status_code(res_msg);
+    auto success = decode_status_code(res_msg);
     if (!success) return Result<Protocol::Message, Error::InternalError>::fail(success.error());
 
     return res_msg;
@@ -459,10 +461,8 @@ Result<Protocol::Message, Error::InternalError> BankClient::execute_request_pipe
 void BankClient::execute_client_req(const Protocol::Command& cmd) {
 
     if (cmd.service == Protocol::Service::MONITOR) return; // sanity check
-    
     auto res = execute_request_pipeline(cmd);
     if (!res) return;
-
     decode_command(res.value());
 }
 
@@ -496,78 +496,31 @@ void BankClient::listen_server(uint32_t time) {
         //               " | " + hex);
 
         // Route based on first byte: 0x02 = flat callback, anything else = standard reply
+
         if (!raw.empty() && raw[0] == static_cast<uint8_t>(Protocol::MessageType::Callback)) {
-            decode_callback(raw);
+            auto res_cb_msg = callbackEncoder->decode_message(raw);
+            if (!res_cb_msg) {
+                bankIO->print_error("[Client] Failed to listen to server: " + Error::to_string(res_cb_msg.error()));
+            } 
+            else{
+                auto& msg = res_cb_msg.value();
+                bankIO->print_box_top();
+                bankIO->print("[ MONITOR CALLBACK UPDATE ]\n", Colour::CYAN);
+                bankIO->print("Service          : " + Protocol::to_string(static_cast<Protocol::Service>(msg.service)));
+                bankIO->print("Account Number   : " + std::to_string(msg.account_number));
+                bankIO->print("Account Holder   : " + msg.account_owner_name);
+                bankIO->print("Currency         : " + Protocol::to_string(static_cast<Protocol::CurrencyType>(msg.currency)));
+                bankIO->print("New Balance      : " + std::to_string(msg.monetary_value));
+                bankIO->print_box_bottom();
+            }
             continue;
         }
     }
 }
 
-void BankClient::decode_callback(const std::vector<uint8_t>& data) {
-    // Server callback wire layout (flat, no standard 18-byte header):
-    // [MsgType=0x02(1)][ServiceID(1)][AccountNumber(4)][NameLen(4)][Name(N)][Currency(1)][Balance(8)]
-    // Minimum size with empty name: 19 bytes
-
-    constexpr size_t MIN_CALLBACK_SIZE = 1 + 1 + 4 + 4 + 0 + 1 + 8;
-    if (data.size() < MIN_CALLBACK_SIZE) {
-        bankIO->print_error("[Client] Callback packet too small");
-        return;
-    }
-
-    size_t offset = 1; // skip MsgType byte already checked
-
-    uint8_t service_id = data[offset++];
-
-    uint32_t account_number{};
-    std::memcpy(&account_number, data.data() + offset, 4);
-    account_number = ntohl(account_number);
-    offset += 4;
-
-    uint32_t name_len{};
-    std::memcpy(&name_len, data.data() + offset, 4);
-    name_len = ntohl(name_len);
-    offset += 4;
-
-    // Bounds check: name + currency(1) + balance(8) must fit
-    if (offset + name_len + 1 + 8 > data.size()) {
-        bankIO->print_error("[Client] Callback packet malformed");
-        return;
-    }
-
-    std::string holder_name(reinterpret_cast<const char*>(data.data() + offset), name_len);
-    offset += name_len;
-
-    uint8_t currency_raw = data[offset++];
-
-    // Balance: big-endian IEEE 754 float64.
-    // Reconstruct as two ntohl'd 32-bit halves — ntohl is already available
-    // via winsock2.h / arpa/inet.h pulled in by bankClient.h.
-    uint32_t hi{}, lo{};
-    std::memcpy(&hi, data.data() + offset,     4);
-    std::memcpy(&lo, data.data() + offset + 4, 4);
-    uint64_t balance_bits = (static_cast<uint64_t>(ntohl(hi)) << 32) | ntohl(lo);
-    double balance{};
-    std::memcpy(&balance, &balance_bits, 8);
-
-    // Map server currency byte (1=SGD, 2=USD, 3=EUR) to string
-    auto currency_str = [](uint8_t c) -> std::string {
-        switch (c) { case 1: return "SGD"; case 2: return "USD"; case 3: return "EUR"; default: return "UNKNOWN"; }
-    };
-
-    bankIO->print_box_top();
-    bankIO->print("[ MONITOR CALLBACK UPDATE ]");
-    bankIO->print("Service          : " + Protocol::to_string(static_cast<Protocol::Service>(service_id)));
-    bankIO->print("Account Number   : " + std::to_string(account_number));
-    bankIO->print("Account Holder   : " + holder_name);
-    bankIO->print("Currency         : " + currency_str(currency_raw));
-    bankIO->print("New Balance      : " + std::to_string(balance));
-    bankIO->print_box_bottom();
-}
-
 void BankClient::monitor_server_updates(const Protocol::Command& cmd) {
 
     if (cmd.service != Protocol::Service::MONITOR) return; // sanity check
-
     auto res = execute_request_pipeline(cmd);
     if (!res) return;
     decode_command(res.value());

@@ -5,6 +5,7 @@
 #include "udpSocket.h"
 #include "msgSerializer.h"
 #include "cmdEncoder.h"
+#include "callbackEncoder.h"
 #include "bankClient.h"
 #include "semantics.h"
 
@@ -36,6 +37,7 @@ int main(int argc, char* argv[]) {
         auto bankIO = std::make_unique<BankIO>();
         auto udpSocket = std::make_unique<NetworkUtils::UDPSocket>(serverIp, serverPort);
         auto cmdEncoder = std::make_unique<Protocol::CommandEncoder>();
+        auto callbackEncoder = std::make_unique<Protocol::CallbackEncoder>();
         auto msgSerializer = std::make_unique<Protocol::MessageSerializer>();
 
         // inject dependency :)
@@ -43,6 +45,7 @@ int main(int argc, char* argv[]) {
             std::move(bankIO),
             std::move(udpSocket), 
             std::move(cmdEncoder), 
+            std::move(callbackEncoder), 
             std::move(msgSerializer),
             flag);
         

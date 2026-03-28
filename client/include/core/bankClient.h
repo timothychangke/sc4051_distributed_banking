@@ -29,6 +29,7 @@
 #include "bankIO.h"
 #include "baseSocket.h"
 #include "baseCmdEncoder.h"
+#include "callbackEncoder.h"
 #include "baseMsgSerializer.h"
 
 #include "result.h"
@@ -46,7 +47,8 @@ public:
     BankClient( 
         std::unique_ptr<BankIO> bankIO,
         std::unique_ptr<NetworkUtils::BaseSocket> socket,
-        std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder,
+        std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder, 
+        std::unique_ptr<Protocol::BaseCallbackEncoder> callbackEncoder, 
         std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer,
         Semantics::InvocationFlag flag 
     );
@@ -59,6 +61,7 @@ protected:
     std::unique_ptr<BankIO> bankIO;
     std::unique_ptr<NetworkUtils::BaseSocket> socket;
     std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder;
+    std::unique_ptr<Protocol::BaseCallbackEncoder> callbackEncoder;
     std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer;
     Semantics::InvocationFlag flag;
     static const std::unordered_map<std::string, Protocol::CurrencyType> stringToCurrency;
@@ -71,8 +74,7 @@ protected:
     Result<std::vector<uint8_t>, Error::InternalError> prepare_message(const Protocol::Command& req);
     Result<std::vector<uint8_t>, Error::InternalError> send_to_server(const std::vector<uint8_t>& data);
     Result<Protocol::Message, Error::InternalError> decode_message(const std::vector<uint8_t>& data);
-    void decode_callback(const std::vector<uint8_t>& data);
-    Result<std::monostate, Error::InternalError> handle_status_code(const Protocol::Message& msg);
+    Result<std::monostate, Error::InternalError> decode_status_code(const Protocol::Message& msg);
     void decode_command(const Protocol::Message& msg);
 
     void trimString(std::string& str);

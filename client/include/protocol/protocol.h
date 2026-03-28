@@ -24,6 +24,8 @@ enum class CurrencyType {
     // add more ...
 };
 
+std::string to_string(CurrencyType cur_type);
+
 enum class FieldID : uint8_t {
     Service = 1,
     AccountNumber = 2,
