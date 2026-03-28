@@ -222,7 +222,8 @@ Result<std::string, Error::InternalError> BankClient::getValidatedPassword(const
 Result<Protocol::CurrencyType, Error::InternalError> BankClient::getValidatedCurrency(const std::string& prompt){
     for(int i=0; i < MAX_TRIES; i++) {
         bankIO->print_prompt(prompt + " (or type 'quit' to cancel)");
-        std::string input = bankIO->read_line(); 
+        std::string input = bankIO->read_line();
+        trimString(input);
         if (input == "quit") {
             return Result<Protocol::CurrencyType, Error::InternalError>::fail(
                 Error::InternalError::USER_CANCELED);
@@ -372,7 +373,7 @@ Result<std::vector<uint8_t>, Error::InternalError> BankClient::send_to_server(co
             }
         }
         if (res_send && res_recv) {
-            bankIO->print("[ SUCCESS: Message sent and received from server ]\n", Colour::GREEN);
+            bankIO->print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN);
             return res_recv;
         }
         if (i < MAX_TRIES) {
@@ -417,10 +418,10 @@ void BankClient::decode_command(const Protocol::Message& msg){
         
         const auto& res_cmd = res_cmd_res.value();
         bankIO->print_box_top();
-        if (res_cmd.account_number) 
-            bankIO->print("Account Number : " + std::to_string(*res_cmd.account_number) + "\n");
-        if (res_cmd.monetary_value) 
-            bankIO->print("Balance        : " + std::to_string(*res_cmd.monetary_value) + "\n");
+        if (res_cmd.account_number)
+            bankIO->print("Account Number   : " + std::to_string(*res_cmd.account_number) + "\n");
+        if (res_cmd.monetary_value)
+            bankIO->print("Balance          : " + std::to_string(*res_cmd.monetary_value) + "\n");
         bankIO->print_box_bottom();
     }
 }
@@ -506,11 +507,11 @@ void BankClient::listen_server(uint32_t time) {
                 auto& msg = res_cb_msg.value();
                 bankIO->print_box_top();
                 bankIO->print("[ MONITOR CALLBACK UPDATE ]\n", Colour::CYAN);
-                bankIO->print("Service          : " + Protocol::to_string(static_cast<Protocol::Service>(msg.service)));
-                bankIO->print("Account Number   : " + std::to_string(msg.account_number));
-                bankIO->print("Account Holder   : " + msg.account_owner_name);
-                bankIO->print("Currency         : " + Protocol::to_string(static_cast<Protocol::CurrencyType>(msg.currency)));
-                bankIO->print("New Balance      : " + std::to_string(msg.monetary_value));
+                bankIO->print("Service          : " + Protocol::to_string(static_cast<Protocol::Service>(msg.service)) + "\n");
+                bankIO->print("Account Number   : " + std::to_string(msg.account_number) + "\n");
+                bankIO->print("Account Holder   : " + msg.account_owner_name + "\n");
+                bankIO->print("Currency         : " + Protocol::to_string(static_cast<Protocol::CurrencyType>(msg.currency)) + "\n");
+                bankIO->print("New Balance      : " + std::to_string(msg.monetary_value) + "\n");
                 bankIO->print_box_bottom();
             }
             continue;

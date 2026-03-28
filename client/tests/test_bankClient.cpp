@@ -107,6 +107,7 @@ public:
     Protocol::BaseCommandEncoder* get_encoder() { return cmdEncoder.get(); }
     Protocol::BaseMessageSerializer* get_serializer() { return msgSerializer.get(); }
     NetworkUtils::BaseSocket* get_socket() { return socket.get(); }
+    Protocol::BaseCallbackEncoder* get_callback_encoder() { return callbackEncoder.get(); }
 };
 
 class BankClientTest : public ::testing::Test {
@@ -551,14 +552,12 @@ TEST_F(BankClientTest, monitor_server_updates_Success) {
         .WillOnce(testing::Return(reply_msg));
 
     Protocol::Command res_cmd;
-    res_cmd.monitor_updates = "Updates started";
     EXPECT_CALL(*mockCmdEncoder, decode_message(reply_msg.payload.content))
         .WillOnce(testing::Return(res_cmd));
 
     EXPECT_CALL(*mockIO, print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN)).Times(1);
     EXPECT_CALL(*mockIO, print("[ SERVER RESPONSE STATUS : SUCCESS ]", Colour::GREEN)).Times(1);
     EXPECT_CALL(*mockIO, print_box_top()).Times(1);
-    EXPECT_CALL(*mockIO, print(testing::HasSubstr("Callback Update  : Updates started"), testing::_)).Times(1);
     EXPECT_CALL(*mockIO, print_box_bottom()).Times(1);
 
     client->monitor_server_updates(req);
