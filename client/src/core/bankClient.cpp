@@ -47,7 +47,7 @@ void BankClient::run() {
                 continue;
             }
         }
-        bankIO->print("[ SENDING REQUEST TO SERVER ]\n");
+        bankIO->print("[ SENDING REQUEST TO SERVER ]\n", Colour::CYAN);
         if (req.value().service == Protocol::Service::MONITOR){
             monitor_server_updates(req.value());
         }   
@@ -359,21 +359,18 @@ Result<std::vector<uint8_t>, Error::InternalError> BankClient::send_to_server(co
     for (int i = 1; i <= MAX_TRIES; i++) {
         auto res_send = socket->send_message(data);
         if (res_send) {
-            // Loop past any callback packets (0x02) that arrived out-of-order
-            // before our expected reply (0x01) — these are monitor push updates
-            // buffered in the socket while we were waiting or retrying.
             while (true) {
                 res_recv = socket->receive_message();
-                if (!res_recv) break; // timeout/error — fall through to retry logic
+                if (!res_recv) break; 
                 const auto& raw = res_recv.value();
                 if (!raw.empty() && raw[0] == static_cast<uint8_t>(Protocol::MessageType::Callback)) {
-                    continue; // discard stale callback, wait for the real reply
+                    continue; 
                 }
-                break; // got a proper reply
+                break; 
             }
         }
         if (res_send && res_recv) {
-            bankIO->print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN);
+            bankIO->print("[ SUCCESS: Message sent and received from server ]\n", Colour::GREEN);
             return res_recv;
         }
         if (i < MAX_TRIES) {
@@ -486,17 +483,17 @@ void BankClient::listen_server(uint32_t time) {
         const auto& raw = response.value();
 
         // Debug: dump the full byte stream
-        std::string hex;
-        hex.reserve(raw.size() * 3);
-        char buf[4];
-        for (size_t i = 0; i < raw.size(); ++i) {
-            std::snprintf(buf, sizeof(buf), "%02X ", raw[i]);
-            hex += buf;
-        }
-        bankIO->print("[DEBUG] listen_server: " + std::to_string(raw.size()) +
-                      " bytes received | byte[0]=0x" +
-                      (raw.empty() ? "??" : (std::snprintf(buf, sizeof(buf), "%02X", raw[0]), std::string(buf))) +
-                      " | " + hex);
+        // std::string hex;
+        // hex.reserve(raw.size() * 3);
+        // char buf[4];
+        // for (size_t i = 0; i < raw.size(); ++i) {
+        //     std::snprintf(buf, sizeof(buf), "%02X ", raw[i]);
+        //     hex += buf;
+        // }
+        // bankIO->print("[DEBUG] listen_server: " + std::to_string(raw.size()) +
+        //               " bytes received | byte[0]=0x" +
+        //               (raw.empty() ? "??" : (std::snprintf(buf, sizeof(buf), "%02X", raw[0]), std::string(buf))) +
+        //               " | " + hex);
 
         // Route based on first byte: 0x02 = flat callback, anything else = standard reply
         if (!raw.empty() && raw[0] == static_cast<uint8_t>(Protocol::MessageType::Callback)) {
@@ -574,6 +571,6 @@ void BankClient::monitor_server_updates(const Protocol::Command& cmd) {
     auto res = execute_request_pipeline(cmd);
     if (!res) return;
     decode_command(res.value());
-    bankIO->print("[ Listening TO SERVER ]\n");
+    bankIO->print("[ Listening TO SERVER ]\n", Colour::CYAN);
     listen_server(cmd.monitor_timeout_seconds.value());
 }
