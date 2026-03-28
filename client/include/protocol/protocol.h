@@ -95,7 +95,7 @@ struct Command {
 
 template<typename T, typename Func>
 void iterate(T& s, Func f) {
-    std::apply([&](auto&... args) {
+    std::apply([&](auto&&... args) {
         ((f(args.first, args.second)), ...);
     }, s.all_fields());
 }

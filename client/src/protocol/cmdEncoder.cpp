@@ -1,4 +1,5 @@
 #include "cmdEncoder.h"
+#include "safemath.h"
 
 
 Protocol::CommandEncoder::CommandEncoder(){}

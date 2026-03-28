@@ -9,13 +9,13 @@
 
 #include <vector>
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <optional>
 #include <unordered_map>
 #include <functional>
 
 #include "result.h"
-#include "safemath.h"
 #include "protocol.h"
 #include "internalError.h"
 #include "baseCmdEncoder.h"

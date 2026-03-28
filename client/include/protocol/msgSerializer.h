@@ -8,11 +8,10 @@
 #endif
 
 #include <cstdint>
+#include <cstring>
 #include <vector>
-#include <optional>
 
 #include "result.h"
-#include "safemath.h"
 #include "message.h"
 #include "baseMsgSerializer.h"
 

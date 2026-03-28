@@ -1,4 +1,5 @@
 #include "msgSerializer.h"
+#include "safemath.h"
 
 Protocol::MessageSerializer::MessageSerializer(){};
 Protocol::MessageSerializer::~MessageSerializer(){};

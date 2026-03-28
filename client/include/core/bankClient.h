@@ -17,11 +17,9 @@
 #include <memory>
 #include <chrono>
 #include <thread>
-#include <cmath>
 #include <algorithm>
-#include <cctype> 
+#include <cctype>
 #include <limits>
-#include <chrono>
 
 
 #include "protocol.h"
