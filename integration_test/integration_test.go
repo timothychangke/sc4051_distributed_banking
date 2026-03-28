@@ -49,14 +49,20 @@ func serverBin() string {
 	if v := os.Getenv("SERVER_BIN"); v != "" {
 		return v
 	}
-	return "../Server/bin/server"
+	if runtime.GOOS == "windows" {
+		return "../server/bin/server.exe"
+	}
+	return "../server/bin/server"
 }
 
 func clientBin() string {
 	if v := os.Getenv("CLIENT_BIN"); v != "" {
 		return v
 	}
-	return "../Client/build/client"
+	if runtime.GOOS == "windows" {
+		return "../client/build/Debug/client.exe"
+	}
+	return "../client/build/client"
 }
 
 
