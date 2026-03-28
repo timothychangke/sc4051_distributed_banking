@@ -1,6 +1,9 @@
-#pragma once 
+#pragma once
+#include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
+#include <tuple>
 
 namespace Protocol{
 
