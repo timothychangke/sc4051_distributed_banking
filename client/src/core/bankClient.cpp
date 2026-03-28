@@ -419,9 +419,9 @@ void BankClient::decode_command(const Protocol::Message& msg){
         const auto& res_cmd = res_cmd_res.value();
         bankIO->print_box_top();
         if (res_cmd.account_number) 
-            bankIO->print("Account Number   : " + std::to_string(*res_cmd.account_number));
+            bankIO->print("Account Number : " + std::to_string(*res_cmd.account_number) + "\n");
         if (res_cmd.monetary_value) 
-            bankIO->print("Balance          : " + std::to_string(*res_cmd.monetary_value));
+            bankIO->print("Balance        : " + std::to_string(*res_cmd.monetary_value) + "\n");
         bankIO->print_box_bottom();
     }
 }
