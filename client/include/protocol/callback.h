@@ -18,7 +18,7 @@ struct CallbackMessage {
     uint32_t            account_owner_name_len ;           
     std::string         account_owner_name;
     CurrencyType        currency;
-    uint32_t            monetary_value;
+    double              monetary_value;
 };
 
 }

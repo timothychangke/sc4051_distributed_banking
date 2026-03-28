@@ -419,6 +419,103 @@ TEST_F(BankClientTest, build_command_QUIT) {
     EXPECT_EQ(res.error(), Error::InternalError::USER_QUIT);
 }
 
+
+TEST_F(BankClientTest, build_command_CLOSE) {
+    EXPECT_CALL(*mockIO, read_int()).WillOnce(testing::Return(static_cast<int>(Protocol::Service::CLOSE)));
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(3);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("Alice"))
+        .WillOnce(testing::Return("123456"))
+        .WillOnce(testing::Return("pass"));
+
+    auto res = client->build_command();
+    ASSERT_TRUE(res.ok());
+    EXPECT_EQ(res.value().service, Protocol::Service::CLOSE);
+    EXPECT_EQ(res.value().account_owner_name, "Alice");
+    EXPECT_EQ(res.value().account_number, 123456u);
+    EXPECT_EQ(res.value().account_password, "pass");
+}
+
+TEST_F(BankClientTest, build_command_GET_BALANCE) {
+    EXPECT_CALL(*mockIO, read_int()).WillOnce(testing::Return(static_cast<int>(Protocol::Service::GET_BALANCE)));
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(3);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("Bob"))
+        .WillOnce(testing::Return("654321"))
+        .WillOnce(testing::Return("secret"));
+
+    auto res = client->build_command();
+    ASSERT_TRUE(res.ok());
+    EXPECT_EQ(res.value().service, Protocol::Service::GET_BALANCE);
+    EXPECT_EQ(res.value().account_owner_name, "Bob");
+    EXPECT_EQ(res.value().account_number, 654321u);
+    EXPECT_EQ(res.value().account_password, "secret");
+}
+
+TEST_F(BankClientTest, build_command_DEPOSIT) {
+    EXPECT_CALL(*mockIO, read_int()).WillOnce(testing::Return(static_cast<int>(Protocol::Service::DEPOSIT)));
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(5);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("Alice"))
+        .WillOnce(testing::Return("111"))
+        .WillOnce(testing::Return("pass"))
+        .WillOnce(testing::Return("SGD"))
+        .WillOnce(testing::Return("200.00"));
+
+    auto res = client->build_command();
+    ASSERT_TRUE(res.ok());
+    EXPECT_EQ(res.value().service, Protocol::Service::DEPOSIT);
+    EXPECT_EQ(res.value().account_owner_name, "Alice");
+    EXPECT_EQ(res.value().account_number, 111u);
+    EXPECT_EQ(res.value().account_password, "pass");
+    EXPECT_EQ(res.value().currency, Protocol::CurrencyType::SGD);
+    EXPECT_DOUBLE_EQ(res.value().monetary_value.value(), 200.00);
+}
+
+TEST_F(BankClientTest, build_command_WITHDRAW) {
+    EXPECT_CALL(*mockIO, read_int()).WillOnce(testing::Return(static_cast<int>(Protocol::Service::WITHDRAW)));
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(5);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("Charlie"))
+        .WillOnce(testing::Return("222"))
+        .WillOnce(testing::Return("mypass"))
+        .WillOnce(testing::Return("USD"))
+        .WillOnce(testing::Return("50.00"));
+
+    auto res = client->build_command();
+    ASSERT_TRUE(res.ok());
+    EXPECT_EQ(res.value().service, Protocol::Service::WITHDRAW);
+    EXPECT_EQ(res.value().account_owner_name, "Charlie");
+    EXPECT_EQ(res.value().account_number, 222u);
+    EXPECT_EQ(res.value().account_password, "mypass");
+    EXPECT_EQ(res.value().currency, Protocol::CurrencyType::USD);
+    EXPECT_DOUBLE_EQ(res.value().monetary_value.value(), 50.00);
+}
+
+TEST_F(BankClientTest, build_command_TRANSFER_FUNDS) {
+    EXPECT_CALL(*mockIO, read_int()).WillOnce(testing::Return(static_cast<int>(Protocol::Service::TRANSFER_FUNDS)));
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(7);
+    EXPECT_CALL(*mockIO, read_line())
+        .WillOnce(testing::Return("Alice"))
+        .WillOnce(testing::Return("111"))
+        .WillOnce(testing::Return("pass"))
+        .WillOnce(testing::Return("Bob"))
+        .WillOnce(testing::Return("222"))
+        .WillOnce(testing::Return("EUR"))
+        .WillOnce(testing::Return("100.00"));
+
+    auto res = client->build_command();
+    ASSERT_TRUE(res.ok());
+    EXPECT_EQ(res.value().service, Protocol::Service::TRANSFER_FUNDS);
+    EXPECT_EQ(res.value().account_owner_name, "Alice");
+    EXPECT_EQ(res.value().account_number, 111u);
+    EXPECT_EQ(res.value().account_password, "pass");
+    EXPECT_EQ(res.value().tx_account_owner_name, "Bob");
+    EXPECT_EQ(res.value().tx_account_number, 222u);
+    EXPECT_EQ(res.value().currency, Protocol::CurrencyType::EUR);
+    EXPECT_DOUBLE_EQ(res.value().monetary_value.value(), 100.00);
+}
+
 TEST_F(BankClientTest, ExecuteClientReq_Success) {
     Protocol::Command req;
     req.service = Protocol::Service::GET_BALANCE;
@@ -559,15 +656,131 @@ TEST_F(BankClientTest, monitor_server_updates_Success) {
     EXPECT_CALL(*mockIO, print("[ SERVER RESPONSE STATUS : SUCCESS ]", Colour::GREEN)).Times(1);
     EXPECT_CALL(*mockIO, print_box_top()).Times(1);
     EXPECT_CALL(*mockIO, print_box_bottom()).Times(1);
+    EXPECT_CALL(*mockIO, print("[ Listening TO SERVER ]\n", Colour::CYAN)).Times(1);
 
     client->monitor_server_updates(req);
 }
 
 TEST_F(BankClientTest, listen_server_TimeoutResilience) {
     auto mockSocket = static_cast<MockSocket*>(client->get_socket());
-    
+
     EXPECT_CALL(*mockSocket, receive_message())
         .WillRepeatedly(testing::Return(Result<std::vector<uint8_t>, Error::InternalError>::fail(Error::InternalError::RECEIVE_TIMEOUT)));
-        
+
     client->listen_server(1);
+}
+
+TEST_F(BankClientTest, getValidatedCurrency_invalid) {
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(MAX_TRIES);
+    EXPECT_CALL(*mockIO, print_error(testing::_)).Times(MAX_TRIES + 1); // MAX_TRIES invalid + 1 exceeded max tries
+    EXPECT_CALL(*mockIO, read_line())
+        .Times(MAX_TRIES)
+        .WillRepeatedly(testing::Return("XYZ"));
+
+    auto result = client->getValidatedCurrency("Currency");
+    auto expected = Result<Protocol::CurrencyType, Error::InternalError>::fail(Error::InternalError::INVALID_CURRENCY);
+    EXPECT_EQ(result, expected);
+}
+
+TEST_F(BankClientTest, getValidatedCurrency_quit) {
+    EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("quit"));
+
+    auto result = client->getValidatedCurrency("Currency");
+    auto expected = Result<Protocol::CurrencyType, Error::InternalError>::fail(Error::InternalError::USER_CANCELED);
+    EXPECT_EQ(result, expected);
+}
+
+TEST_F(BankClientTest, ExecuteClientReq_RetryThenSucceed) {
+    // NOTE: Takes ~2s due to backoff sleep (BACKOFF=2) on the failed first attempt.
+    Protocol::Command req;
+    req.service = Protocol::Service::GET_BALANCE;
+
+    auto mockCmdEncoder = static_cast<MockCmdEncoder*>(client->get_encoder());
+    EXPECT_CALL(*mockCmdEncoder, encode_message(testing::_))
+        .WillOnce(testing::Return(std::vector<uint8_t>{1, 2, 3}));
+
+    auto mockSerializer = static_cast<MockSerializer*>(client->get_serializer());
+    EXPECT_CALL(*mockSerializer, serialize(testing::_))
+        .WillOnce(testing::Return(std::vector<uint8_t>{4, 5, 6}));
+
+    auto mockSocket = static_cast<MockSocket*>(client->get_socket());
+    std::vector<uint8_t> serialized_reply = {7, 8, 9};
+    EXPECT_CALL(*mockSocket, send_message(testing::_))
+        .WillOnce(testing::Return(Result<std::monostate, Error::InternalError>::fail(Error::InternalError::SEND_FAILED)))
+        .WillOnce(testing::Return(std::monostate{}));
+    EXPECT_CALL(*mockSocket, receive_message())
+        .WillOnce(testing::Return(serialized_reply));
+
+    Protocol::Message reply_msg;
+    reply_msg.type = Protocol::MessageType::Reply;
+    reply_msg.payload.status_code = static_cast<uint16_t>(Protocol::ProtocolStatus::SUCCESS);
+    reply_msg.payload.content = {10, 11};
+    EXPECT_CALL(*mockSerializer, deserialize(serialized_reply))
+        .WillOnce(testing::Return(reply_msg));
+
+    Protocol::Command res_cmd;
+    res_cmd.account_number = 99999;
+    EXPECT_CALL(*mockCmdEncoder, decode_message(reply_msg.payload.content))
+        .WillOnce(testing::Return(res_cmd));
+
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("[!] Attempt 1 failed"), Colour::YELLOW)).Times(1);
+    EXPECT_CALL(*mockIO, print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN)).Times(1);
+    EXPECT_CALL(*mockIO, print("[ SERVER RESPONSE STATUS : SUCCESS ]", Colour::GREEN)).Times(1);
+    EXPECT_CALL(*mockIO, print_box_top()).Times(1);
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("Account Number   : 99999"), testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, print_box_bottom()).Times(1);
+
+    client->execute_client_req(req);
+}
+
+TEST_F(BankClientTest, listen_server_CallbackMessage) {
+    std::vector<uint8_t> callback_raw = {
+        static_cast<uint8_t>(Protocol::MessageType::Callback), 0x01, 0x02, 0x03
+    };
+
+    auto mockSocket = static_cast<MockSocket*>(client->get_socket());
+    EXPECT_CALL(*mockSocket, receive_message())
+        .WillOnce(testing::Return(callback_raw))
+        .WillRepeatedly(testing::Return(
+            Result<std::vector<uint8_t>, Error::InternalError>::fail(Error::InternalError::RECEIVE_TIMEOUT)));
+
+    Protocol::CallbackMessage cb_msg;
+    cb_msg.type     = Protocol::MessageType::Callback;
+    cb_msg.service  = Protocol::Service::DEPOSIT;
+    cb_msg.account_number = 12345;
+    cb_msg.account_owner_name = "Alice";
+    cb_msg.currency = Protocol::CurrencyType::SGD;
+    cb_msg.monetary_value = 5000;
+
+    auto mockCallbackEncoder = static_cast<MockCallbackEncoder*>(client->get_callback_encoder());
+    EXPECT_CALL(*mockCallbackEncoder, decode_message(callback_raw))
+        .WillOnce(testing::Return(cb_msg));
+
+    EXPECT_CALL(*mockIO, print_box_top()).Times(1);
+    EXPECT_CALL(*mockIO, print("[ MONITOR CALLBACK UPDATE ]\n", Colour::CYAN)).Times(1);
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("Service          : SERVICE_DEPOSIT"), testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("Account Number   : 12345"), testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("Account Holder   : Alice"), testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("Currency         : SGD"), testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, print(testing::HasSubstr("New Balance      : 5000"), testing::_)).Times(1);
+    EXPECT_CALL(*mockIO, print_box_bottom()).Times(1);
+
+    client->listen_server(1);
+}
+
+TEST_F(BankClientTest, monitor_server_updates_PipelineFailure) {
+    Protocol::Command req;
+    req.service = Protocol::Service::MONITOR;
+    req.monitor_timeout_seconds = 60;
+
+    auto mockCmdEncoder = static_cast<MockCmdEncoder*>(client->get_encoder());
+    EXPECT_CALL(*mockCmdEncoder, encode_message(testing::_))
+        .WillOnce(testing::Return(
+            Result<std::vector<uint8_t>, Error::InternalError>::fail(Error::InternalError::ENCODING_ERROR)));
+
+    EXPECT_CALL(*mockIO, print_error(testing::HasSubstr("Failed to encode command"))).Times(1);
+
+    // listen_server must NOT be called — no socket interactions expected
+    client->monitor_server_updates(req);
 }
