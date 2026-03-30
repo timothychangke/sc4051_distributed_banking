@@ -30,7 +30,7 @@ jobs:
 
   # ── Integration tests (informational, never blocks merge) ───────
   integration-test:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     if: always()
     needs: [ test ]
     continue-on-error: true
