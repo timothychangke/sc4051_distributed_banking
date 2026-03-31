@@ -473,16 +473,134 @@ The second issue is the different representation of floating-point values in mem
 \subsection{Server Architecture (Go)}
 % Layered diagram showing cmd/main.go -> semantics/dispatcher -> handler -> banking/service -> store/memory. 
 % Explain dependency wiring (closure for BuildHandler).
+The Go server is implemented with a layered design. 
+
+\begin{figure}[h]
+\centering
+\resizebox{\linewidth}{!}{
+\begin{tikzpicture}[
+    box/.style={
+        rectangle,
+        draw=black,
+        rounded corners,
+        minimum width=2.6cm,
+        minimum height=0.8cm,
+        align=center
+    },
+    arrow/.style={->, thick}
+]
+\node[box] (main) {Main};
+\node[box, right=1.4cm of main] (dispatcher) {Dispatcher};
+\node[box, right=1.4cm of dispatcher] (handler) {Handlers};
+\node[box, right=1.4cm of handler] (service) {Services};
+\node[box, right=1.4cm of service] (store) {Store};
+\draw[arrow] (main) -- (dispatcher);
+\draw[arrow] (dispatcher) -- (handler);
+\draw[arrow] (handler) -- (service);
+\draw[arrow] (service) -- (store);
+\end{tikzpicture}
+}
+\caption{Go server architecture (high-level).}
+\label{fig:go-server-architecture}
+\end{figure}
+
+Firstly, main function sets up a UDP socket and constructs the server components. 
+
+Next, the dispatcher reads incoming UDP packets, unmarshals the payload and header, before routing each request to an appropriate service handler. Its behaviour depends on the chosen invocation semantics: for at-least-once mode, it forwards each request to the handler, while in at-most-once mode, it checks the request against a history table to eliminate duplicate requests.
+
+Thirdly, the handler receives a request from the dispatcher, and chooses a service to trigger. It contains the application logic for services like opening, closing, depositing and withdrawing from an account. It decodes the TLV fields from the payload and performs validation, before invoking the appropriate service function, and encoding a TLV response.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    box/.style={
+        rectangle,
+        draw=black,
+        rounded corners,
+        minimum width=4.5cm,
+        minimum height=3cm,
+        align=left,
+        font=\small
+    }
+]
+
+\node[box] (account) {
+\textbf{Account} \\ \\
+\texttt{Mu : Mutex} \\
+\texttt{AccountNumber : uint32} \\
+\texttt{HolderName : string} \\
+\texttt{Password : [8]byte} \\
+\texttt{CurrencyType : uint8} \\
+\texttt{Balance : float64}
+};
+
+\end{tikzpicture}
+\caption{Memory store account structure.}
+\label{fig:memory-store-account}
+\end{figure}
+
+Lastly, the banking service and memory store layers handle the data operations. The service layer provides operations like OpenAccount that directly manipulate the storage. The memory store maintains a map of accounts, and uses synchronisation primitives to ensure that concurrent access to data is safe and does not lead to race conditions. 
+
+Separately, the monitoring feature is implemented within the banking service with a publish-subscribe mechanism. It stores a map of registered clients with their defined expiration times, and handles the goroutines for dispatching account updates using callback packets.
+
+By separating the logic into layers, we isolate concerns cleanly. For instance, semantics logic is handled in the dispatcher, and does not clutter banking service logic. Protocol encoding is handled only once in the dispatcher and handler. At the same time, this allows dependency injection in tests, by allowing developers to mock the UDP socket at the top level.
+
+The architecture is wired by a BuildHandler function that exposes the banking service and monitor manager to all handlers. This ensures that the dispatcher can make calls to the handler without having to know the underlying banking or monitoring details, hence decoupling these components.
 
 \subsection{Client Architecture (C++)}
 % Three-layer diagram (Application -> Protocol -> Network). 
 % Highlight dependency injection pattern (BankClient takes interfaces). Explain why this matters (mocking, swappable transport).
+
+The C++ client is implemented with a three-layer architecture.
+
+\begin{figure}[h]
+\centering
+\resizebox{\linewidth}{!}{
+\begin{tikzpicture}[
+    box/.style={
+        rectangle,
+        draw=black,
+        rounded corners,
+        minimum width=3.5cm,
+        minimum height=0.9cm,
+        align=center
+    },
+    arrow/.style={->, thick}
+]
+\node[box] (app) {Application (BankClient/BankIO)};
+\node[box, right=1.8cm of app] (protocol) {Protocol (CommandEncoder/MessageSerialiser)};
+\node[box, right=1.8cm of protocol] (network) {Network (UDPSocket)};
+\draw[arrow] (app) -- (protocol);
+\draw[arrow] (protocol) -- (network);
+\end{tikzpicture}
+}
+\caption{C++ client layered architecture.}
+\label{fig:cpp-client-architecture}
+\end{figure}
+
+When sending a request from the application layer, the client runs an interactive looping Command Line Interface (CLI) that takes a command from the user corresponding to banking operations. It communicates this request to the protocol layer. The protocol layer constructs a request message by populating the 18-byte header with the chosen invocation semantics flag and a fresh or zeroed request ID. It then converts numbers into big-endian format before encoding arguments into a TLV payload for cross-platform consistency. This layer also manages the decoding of replies and callbacks into structured data. Finally, the network layer abstracts UDP communication by providing send and receive operations over sockets.
+
+When the client receives a response, the response takes the reverse path. It is received at the network layer. Then, the protocol layer validates headers and parses the payload, and thereafter the application layer presents the results or callback updates to the user. This design ensures that user logic, message formatting, and network communication are cleanly decoupled and easy to maintain.
+
+At the same time, dependency injection was used to provide the client with access to various services. The client was able to access interfaces like BaseSocket and BaseCommandEncoder during its lifecycle. This allows the system to mock components for unit testing, and reduces coupling between the interface and networking/marshalling internals.
+
 
 \subsection{Concurrency Model}
 % Server uses sync.RWMutex on the memory store (RLock for reads, Lock for writes). 
 % Monitor manager runs its own goroutine for subscriber sweep. 
 % Client is single-threaded (blocked during monitor interval, per spec).
 
+The system was designed to allow multiple clients to operate concurrently on the server, and requires various synchronisation strategies to align this.
+
+The in-memory account map, where account numbers were mapped to account data, is protected by a global read-write mutex which synchronises account lifecycle operations like CreateAccount and GetAccount. While multiple read queries can be run under a shared read lock, write-based operations utilise an exclusive write lock.
+
+Each account's state is protected separately using mutexes that belongs to the account itself. After accessing the specific account from the store, the account's mutex is acquired before read or mutation operations, and only unlocked when completed. This design allows clients to concurrently operate on different accounts while ensuring correctness on individual accounts. 
+
+Transfer operations involve two accounts and face the risk of a deadlock, if they hold the resource that the other party requires, and wait indefinitely for it to be free. To avoid this, an ordering is imposed on account locks: the account with the smallest account number is locked first, then the other account is locked. This deterministic order ensures that no two simultaneous transfers will lock the same two accounts in different orders.
+
+The monitor callback mechanism involves a single server and multiple clients. The server maintains a map of active subscribers, protected by a mutex. When a service operation updates an account's state, the handler invokes the `NotifyAll()` function. It marshals the update, acquires the map lock, iterates through all active subcribers, and sends the update to each subscriber over UDP, before releasing the lock. 
+
+In contrast, the client is single threaded. The main thread sends a request and waits for a reply or timeout. In monitoring mode, the thread repeatedly checks for callback packets on the UDP socket during the callback interval. User input is disabled during this period, hence there is no need for a separate thread. 
 
 % ---------------------------------------------------------
 \section{Banking Services \& Custom Operations}
