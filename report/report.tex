@@ -377,6 +377,8 @@ Initial Balance & 8 bytes & IEEE-754 double precision floating-point number enco
 The client packs each numeric or string value  without additional padding, and the length specifies the exact number of bytes. For example, if the user “Alice” (5 letters) chooses password “pass1234” (8 chars), currency SGD (id=1), and balance 1000.00, the TLV encoding for that request would look like:
 
 \begin{lstlisting}[caption={TLV Encoding Example}, label={lst:tlv}]
+10 00 00 00 01 01                       [ServiceID field: ID=16, Len=1, Value=0x01 (OpenAccount service)]
+11 00 00 00 01 01                       [MsgType field: ID=17, Len=1, Value=0x01 (Request)]
 01 00 00 00 05 41 6C 69 63 65   [Name field: ID=1, Len=5, Value="Alice"]
 02 00 00 00 08 70 61 73 73 31 32 33 34   [Password field: ID=2, Len=8, Value="pass1234"]
 03 00 00 00 01 01                       [Currency field: ID=3, Len=1, Value=0x01 (SGD)]
@@ -462,7 +464,7 @@ The benefits of having a fixed, known structure is that it avoids the overhead t
 \label{subsec:marshalchallenge}
 % How Go's [8]byte password maps to C++'s variable-length string. 
 % How you agreed on IEEE 754 big-endian for float64 <-> double.
-Implementing the client and server in different languages always leads to challenges in data coordination, due to the differences in how each language defines its data types and mechanisms. The first challenge was designing the password field. The Go server defines passwords as a fixed 8-byte array, whereas the C++ client uses `std::string`. To overcome this, the protocol's TLC password field was fixed to 8 bytes on the wire. The client would ensure that the string is 8 bytes, by truncating it, or padding it with zeros.
+Implementing the client and server in different languages always leads to challenges in data coordination, due to the differences in how each language defines its data types and mechanisms. The first challenge was designing the password field. The Go server defines passwords as a fixed 8-byte array, whereas the C++ client uses `std::string`. To overcome this, the protocol's TLV password field was fixed to 8 bytes on the wire. The client would ensure that the string is 8 bytes, by truncating it, or padding it with zeros.
 
 The second issue is the different representation of floating-point values in memory across both languages, where C++ uses `double` and Go uses `float64`. While both languages use IEEE-754 64-bit binary representation for these numbers, they could differ in endianness, and lead to incorrect decoding of raw bytes. Hence, for all floating-point transmissions, values are converted into IEEE-754 format encoded in big-endian order before sending, and recipients would reverse the process. This ensures the same byte sequence is interpreted reliably and correctly.
 
@@ -735,7 +737,7 @@ In this model, the client has a similar retry mechanism as at-least-once mode. H
 
 Each request is processed a maximum of once. This is the ideal for banking, where monetary transfers must execute exactly once per submission as intended. However, this semantic requires the system to scale its memory usage proportionally to the number of active clients and their request backlog, which could grow greatly in production. Additionally, the use of an incremented request ID in the client introduces coordination overhead in this implementation.
 
-To address these issues, when the server receives a new request with an ID of N, the dispatcher evicts previous cache entries with an ID below (N - windowSize). This assumes that clients never retransmit requests that are older than a certain time range. At the same time, all cache entries for the client are evicted when the client disconnects to save memory.
+To address these issues, when the server receives a new request with an ID of N, the dispatcher evicts previous cache entries with an ID below (N - windowSize), bounding cache memory to O(clients * 10). This assumes that clients never retransmit requests that are older than a certain time range. At the same time, all cache entries for the client are evicted when the client disconnects to save memory.
 
 \subsection{Loss Simulator Design}
 
