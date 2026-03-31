@@ -585,7 +585,8 @@ When the client receives a response, the response takes the reverse path. It is 
 At the same time, dependency injection was used to provide the client with access to various services. The client was able to access interfaces like BaseSocket and BaseCommandEncoder during its lifecycle. This allows the system to mock components for unit testing, and reduces coupling between the interface and networking/marshalling internals.
 
 
-\subsection{Concurrency Model for Accounts}% Server uses sync.RWMutex on the memory store (RLock for reads, Lock for writes). 
+\subsection{Concurrency Model for Accounts}
+% Server uses sync.RWMutex on the memory store (RLock for reads, Lock for writes). 
 % Monitor manager runs its own goroutine for subscriber sweep. 
 % Client is single-threaded (blocked during monitor interval, per spec).
 
@@ -595,23 +596,46 @@ The in-memory account map, where account numbers were mapped to account data, is
 
 Each account's state is protected separately using mutexes that belongs to the account itself. After accessing the specific account from the store, the account's mutex is acquired before read or mutation operations, and only unlocked when completed. This design allows clients to concurrently operate on different accounts while ensuring correctness on individual accounts. 
 
-
 % ---------------------------------------------------------
 \section{Banking Services \& Custom Operations}
 % ~1.5 pages
 
-\subsection{Core Services (S1–S4)}
-% Brief description of each. Focus on error handling strategy and status code mapping table.
+% ---------------------------------------------------------
+\subsection{Core Services (S1–S4): Open, Close, Deposit, Withdraw}
 
-\subsection{Monitor/Callback (S4)}
-% Explain registration, subscriber list, sweep goroutine, NotifyAll pushes. 
-% Sequence diagram: Client A operates -> Server notifies Client B.
+The server implements four core banking services:
 
-\subsection{Op 5: GetBalance (Idempotent)}
-% Define idempotency formally. Explain why GetBalance is safe under retransmission.
+\textbf{OpenAccount (S1):} Creates a new account with an initial balance, currency, and password. The server generates a unique account number, and stores the account under the global store write lock. Thi service returns the generated account number.
 
-\subsection{Op 6: Transfer (Non-Idempotent)}
-% Explain the two-account mutation. Show why retransmission is dangerous here. Sets up Section 5.
+\textbf{CloseAccount (S2):} Deletes an account after verifying credentials. The handler retrieves the account, validates the user's credentials, locks the account to prevent concurrent mutations, and removes it from the store. Notifications are sent to monitor subscribers.
+
+\textbf{Deposit (S3):} Adds funds to an account. After credential validation, the handler acquires the account's per-account mutex, checks that currency matches, increments the balance, and returns the new balance. The transaction is atomic with respect to other operations on the same account.
+
+\textbf{Withdraw (S4):} Removes funds from an account. Similar to deposit, but additionally checks that sufficient balance exists. If any check fails (wrong credentials, currency mismatch, insufficient funds), an error status is returned without modifying state.
+
+All modifying operations above trigger monitor callbacks after state changes. Errors are reported via the reply header's status code, allowing clients to distinguish between errors like authentication failures and missing accounts.
+
+\subsection{Monitor Service (S5)}
+
+The monitor feature allows clients to subscribe to real-time account update notifications. When a client issues a monitor request, specifying a timeout interval, the server registers the client's address and expiration time within a mutex-protected subscriber map. A background goroutine periodically sweeps this map, removing expired entries.
+
+Whenever a modifying operation (S1-S4) occurs, the handler invokes \texttt{NotifyAll()}, which marshals the account update once, then iterates through active subscribers (under lock) and sends a callback packet to each. Expired subscribers are lazily evicted during iteration. This design avoids holding account locks during network I/O.
+
+On the client side, after receiving a monitor acknowledgment, the application enters a blocking receive loop on the UDP socket, collecting callbacks until the timeout expires. User input is disabled during this period. 
+
+\subsection{GetBalance (Idempotent Operation)}
+
+GetBalance queries an account's current balance without modifying state. After credential and currency validation, the server reads the balance under the account's mutex and replies with this value. Because the operation is read-only, it is inherently \textit{idempotent}: repeating the request yields the same result without side effects. This property is valuable in UDP networks: if a reply is lost and the client retries, the outcome remains correct. Under both at-least-once and at-most-once semantics, idempotent operations are safe to retry, simplifying the reliability mechanisms.
+
+\subsection{Transfer (Non-Idempotent Operation)}
+
+Transfer moves funds atomically between two accounts. The request specifies source and destination account numbers, source credentials, amount, and currency. The handler's implementation must prevent two key issues: deadlock and inconsistency.
+
+\textbf{Deadlock avoidance:} Transfer operations involve two accounts and face the risk of a deadlock, if they hold the resource that the other party requires, and wait indefinitely for it to be free. To avoid this, an ordering is imposed on account locks: the account with the smallest account number is locked first, then the other account is locked. This deterministic order ensures that no two simultaneous transfers will lock the same two accounts in different orders.
+
+\textbf{Atomic mutation:} Under the locks, the handler verifies that both accounts exist, credentials are valid, currency matches, and the source has sufficient funds. If any check fails, both locks are released and an error is returned. If valid, the handler subtracts from the source and adds to the destination atomically, then sends callbacks to monitor subscribers.
+
+As Transfer modifies state (specifically, moves funds), it is \textit{non-idempotent}: applying it twice would transfer funds twice, which is incorrect. This makes Transfer a critical case for duplicate suppression. Under at-least-once semantics, retransmitted requests would execute twice, doubling the transfer. Under at-most-once semantics, duplicate detection prevents re-execution, ensuring each transfer happens exactly once or not at all. This contrast motivates the need for correct invocation semantics, which is addressed in Section~\ref{sec:fault-tolerance}.
 
 
 % ---------------------------------------------------------
