@@ -585,8 +585,7 @@ When the client receives a response, the response takes the reverse path. It is 
 At the same time, dependency injection was used to provide the client with access to various services. The client was able to access interfaces like BaseSocket and BaseCommandEncoder during its lifecycle. This allows the system to mock components for unit testing, and reduces coupling between the interface and networking/marshalling internals.
 
 
-\subsection{Concurrency Model}
-% Server uses sync.RWMutex on the memory store (RLock for reads, Lock for writes). 
+\subsection{Concurrency Model for Accounts}% Server uses sync.RWMutex on the memory store (RLock for reads, Lock for writes). 
 % Monitor manager runs its own goroutine for subscriber sweep. 
 % Client is single-threaded (blocked during monitor interval, per spec).
 
@@ -596,11 +595,6 @@ The in-memory account map, where account numbers were mapped to account data, is
 
 Each account's state is protected separately using mutexes that belongs to the account itself. After accessing the specific account from the store, the account's mutex is acquired before read or mutation operations, and only unlocked when completed. This design allows clients to concurrently operate on different accounts while ensuring correctness on individual accounts. 
 
-Transfer operations involve two accounts and face the risk of a deadlock, if they hold the resource that the other party requires, and wait indefinitely for it to be free. To avoid this, an ordering is imposed on account locks: the account with the smallest account number is locked first, then the other account is locked. This deterministic order ensures that no two simultaneous transfers will lock the same two accounts in different orders.
-
-The monitor callback mechanism involves a single server and multiple clients. The server maintains a map of active subscribers, protected by a mutex. When a service operation updates an account's state, the handler invokes the `NotifyAll()` function. It marshals the update, acquires the map lock, iterates through all active subcribers, and sends the update to each subscriber over UDP, before releasing the lock. 
-
-In contrast, the client is single threaded. The main thread sends a request and waits for a reply or timeout. In monitoring mode, the thread repeatedly checks for callback packets on the UDP socket during the callback interval. User input is disabled during this period, hence there is no need for a separate thread. 
 
 % ---------------------------------------------------------
 \section{Banking Services \& Custom Operations}
