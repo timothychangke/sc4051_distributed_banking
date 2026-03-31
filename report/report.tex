@@ -90,6 +90,7 @@
 \definecolor{lightgreenbg}{HTML}{ECFDF5}
 \definecolor{lightpurplebg}{HTML}{F5F3FF}
 \definecolor{lightorangebg}{HTML}{FFFBEB}
+\definecolor{lightyellowbg}{HTML}{FEFCE8}
 \definecolor{serverblue}{HTML}{2563EB}
 \definecolor{clientred}{HTML}{DC2626}
 
@@ -584,13 +585,12 @@ When the client receives a response, the response takes the reverse path. It is 
 
 At the same time, dependency injection was used to provide the client with access to various services. The client was able to access interfaces like BaseSocket and BaseCommandEncoder during its lifecycle. This allows the system to mock components for unit testing, and reduces coupling between the interface and networking/marshalling internals.
 
-
 \subsection{Concurrency Model for Accounts}
 % Server uses sync.RWMutex on the memory store (RLock for reads, Lock for writes). 
 % Monitor manager runs its own goroutine for subscriber sweep. 
 % Client is single-threaded (blocked during monitor interval, per spec).
 
-The system was designed to allow multiple clients to operate concurrently on the server, and requires various synchronisation strategies to align this.
+While the lab permits a single-threaded server, our system was designed to allow multiple clients to operate concurrently on the server, and requires various synchronisation strategies to align this.
 
 The in-memory account map, where account numbers were mapped to account data, is protected by a global read-write mutex which synchronises account lifecycle operations like CreateAccount and GetAccount. While multiple read queries can be run under a shared read lock, write-based operations utilise an exclusive write lock.
 
@@ -640,53 +640,291 @@ As Transfer modifies state (specifically, moves funds), it is \textit{non-idempo
 
 % ---------------------------------------------------------
 \section{Fault Tolerance \& Invocation Semantics}
+\label{sec:fault-tolerance}
 % ~2.5 pages. Second mandatory centrepiece.
 
-\subsection{At-Least-Once Implementation}
-% Timeout + retransmission on client side. Dispatcher always executes. Diagram of flow.
+UDP is fundamentally an unreliable protocol, where packets could be lost, reordered, or duplicated. In this section, we cover two semantic models that tackle these issues, analyse their tradeoffs, and empirically validate them via a loss simulator.
 
-\subsection{At-Most-Once Implementation}
-% Request IDs, duplicate filtering at server, ReplyHistory cache. 
-% Diagram of cached reply retrieval vs re-execution.
+\subsection{At-Least-Once Semantics}
+
+In this model, during a failed transmission, the client retransmits requests with the same request ID, until a response arrives. The server executes each request it receives without filtering or caching of results.
+
+\textbf{Client-side mechanism:} After encoding and serialising a request, the client sends it via UDP, and awaits a reply with a 3-second timeout. If no reply arrives within the timeout, the client retransmits with an exponential backoff, doubling the timeout period. This occurs up to a maximum of 3 attempts.
+
+\textbf{Server-side mechanism:} The dispatcher receives the request header and immediately dispatches it to the handler for execution, without filtering for duplication. All requests that are received are processed regardless of whether a similar request had previously arrived.
+
+In the event that the request is lost, and the server never received it, when the client recovers and retransmits within 3 attempts, the server will process the request at least once. However, if the retransmission by the client is caused by a lost reply, the server may execute the same operation multiple times.
+
+\begin{figure}[H]
+\centering
+\resizebox{\linewidth}{!}{
+\begin{tikzpicture}[
+    node distance=1.2cm,
+    box/.style={draw, rounded corners, align=center, minimum width=3cm},
+    arrow/.style={->, thick}
+]
+\node[box, fill=lightbluebg] (c_send) {Client: Send Request};
+\node[box, fill=serverblue!20, right=3cm of c_send] (s_recv) {Server: Receive};
+\node[box, right=3cm of s_recv] (s_exec) {Server: Execute (no dedup)};
+\node[box, below=of c_send] (c_timeout) {Client: Timeout};
+\node[box, right=3cm of c_timeout] (c_retry) {Client: Retry};
+\node[box, right=3cm of c_retry] (s_exec2) {Server: Execute again};
+
+\draw[arrow] (c_send) -- (s_recv);
+\draw[arrow, dashed, red] (s_recv.east) -- node[above] {reply lost} (s_exec.west);
+\draw[arrow] (s_exec) -- (c_timeout);
+\draw[arrow] (c_timeout) -- (c_retry);
+\draw[arrow] (c_retry) -- (s_exec2);
+\draw[arrow, dashed, red] (s_exec2) -- node[above] {duplicate execution} ($(s_exec)!0.5!(s_exec2)$);
+\end{tikzpicture}
+}
+\caption{At-least-once semantics: retransmission on timeout can cause duplicate execution.}
+\label{fig:at-least-once-flow}
+\end{figure}
+
+Therefore, at-least-once is safe only for idempotent operations like GetBalance, which can be repeated and still yield the same result. However, non-idempotent operations like Transfer are not suitable for this, as duplicate executions can lead to incorrect behaviour. For instance, a duplicate transfer would unexpectedly move funds twice, making this semantic unsuitable for banking operations without additional protections.
+
+\subsection{At-Most-Once Semantics}
+
+In this model, the client has a similar retry mechanism as at-least-once mode. However, the server detects and suppresses duplicates by caching replies, ensuring that each operation is executed at most one time, or zero times if all attempts are lost before execution.
+
+\textbf{Client-side mechanism:} While the retry mechanism is similar to at-least-once, in this model, the client increments the request ID within the message for each session. This allows the server to distinguish fresh requests from retransmissions.
+
+\textbf{Server-side mechanism:} The dispatcher maintains a request history cache, which is a two-dimensional map that is keyed firstly by the client's IP address and port, and secondly by the request ID. Before dispatching a request to the handler, it will parse the message header and extract both keys. It will check the cache for a match:
+\begin{enumerate}
+    \item If a match is found, the request is a retransmission, and we return the cached reply immediately.
+    \item Else, the handler executes and caches the reply bytes before returning them.
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\resizebox{\linewidth}{!}{
+\begin{tikzpicture}[
+    node distance=1.2cm and 1.8cm,
+    box/.style={draw, rounded corners, align=center, minimum width=2.8cm, minimum height=0.9cm},
+    arrow/.style={->, thick},
+    decision/.style={diamond, draw, align=center, aspect=2}
+]
+\node[box, fill=lightbluebg] (c1) {Client: Send Req\#1};
+\node[box, right=of c1] (s1) {Server: Receive Req\#1};
+\node[decision, right=of s1, fill=lightyellowbg] (d1) {Req\#1 in\\ cache?};
+\node[box, right=of d1] (e1) {Execute Handler\\ + Cache Reply};
+\node[box, below=1.2cm of c1] (c2) {Client: Timeout};
+\node[box, right=of c2] (c3) {Client: Retry Req\#1};
+\node[box, right=of c3] (s2) {Server: Receive Req\#1};
+\node[decision, right=of s2, fill=lightyellowbg] (d2) {Req\#1 in\\ cache?};
+\node[box, right=of d2, fill=lightgreenbg] (e2) {Return Cached Reply\\ (No Re-execution)};
+\node[box, below=1.2cm of e2, fill=lightbluebg] (c4) {Client: Receive Reply};
+\coordinate (lostTop) at ($(e1.north)+(0,0.9)$);
+
+\draw[arrow] (c1) -- (s1);
+\draw[arrow] (s1) -- (d1);
+\draw[arrow] (d1) -- node[above] {no} (e1);
+\draw[arrow, dashed, red] (e1.north) -- (lostTop) -| node[pos=0.6, above] {reply lost} (c2.north);
+\draw[arrow] (c2) -- (c3);
+\draw[arrow] (c3) -- (s2);
+\draw[arrow] (s2) -- (d2);
+\draw[arrow] (d2) -- node[above] {yes} (e2);
+\draw[arrow] (e2) -- (c4);
+\end{tikzpicture}
+}
+\caption{At-most-once semantics: duplicate requests are detected and cached replies are returned without re-execution.}
+\label{fig:at-most-once-flow}
+\end{figure}
+
+
+Each request is processed a maximum of once. This is the ideal for banking, where monetary transfers must execute exactly once per submission as intended. However, this semantic requires the system to scale its memory usage proportionally to the number of active clients and their request backlog, which could grow greatly in production. Additionally, the use of an incremented request ID in the client introduces coordination overhead in this implementation.
+
+To address these issues, when the server receives a new request with an ID of N, the dispatcher evicts previous cache entries with an ID below (N - windowSize). This assumes that clients never retransmit requests that are older than a certain time range. At the same time, all cache entries for the client are evicted when the client disconnects to save memory.
 
 \subsection{Loss Simulator Design}
-% How LossSimulator works (configurable drop rate, seeded rand.Rand). 
-% Two injection points: request-receive loss and reply-send loss.
 
-\subsection{Experiment Design}
-% Table of experiments run (e.g., Deposit $100, loss rate 30%). Use concrete numbers.
+To validate the difference between both semantics when messages are lost, a loss simulator was implemented in the server. It utilises a seeded pseudo-random number generator, configured with a probability between 0.0 and 1.0.
+
+The loss simulator can be injected at either of two points:
+\begin{enumerate}
+    \item \textbf{Request-level:} After the server's UDP socket receives a datagram, the loss simulator may discard it before it is parsed. This forces the client to timeout and retransmit.
+    \item \textbf{Reply-level loss:} After the handler produces a reply, the loss simulator may drop it before it is sent to the client, simulating the scenario where the client's receive mechanism times out.
+\end{enumerate}
+
+For this implementation, we focus on reply-level loss only, for simplicity of testing the results of different invocation semantics.
+
+\subsection{Experimental Validation}
+
+To validate the semantic models, a suite of 38 integration tests was developed. These tests launch the real C++ client and Go server as separate processes, communicating over localhost UDP. Key test scenarios include:
+
+\begin{table}[h]
+\centering
+\caption{Representative Fault Tolerance Test Cases}
+\label{tab:test-scenarios}
+\small
+\begin{tabular}{|l|l|l|p{6cm}|c|}
+\hline
+\textbf{Operation} & \textbf{Semantics} & \textbf{Loss Rate} & \textbf{Expected Outcome} & \textbf{Observed} \\
+\hline
+GetBalance & at-least-once & 0\% & Correct balance returned & True \\
+\hline
+GetBalance & at-least-once & 30\% & Correct balance as it is idempotent and retries are safe & True \\
+\hline
+Deposit \$100 & at-least-once & 0\% & Balance $+\$100$, account notified & True \\
+\hline
+Deposit \$100 & at-least-once & 30\% & Balance $+\$100$ to $+\$200$ upon packet loss and retry success & True \\
+\hline
+Deposit \$100 & at-most-once & 30\% & Balance $+\$100$ exactly upon packet loss and duplicate detection & True \\
+\hline
+Transfer \$50 & at-least-once & 30\% & Source $-\$50$ to $-\$100$ upon packet loss and retry success & True \\
+\hline
+Transfer \$50 & at-most-once & 30\% & Source $-\$50$ exactly upon packet loss and duplicate detection & True \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{Results \& Discussion}
-% Tables/charts showing outcomes. 
-% Punchline: at-least-once is fine for idempotent (GetBalance), dangerous for non-idempotent (Transfer). 
-% At-most-once handles everything correctly at the cost of server-side memory.
 
+The integration test suite confirms the theoretical predictions.
+
+Firstly, for idempotent operations like GetBalance, the correct balance is returned under both semantics and all loss rates. The operation is inherently safe to retry because it does not modify any states. Thus, at-least-once is acceptable for GetBalance.
+
+Secondly, for non-idempotent operations (Deposit, Withdraw, Transfer), we analyse at-least-once semantics. When simulated packet loss occurs, duplicate requests cause multiple executions, which is unsafe for non-idempotent banking operations. For example:
+\begin{itemize}
+    \item Transfer \$50 with 30\% loss rate: If a single response packet is lost, the source account is debited twice, causing a \$100 total decrease instead of \$50.
+\end{itemize}
+
+For non-idempotent operations under at-most-once semantics, the server's request history cache detects retransmissions and prevents duplicate executions, which is safe for banking operations. In this scenario, we can validate that the response is returned from the cache:
+\begin{itemize}
+    \item Transfer \$50 with 30\% loss rate: Even if multiple response packets were lost, source is debited exactly \$50 and destination is credited exactly \$50.
+\end{itemize}
+
+To conclude, the choice of invocation semantics directly impacts correctness of the system. For banking systems that require this accuracy, and handles non-idempotent operations, at-most-once semantics are necessary. 
 
 % ---------------------------------------------------------
 \section{Testing Strategy}
 % ~1 page
 
-\subsection{Unit Tests}
-% C++ client unit tests using GoogleTest + mocks (MockSocket, MockEncoder, MockSerializer).
+The project employs a two-tier testing approach: unit tests for individual components with mocked dependencies, and end-to-end integration tests exercising the full system.
 
-\subsection{Integration Tests}
-% Integration\_test.go: end-to-end tests spawning real processes, validating all services/fault tolerance. 
-% Mention lockServer pattern for isolation.
+\subsection{Unit Tests (C++ Client)}
+
+The client includes 48 unit tests across four GoogleTest suites, with dependency mocks to isolate each layer.
+
+\begin{table}[h]
+\centering
+\caption{C++ Unit Test Coverage Summary}
+\label{tab:cpp-unit-tests}
+\begin{tabular}{|l|p{0.29\linewidth}|p{0.46\linewidth}|}
+\hline
+    \textbf{Suite} & \textbf{Scope} & \textbf{Key checks} \\
+\hline
+CommandEncoder & TLV request/response encoding for all services & Big-endian fields, variable-length strings, and IEEE-754 amount round-trip correctness \\
+\hline
+MessageSerializer & 18-byte message header and payload framing & Header round-trip (IPv4, port, status, length), short-packet rejection, overflow-safe length handling \\
+\hline
+UDPSocket & UDP send/receive integration on loopback & Timeout options (\texttt{SO\_RCVTIMEO}, \texttt{SO\_SNDTIMEO}), \texttt{SO\_REUSEADDR}, and \texttt{getsockname()} correctness \\
+\hline
+BankClient & CLI parsing and command construction & Input validation (account/currency/password) and correct request assembly before dispatch \\
+\hline
+\end{tabular}
+\end{table}
+
+By mocking components like \texttt{BaseSocket} and \texttt{BaseCommandEncoder}, the tests does not rely on network dependencies, and execute deterministically.
+
+\subsection{Integration Tests (End-to-End)}
+
+The integration test suite (\texttt{integration\_test.go}) is written in Go and runs 38 test cases that pass on both Windows and Linux. Each test:
+
+\begin{enumerate}
+    \item Spawns the real Go server with specified flags (e.g., `--semantics=at-most-once --loss-rate=0.3`).
+    \item Spawns the real C++ client, instructing it to connect to the server's UDP address.
+    \item Executes a sequence of operations by injecting CLI commands via pipes.
+    \item Validates outcomes by querying the server's in-memory state or comparing received replies.
+    \item Terminates both processes and reports pass/fail.
+\end{enumerate}
+
+\begin{table}[h]
+\centering
+\caption{Integration Test Categories and Coverage}
+\label{tab:integration-test-categories}
+\begin{tabular}{|l|p{0.66\linewidth}|}
+\hline
+	\textbf{Category} & \textbf{Coverage summary} \\
+\hline
+Baseline (no loss) & Verifies all seven services end-to-end under normal network conditions. \\
+\hline
+Concurrency & Runs multiple clients in parallel to validate consistency and account-total conservation. \\
+\hline
+Fault tolerance (10\%/30\%/50\%) & Compares at-least-once vs at-most-once behavior under packet loss, and confirms that duplicate side effects only occur in at-least-once for non-idempotent operations. \\
+\hline
+Stress and edge cases & Tests rapid-fire requests, large balances, and invalid boundary inputs (e.g., withdraw \$0). \\
+\hline
+Isolation & Executes each test in an isolated process/port with fresh server state to avoid cross-test interference. \\
+\hline
+\end{tabular}
+\end{table}.
 
 
 % ---------------------------------------------------------
 \section{Assumptions, Limitations \& Future Work}
-% ~0.5 pages
-% - Assumptions: single currency per account, in-memory only, basic auth.
-% - Limitations: reply history grows unbounded without eviction, no wire encryption.
-% - Future work: persistent storage, TLS/DTLS, multi-currency.
 
+\subsection{System Assumptions}
+
+The implementation operates under the following assumptions:
+
+\begin{enumerate}
+    \item \textbf{Single currency per account:} Each account is fixed to one currency (SGD, USD, or EUR), and transfers between accounts of different currencies are rejected. 
+    
+    \item \textbf{In-memory storage:} All account data is stored in a transient Go map, with no persistence to a disk or database. If the server crashes, all data is lost.    
+\end{enumerate}
+
+\subsection{Known Limitations}
+
+The system can be improved in areas of memory management and security:
+
+\begin{enumerate}
+    \item \textbf{Unbounded reply history growth (at-most-once):} The server's request history cache grows with each unique request, which could exhaust server memory in the long run. While the current implementation supports manual eviction, a time-based or size-based eviction policy could be used instead.
+    
+    \item \textbf{No wire encryption:} All messages are transmitted insecurely in plaintext over UDP. An attacker can eavesdrop on account numbers, balances, and passwords, or forge replies.
+        
+    \item \textbf{Fixed password length (8 bytes):} The wire protocol enforces an 8-byte password field, truncating longer passwords, and zero-padding shorter passwords. This is inflexible and weak for real passwords.
+
+\end{enumerate}
+
+\subsection{Future Work}
+
+Based on acknowledged assumptions and limitations, several extensions would be valuable:
+
+\begin{enumerate}
+    \item \textbf{Persistent storage:} Implement a persistent SQL database for the account store, and use transactions to ensure atomicity of multi-account operations.
+    
+    \item \textbf{Authentication and encryption:} Implement password hashing, add client-side TLS handshake for mutual authentication, and encrypt all message payloads using AES-256.
+    
+    \item \textbf{Multi-currency and exchange rates:} Allow transfers between accounts in different currencies by utilising a live exchange rate API.
+\end{enumerate}
+
+\subsection{Key Takeaways}
+
+This project demonstrates several core principles of distributed systems design:
+
+\begin{enumerate}
+    \item \textbf{Unreliable networks require explicit protocols:} UDP provides no guarantees, therefore custom retransmission and duplicate detection logic were essential for reliability.
+    
+    \item \textbf{Invocation semantics shape correctness:} At-least-once and at-most-once have different guarantees. While idempotent operations are safe under at-least-once mode; non-idempotent operations require at-most-once. Choosing the wrong semantics silently corrupts data.
+        
+    \item \textbf{Cross-language interoperability is possible but fragile:} Agreeing on byte-level formats (big-endian, IEEE-754, fixed-size fields) and marshalling every field explicitly is tedious but necessary for systems without a shared RPC framework.
+\end{enumerate}
 
 % ---------------------------------------------------------
 \section{Conclusion}
-% ~0.5 pages
-% Crisp summary of what was built and key takeaways about distributed systems design.
 
-\end{document}
+This report presented a complete implementation of a distributed banking system that supports cross-language interoperability, custom binary protocol design, concurrent access control, and fault-tolerant invocation semantics.
+
+It also successfully demonstrated core banking operations (Open, Close, Deposit, Withdraw, Transfer, GetBalance) with full atomic semantics and real-time monitoring. The infrastructure is supported by customisations at the transport layer that use a custom 18-byte header format and Type-Length-Value payload encoding, negotiated without RPC frameworks.
+
+The server's concurrency model combines a read-write mutex on the global account map with per-account mutexes for individual operations. Transfer operations use deterministic lock ordering to prevent deadlock while maintaining atomicity across two accounts.
+
+Fault tolerance of the system is analysed through the evaluation of different invocation semantics, under simulated packet losses. While at-least-once mode has a simpler implementation, it leads to phantom duplicate executions on non-idempotent operations. Conversely, while at-most-once mode is safer for all operation types, where the request history cache ensures that each operation executes at most once regardless of network conditions, its implementation is more complex in terms of memory usage.
+
+The comprehensive test suite with 48 unit tests and 38 integration tests validates correctness across the entire architecture, from low-level socket I/O to high-level banking logic, and from no packet loss to 50\% loss scenarios.
+
+This implementation serves as a blueprint for real-world distributed systems. It emphasises explicit protocol design, careful concurrency control, and empirical validation under realistic fault scenarios. While production banking systems would require additional security and memory management features, this project captures the essential challenges and solutions of distributed financial transactions.
 
 \end{document}
