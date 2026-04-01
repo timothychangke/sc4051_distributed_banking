@@ -6,7 +6,12 @@
 
 % ── Page geometry ────────────────────────────────────────────────────────────
 \usepackage[
-  top=2.0cm, bottom=2.0cm, left=2.2cm, right=2.2cm
+  a4paper,
+  top=2.5cm, 
+  bottom=2.5cm, 
+  left=2.5cm, 
+  right=2.5cm,
+  footskip=1.2cm % Restores a more natural gap for the page number
 ]{geometry}
 
 % ── Core packages ────────────────────────────────────────────────────────────
@@ -24,9 +29,11 @@
 \usepackage{subcaption}
 \usepackage[table]{xcolor}
 \usepackage{listings}
+\usepackage{amssymb}
 
 % ── Byte-level wire diagrams ────────────────────────────────────────────────
 \usepackage{bytefield}
+
 
 % ── TikZ for architecture diagrams ──────────────────────────────────────────
 \usepackage{tikz}
@@ -40,8 +47,14 @@
   decorations.pathreplacing
 }
 
+\usepackage{bytefield}
+
+% ── Custom coloured bitbox (bytefield doesn't include this by default) ──
+\newcommand{\colorbitbox}[3]{%
+  \rlap{\bitbox{#2}{\color{#1}\rule{\width}{\height}}}%
+  \bitbox{#2}{#3}}
+
 % ── Code listings ────────────────────────────────────────────────────────────
-\usepackage{listings}
 \definecolor{codebg}{HTML}{F5F5F5}
 \definecolor{codeframe}{HTML}{CCCCCC}
 \definecolor{codecomment}{HTML}{6A737D}
@@ -81,6 +94,66 @@
   urlcolor=blue!60!black
 ]{hyperref}
 
+\usepackage{xcolor}
+
+% Define modern colors (VS Code Light inspired)
+\definecolor{codebackground}{RGB}{248, 248, 248}
+\definecolor{codecomment}{RGB}{0, 128, 0}
+\definecolor{codekeyword}{RGB}{0, 0, 255}
+\definecolor{codestring}{RGB}{163, 21, 21}
+\definecolor{codenumber}{RGB}{128, 128, 128}
+\definecolor{codeframe}{RGB}{224, 224, 224}
+
+
+\usepackage[T1]{fontenc}
+\usepackage{inconsolata}
+
+% Create the new listing style
+\lstdefinestyle{modernGo}{
+    backgroundcolor=\color{codebackground},
+    commentstyle=\color{codecomment}\itshape,
+    keywordstyle=\color{codekeyword}\bfseries,
+    numberstyle=\tiny\color{codenumber},
+    stringstyle=\color{codestring},
+    basicstyle=\ttfamily\footnotesize, % Helps save space
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=10pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4,
+    frame=single,
+    rulecolor=\color{codeframe},
+    xleftmargin=15pt, % Keeps numbers inside the margin cleanly
+    xrightmargin=5pt,
+    basicstyle=\ttfamily\footnotesize,
+}
+
+% Colors for packet dumps
+\definecolor{packetbg}{RGB}{240, 244, 248} % Very faint blue-grey
+\definecolor{packetbytes}{RGB}{50, 50, 50} % Dark grey for the hex bytes
+\definecolor{packetannotation}{RGB}{0, 102, 204} % Deep blue for the explanations
+
+\lstdefinestyle{packetDump}{
+    backgroundcolor=\color{packetbg},
+    basicstyle=\ttfamily\footnotesize\color{packetbytes},
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none, % Removed line numbers for cleaner hex reading
+    frame=leftline, % A clean single line on the left instead of a full box
+    rulecolor=\color{packetannotation},
+    framerule=2pt, % Makes the left line slightly thicker
+    xleftmargin=10pt,
+    % The magic line: automatically styles anything between [ and ]
+    moredelim=[s][\color{packetannotation}\itshape]{[}{]} 
+}
+
 % ── Custom colours for diagrams ──────────────────────────────────────────────
 \definecolor{headerblue}{HTML}{3B82F6}
 \definecolor{tlvgreen}{HTML}{10B981}
@@ -104,6 +177,11 @@
 \setlength{\parskip}{0.4em}
 \setlength{\parindent}{0em}
 \captionsetup{skip=6pt}
+
+% ── Float (Diagram/Table) spacing ───────────────────────────────────────────
+\setlength{\floatsep}{1.2em}      % Space between two adjacent floats (e.g., two figures together)
+\setlength{\textfloatsep}{1.5em}  % Space between a top/bottom float and the text
+\setlength{\intextsep}{1.5em}     % Space above and below an inline float (using [h] or [H])
 
 % =============================================================================
 \begin{document}
@@ -135,7 +213,7 @@
       \textbf{Name} & \textbf{Matric No.} & \textbf{Work \%} \\
       \midrule
       Timothy Chang  & \textit{U2220136J} & 33.33\% \\
-      O Jing         & \textit{UXXXXXXX} & 33.33\% \\
+      O Jing         & \textit{U2223350G} & 33.33\% \\
       Neo Zhi Xuan   & \textit{U2222293E} & 33.33\% \\
       \bottomrule
       \end{tabular}
@@ -153,11 +231,11 @@
 
 \end{titlepage}
 
-\pagenumbering{gobble}
-
 \onecolumn
 \tableofcontents
+\thispagestyle{empty}
 \newpage
+\pagenumbering{arabic}
 
 % ---------------------------------------------------------
 \section{Introduction \& System Overview}
@@ -242,7 +320,7 @@ The project implements a distributed banking application, using a custom client-
 \label{fig:high-level-architecture}
 \end{figure}
 
-At a high level, the client and server communicate via UDP datagrams, on known IP addresses and ports. The client constructs request messages and waits for responses, and may retry depending on the protocol. The server listens for requests and processes each one, before returning a response.
+As shown in Figure~\ref{fig:high-level-architecture}, the client and server communicate via UDP datagrams, on known IP addresses and ports. The client constructs request messages and waits for responses, and may retry depending on the protocol. The server listens for requests and processes each one, before returning a response.
 
 The client is written in C++ due to the language's ability to handle low level byte control for packet construction, as well as portable socket handling across Windows and POSIX. Meanwhile, the choice of Go for the server provides an in-depth networking library and built-in synchronisation primitives for concurrency, to allow for simple implementation of UDP sockets and concurrent client handling.
 
@@ -258,52 +336,57 @@ The report analyses the unreliability of UDP, and the trade-offs between using d
 % Byte-level diagram of the 5-byte semantics header [ServiceID(1B)][RequestID(4B BE)] 
 % and the 17-byte reply header [MsgType(1B)][ReqID(4B)][IPv4(4B)][Port(2B)][StatusCode(2B)][ContentLen(4B)].
 Each message sent between client and server begins with an 18-byte header, followed by a payload of variable length. It encodes information about protocol control, through these fields:
-
-\begin{table}[h]
-\centering
-\caption{Packet Header Layout}
-\label{tab:packet-header}
-\begin{tabular}{|l|c|p{0.6\linewidth}|}
-\hline
-\textbf{Field} & \textbf{Size} & \textbf{Description} \\
-\hline
-Type & 1 byte & Indicates whether the datagram is a request (0x00), a normal reply (0x01), or a server-initiated callback (0x02). \\
-\hline
-Semantics Flag & 1 byte & Encodes invocation semantics: 0x00 for at-least-once, 0x01 for at-most-once. \\
-\hline
-Request ID & 4 bytes & An identifier chosen by the client, used for duplicate detection and request-response matching. \\
-\hline
-Client IPv4 Address & 4 bytes & The sender’s IPv4 address. Explicitly informs the server about the client's identity. \\
-\hline
-Client Port & 2 bytes & The UDP port number of the sender. \\
-\hline
-Status Code & 2 bytes & Indicates success or error conditions in replies; non-zero values represent errors. \\
-\hline
-Content Length & 4 bytes & Length (in bytes) of the payload that follows. \\
-\hline
-\end{tabular}
-\end{table}
-
+\vspace{-0.2cm}
 \begin{figure}[H]
-\centering
-\begin{bytefield}[bitwidth=1.05em]{32}
-\bitheader{0-31} \\
-% Row 1
-\bitbox{8}{\scriptsize Type}
-\bitbox{8}{\scriptsize Semantics}
-\bitbox{16}{} \\
-% Row 2
-\bitbox{32}{\scriptsize Request ID} \\
-% Row 3
-\bitbox{32}{\scriptsize Client IPv4 Address} \\
-% Row 4
-\bitbox{16}{\scriptsize Client Port}
-\bitbox{16}{\scriptsize Status Code} \\
-% Row 5
-\bitbox{32}{\scriptsize Content Length} \\
-\end{bytefield}
-\caption{Byte-level representation of the packet header.}
-\label{fig:header-byte-layout}
+    \centering
+    
+    % ── Left Side: The Table ──
+    \begin{minipage}[t]{0.52\linewidth}
+        \vspace{0pt} % Aligns the tops of the minipages
+        \centering
+        \resizebox{\linewidth}{!}{% Scales table to fit the minipage
+            \begin{tabular}{l c p{6cm}} % Changed p{} to an absolute width for better scaling
+            \toprule
+            \textbf{Field} & \textbf{Size} & \textbf{Description} \\
+            \midrule
+            Type & 1 byte & Indicates whether the datagram is a request (0x00), a normal reply (0x01), or a server-initiated callback (0x02). \\
+            Semantics Flag & 1 byte & Encodes invocation semantics: 0x00 for at-least-once, 0x01 for at-most-once. \\
+            Request ID & 4 bytes & An identifier chosen by the client, used for duplicate detection and request-response matching. \\
+            Client IPv4 Address & 4 bytes & The sender's IPv4 address. Explicitly informs the server about the client's identity. \\
+            Client Port & 2 bytes & The UDP port number of the sender. \\
+            Status Code & 2 bytes & Indicates success or error conditions in replies; non-zero values represent errors. \\
+            Content Length & 4 bytes & Length (in bytes) of the payload that follows. \\
+            \bottomrule
+            \end{tabular}
+        }
+    \end{minipage}%
+    \hfill % Pushes the two minipages to the edges, creating a gap
+    % ── Right Side: The Bytefield ──
+    \begin{minipage}[t]{0.44\linewidth}
+        \vspace{0pt} % Aligns the tops of the minipages
+        \centering
+        \resizebox{\linewidth}{!}{% Scales bytefield to fit the minipage
+            \begin{bytefield}[bitwidth=0.8em]{32} % Adjusted baseline bitwidth
+            \bitheader{0-31} \\
+            % Row 1 — message type and semantics flag
+            \colorbitbox{headerblue!20}{8}{\scriptsize Type}
+            \colorbitbox{headerblue!20}{8}{\scriptsize Semantics}
+            \bitbox{16}{} \\
+            % Row 2 — request tracking
+            \colorbitbox{headerblue!20}{32}{\scriptsize Request ID} \\
+            % Row 3 — client identity
+            \colorbitbox{replypurple!15}{32}{\scriptsize Client IPv4 Address} \\
+            % Row 4 — client identity + status
+            \colorbitbox{replypurple!15}{16}{\scriptsize Client Port}
+            \colorbitbox{callbackorange!20}{16}{\scriptsize Status Code} \\
+            % Row 5 — payload framing
+            \colorbitbox{tlvgreen!20}{32}{\scriptsize Content Length} \\
+            \end{bytefield}
+        }
+    \end{minipage}
+    
+    \caption{Packet structure and field descriptions for the request header.}
+    \label{fig:request_header_packet}
 \end{figure}
 
 This header is inspired by traditional RPC or network protocol headers. A fixed header size allows the client and server to parse data with a consistent offset. It also allows for robust validation of datagrams that are truncated. Simultaneously, all multi-byte fields are in big-endian format, aligning the client and server's method of interpreting numeric values.
@@ -314,64 +397,74 @@ This header is inspired by traditional RPC or network protocol headers. A fixed 
 % Lay out every byte in a hex table.
 After the header, each message carries a TLV-encoded payload of application-specific fields. Fields are optional, and only serialised when it is present. Each field has this format:
 
-\begin{table}[h]
-\centering
-\caption{TLV Payload Layout}
-\label{tab:packet-header}
-\begin{tabular}{|l|c|p{0.6\linewidth}|}
-\hline
-\textbf{Field} & \textbf{Size} & \textbf{Description} \\
-\hline
-Field ID & 1 byte & Identifies the type of the field (e.g., account number, password, amount). \\
-\hline
-Length & 4 bytes & Specifies the length of the Value field in bytes, encoded in big-endian format. \\
-\hline
-Value & Variable & Contains the actual data corresponding to the Field ID. The size is determined by the Length field. \\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{figure}[H]
-\centering
-\begin{bytefield}[bitwidth=1.1em]{8}
-\bitheader{0-7} \\
-\begin{rightwordgroup}{1 byte}
-\bitbox{8}{Field ID}
-\end{rightwordgroup} \\
-\begin{rightwordgroup}{4 bytes}
-\bitbox{8}{Length (MSB)}
-\bitbox{8}{}
-\bitbox{8}{}
-\bitbox{8}{Length (LSB)}
-\end{rightwordgroup} \\
-\begin{rightwordgroup}{Variable}
-\bitbox{32}{Value}
-\end{rightwordgroup}
-\end{bytefield}
-\caption{Type-Length-Value (TLV) encoding used in protocol payloads.}
-\label{fig:tlv-format}
+\begin{figure}[htbp]
+    \centering
+    
+    % ── Left Side: The Table ──
+    \begin{minipage}[t]{0.56\linewidth}
+        \vspace{0pt} % Aligns the tops of the minipages
+        \centering
+        \resizebox{\linewidth}{!}{% Scales table to fit the minipage
+            \begin{tabular}{l c p{6cm}}
+            \toprule
+            \textbf{Field} & \textbf{Size} & \textbf{Description} \\
+            \midrule
+            Field ID & 1 byte & Identifies the type of the field (e.g., account number, password, amount). \\
+            Length & 4 bytes & Specifies the length of the Value field in bytes, encoded in big-endian format. \\
+            Value & Variable & Contains the actual data corresponding to the Field ID. The size is determined by the Length field. \\
+            \bottomrule
+            \end{tabular}
+        }
+    \end{minipage}%
+    \hfill
+    % ── Right Side: The Bytefield ──
+    \begin{minipage}[t]{0.38\linewidth}
+        \vspace{0pt} % Aligns the tops of the minipages
+        \centering
+        % Scaled to 80% of the minipage so the 8-bit width isn't blown up too large
+        \resizebox{0.8\linewidth}{!}{% 
+            \begin{bytefield}[bitwidth=1.3em]{8}
+            \bitheader{0-7} \\
+            % Row 1
+            \begin{rightwordgroup}{1 byte}
+            \colorbitbox{tlvgreen!25}{8}{\scriptsize Field ID}
+            \end{rightwordgroup} \\
+            % Rows 2-5
+            \begin{rightwordgroup}{4 bytes}
+            \colorbitbox{tlvgreen!15}{8}{\scriptsize Length (MSB)} \\
+            \colorbitbox{tlvgreen!15}{8}{} \\
+            \colorbitbox{tlvgreen!15}{8}{} \\
+            \colorbitbox{tlvgreen!15}{8}{\scriptsize Length (LSB)}
+            \end{rightwordgroup} \\
+            % Row 6
+            \begin{rightwordgroup}{Variable}
+            \colorbitbox{headerblue!12}{8}{\scriptsize Value}
+            \end{rightwordgroup}
+            \end{bytefield}
+        }
+    \end{minipage}
+    
+    \caption{Packet structure and field descriptions for the TLV encoding format.}
+    \label{fig:tlv_format_packet}
 \end{figure}
 
 
 For example, the request "OpenAccount (Alice, pass1234, SGD, 1000.00)" attempts to open an account, and might include these TLV fields:
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
-\caption{OpenAccount Request Fields}
-\label{tab:packet-header}
-\begin{tabular}{|l|c|p{0.6\linewidth}|}
-\hline
+\caption{TLV fields for an OpenAccount request example.}
+\label{tab:tlv-openaccount-fields}
+\begin{tabular}{l c p{0.6\linewidth}}
+\toprule
 \textbf{Field Name} & \textbf{Length} & \textbf{Description} \\
-\hline
+\midrule
 Account Holder Name & N bytes & UTF-8 encoded string representing the user's name. The length varies depending on the number of characters. \\
-\hline
-Password & Up to 8 bytes & Password represented as raw bytes. If shorter than 8 bytes, it is zero-padded to maintain a fixed maximum length. \\
-\hline
+Password & Up to 8 bytes & Password represented as raw bytes. The client enforces a maximum length of 8 bytes. Shorter passwords are stored at their actual length. \\
 Currency Type & 1 byte & Encoded as a predefined enumeration value representing supported currencies (e.g., SGD, USD). \\
-\hline
 Initial Balance & 8 bytes & IEEE-754 double precision floating-point number encoded in big-endian format. \\
-\hline
-\end{tabular}
+\bottomrule
+\end{tabular} 
 \end{table}
 
 The client packs each numeric or string value  without additional padding, and the length specifies the exact number of bytes. For example, if the user “Alice” (5 letters) chooses password “pass1234” (8 chars), currency SGD (id=1), and balance 1000.00, the TLV encoding for that request would look like:
@@ -396,60 +489,65 @@ Hence, this format handles data cleanly. The use of ID and length allows for rob
 
 Within the lab requirements, the server should "push" updates to all registered clients during a monitoring interval. When an account is opened, closed, deposited, or withdrawn, the server triggers a callback packet to the client. It uses a different packet format:
 
-\begin{table}[h]
-\centering
-\caption{Callback Packet Layout}
-\label{tab:packet-header}
-\begin{tabular}{|l|c|p{0.6\linewidth}|}
-\hline
-\textbf{Field Name} & \textbf{Size} & \textbf{Description} \\
-\hline
-MsgType & 1 byte & Always set to 0x02 to differentiate callback packets from normal replies. \\
-\hline
-Service ID & 1 byte & Indicates the operation to trigger (e.g., OpenAccount). \\
-\hline
-Account Number & 4 bytes & Integer account number (big-endian). \\
-\hline
-Name Length & 4 bytes & Length of the account holder’s name in bytes. \\
-\hline
-Name & Variable & UTF-8 encoded string representing the account holder’s name. \\
-\hline
-Currency Type & 1 byte & The account's currency code as an enumeration. \\
-\hline
-Balance & 8 bytes & IEEE-754 double precision floating-point value (big-endian) representing the updated balance. \\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{figure}[H]
-\centering
-\begin{bytefield}[bitwidth=1.05em]{32}
-\bitheader{0-31} \\
-% Row 1
-\bitbox{8}{\scriptsize MsgType}
-\bitbox{8}{\scriptsize Service}
-\bitbox{16}{} \\
-% Row 2
-\bitbox{32}{\scriptsize Account Number} \\
-% Row 3
-\bitbox{32}{\scriptsize Name Length} \\
-% Row 4
-\bitbox{32}{\scriptsize Name (UTF-8, variable length)} \\
-% Row 5
-\bitbox{8}{\scriptsize Curr}
-\bitbox{24}{} \\
-% Row 6
-\bitbox{32}{\scriptsize Balance (high 32 bits)} \\
-% Row 7
-\bitbox{32}{\scriptsize Balance (low 32 bits)} \\
-\end{bytefield}
-\caption{Byte-level representation of the callback payload.}
-\label{fig:callback-byte-layout}
+\begin{figure}[htbp]
+    \centering
+    
+    % ── Left Side: The Table ──
+    \begin{minipage}[t]{0.52\linewidth}
+        \vspace{0pt} % Aligns the tops of the minipages
+        \centering
+        \resizebox{\linewidth}{!}{% Scales table to fit the minipage
+            \begin{tabular}{l c p{5.5cm}} % Changed p{} to an absolute width for better scaling
+            \toprule
+            \textbf{Field Name} & \textbf{Size} & \textbf{Description} \\
+            \midrule
+            MsgType & 1 byte & Always set to 0x02 to differentiate callback packets from normal replies. \\
+            Service ID & 1 byte & Indicates the operation to trigger (e.g., OpenAccount). \\
+            Account Number & 4 bytes & Integer account number (big-endian). \\
+            Name Length & 4 bytes & Length of the account holder's name in bytes. \\
+            Name & Variable & UTF-8 encoded string representing the account holder's name. \\
+            Currency Type & 1 byte & The account's currency code as an enumeration. \\
+            Balance & 8 bytes & IEEE-754 double precision floating-point value (big-endian) representing the updated balance. \\
+            \bottomrule
+            \end{tabular}
+        }
+    \end{minipage}%
+    \hfill % Pushes the two minipages to the edges, creating a gap in the middle
+    % ── Right Side: The Bytefield ──
+    \begin{minipage}[t]{0.44\linewidth}
+        \vspace{0pt} % Aligns the tops of the minipages
+        \centering
+        \resizebox{\linewidth}{!}{% Scales bytefield to fit the minipage
+            \begin{bytefield}[bitwidth=0.8em]{32} % Slightly reduced baseline bitwidth
+            \bitheader{0-31} \\
+            % Row 1 — callback header
+            \colorbitbox{callbackorange!25}{8}{\scriptsize MsgType}
+            \colorbitbox{callbackorange!25}{8}{\scriptsize Service}
+            \bitbox{16}{} \\
+            % Row 2 — account identity
+            \colorbitbox{headerblue!15}{32}{\scriptsize Account Number} \\
+            % Row 3 — name (length-prefixed)
+            \colorbitbox{tlvgreen!15}{32}{\scriptsize Name Length} \\
+            % Row 4
+            \colorbitbox{tlvgreen!15}{32}{\scriptsize Name (UTF-8, variable length)} \\
+            % Row 5 — account state
+            \colorbitbox{replypurple!15}{8}{\scriptsize Curr}
+            \bitbox{24}{} \\
+            % Row 6
+            \colorbitbox{replypurple!15}{32}{\scriptsize Balance (high 32 bits)} \\
+            % Row 7
+            \colorbitbox{replypurple!15}{32}{\scriptsize Balance (low 32 bits)} \\
+            \end{bytefield}
+        }
+    \end{minipage}
+    
+    \caption{Packet structure and field descriptions for the callback message.}
+    \label{fig:callback_packet}
 \end{figure}
 
 For example, if account 12345 (“Bob”) with currency USD (0x00) now has balance 250.75, the server might send:
 
-\begin{lstlisting}[caption={Callback Packet Example}, label={lst:callback}]02 05               [MsgType=0x02, ServiceID=0x05 (monitor update)]
+\begin{lstlisting}[style=packetDump, caption={Callback Packet Example}, label={lst:callback}]02 05               [MsgType=0x02, ServiceID=0x05 (monitor update)]
 00 00 30 39        [Account#=12345 (big-endian)]
 00 00 00 03 42 6F 62   [NameLen=3, Name="Bob"]
 00                [Currency=0x00 (USD)]
@@ -464,7 +562,8 @@ The benefits of having a fixed, known structure is that it avoids the overhead t
 \label{subsec:marshalchallenge}
 % How Go's [8]byte password maps to C++'s variable-length string. 
 % How you agreed on IEEE 754 big-endian for float64 <-> double.
-Implementing the client and server in different languages always leads to challenges in data coordination, due to the differences in how each language defines its data types and mechanisms. The first challenge was designing the password field. The Go server defines passwords as a fixed 8-byte array, whereas the C++ client uses `std::string`. To overcome this, the protocol's TLV password field was fixed to 8 bytes on the wire. The client would ensure that the string is 8 bytes, by truncating it, or padding it with zeros.
+Implementing the client and server in different languages always leads to challenges in data coordination, due to the differences in how each language defines its data types and mechanisms. The first challenge was designing the password field. The Go server defines passwords as a fixed 8-byte array, whereas the C++ client uses `std::string`. To overcome this, the protocol's TLV password field was fixed to 8 bytes on the wire. 
+The client enforces that the password string does not exceed 8 bytes, rejecting or truncating longer inputs.
 
 The second issue is the different representation of floating-point values in memory across both languages, where C++ uses `double` and Go uses `float64`. While both languages use IEEE-754 64-bit binary representation for these numbers, they could differ in endianness, and lead to incorrect decoding of raw bytes. Hence, for all floating-point transmissions, values are converted into IEEE-754 format encoded in big-endian order before sending, and recipients would reverse the process. This ensures the same byte sequence is interpreted reliably and correctly.
 
@@ -476,79 +575,84 @@ The second issue is the different representation of floating-point values in mem
 \subsection{Server Architecture (Go)}
 % Layered diagram showing cmd/main.go -> semantics/dispatcher -> handler -> banking/service -> store/memory. 
 % Explain dependency wiring (closure for BuildHandler).
-The Go server is implemented with a layered design. 
+The Go server is implemented with a layered design, illustrated in Figure~\ref{fig:go-server-architecture}.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
-\resizebox{\linewidth}{!}{
+\resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
     box/.style={
         rectangle,
         draw=black,
         rounded corners,
         minimum width=2.6cm,
-        minimum height=0.8cm,
-        align=center
+        minimum height=0.9cm,
+        align=center,
+        font=\small
     },
-    arrow/.style={->, thick}
+    arrow/.style={->, thick},
+    dashedarrow/.style={->, thick, dashed, callbackorange},
+    % Increased yshift to 3mm to push the text higher above the arrows
+    arrowlabel/.style={above, font=\scriptsize, align=center, yshift=3mm} 
 ]
-\node[box] (main) {Main};
-\node[box, right=1.4cm of main] (dispatcher) {Dispatcher};
-\node[box, right=1.4cm of dispatcher] (handler) {Handlers};
-\node[box, right=1.4cm of handler] (service) {Services};
-\node[box, right=1.4cm of service] (store) {Store};
-\draw[arrow] (main) -- (dispatcher);
-\draw[arrow] (dispatcher) -- (handler);
-\draw[arrow] (handler) -- (service);
-\draw[arrow] (service) -- (store);
-\end{tikzpicture}
+
+% Main dispatch path (horizontal)
+\node[box, fill=lightbluebg] (main) {Main};
+\node[box, fill=lightbluebg, right=2.2cm of main] (dispatcher) {Dispatcher};
+\node[box, fill=lightbluebg, right=2.2cm of dispatcher] (handler) {Handler};
+\node[box, fill=lightbluebg, right=2.2cm of handler] (service) {Banking Service};
+\node[box, fill=lightbluebg, right=2.2cm of service] (store) {Memory Store};
+
+% Horizontal arrows with stacked labels above
+\draw[arrow] (main) -- node[arrowlabel] {UDP loop} (dispatcher);
+\draw[arrow] (dispatcher) -- node[arrowlabel] {route by \\ ServiceID} (handler);
+\draw[arrow] (handler) -- node[arrowlabel] {business \\ logic} (service);
+\draw[arrow] (service) -- node[arrowlabel] {CRUD} (store);
+
+% Monitor Manager (moved below handler)
+\node[box, fill=lightorangebg, below=1.5cm of handler] (monitor) {Monitor Manager};
+
+% Handler notifies monitor on mutations
+\draw[dashedarrow] (handler.south) -- node[right, font=\scriptsize] {NotifyAll()} (monitor.north);
+
+% Main shares UDP conn with monitor
+\draw[arrow, dashed, black!50] (main.south) |- (monitor.west);
+
+% Annotation for dispatcher
+\node[below=0.2cm of dispatcher, font=\scriptsize, text=black!55] {dedup + cache};
+
+\end{tikzpicture}%
 }
-\caption{Go server architecture (high-level).}
+\caption{Go server architecture. }
 \label{fig:go-server-architecture}
 \end{figure}
 
-Firstly, main function sets up a UDP socket and constructs the server components. 
+The core components of the server architecture are divided as follows:
 
-Next, the dispatcher reads incoming UDP packets, unmarshals the payload and header, before routing each request to an appropriate service handler. Its behaviour depends on the chosen invocation semantics: for at-least-once mode, it forwards each request to the handler, while in at-most-once mode, it checks the request against a history table to eliminate duplicate requests.
+% Swapped [nosep] for [itemsep=3pt, parsep=0pt] for a tiny gap
+% Requires \usepackage{enumitem} in your preamble
+\begin{description}[style=nextline, itemsep=1ex, leftmargin=1em] 
+    \item[Main \& Dispatcher:] 
+    The main function sets up a UDP socket and constructs the server components. The dispatcher then reads incoming UDP packets, unmarshals the payload and header, before routing each request to an appropriate service handler. Its behaviour depends on the chosen invocation semantics: for \textit{at-least-once} mode, it forwards each request to the handler, while in \textit{at-most-once} mode, it checks the request against a history table to eliminate duplicate requests.
+    
+    \item[Handler:] 
+    The handler receives a request from the dispatcher and chooses a service to trigger. It contains the application logic for services like opening, closing, depositing, and withdrawing from an account. It decodes the TLV fields from the payload and performs validation before invoking the appropriate service function and encoding a TLV response.
+    
+    \item[Banking Service \& Memory Store:] 
+    The banking service and memory store layers handle the data operations. The service layer provides operations like \texttt{OpenAccount} that directly manipulate the storage. The memory store maintains a map of accounts and uses synchronisation primitives to ensure that concurrent access to data is safe and does not lead to race conditions.
+    
+    \item[Monitor Manager:] 
+    The monitoring feature is implemented within the banking service with a publish-subscribe mechanism. It stores a map of registered clients with their defined expiration times and handles the goroutines for dispatching account updates using callback packets.
+\end{description}
 
-Thirdly, the handler receives a request from the dispatcher, and chooses a service to trigger. It contains the application logic for services like opening, closing, depositing and withdrawing from an account. It decodes the TLV fields from the payload and performs validation, before invoking the appropriate service function, and encoding a TLV response.
+By separating the logic into layers, we can isolate concerns.
+For example, semantics logic is handled in the dispatcher.
+This does not clutter banking service logic. 
+Protocol encoding is handled only once in the dispatcher and handler. 
+This allows dependency injection in tests and mocking of the UDP socket at the top level. 
 
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}[
-    box/.style={
-        rectangle,
-        draw=black,
-        rounded corners,
-        minimum width=4.5cm,
-        minimum height=3cm,
-        align=left,
-        font=\small
-    }
-]
-
-\node[box] (account) {
-\textbf{Account} \\ \\
-\texttt{Mu : Mutex} \\
-\texttt{AccountNumber : uint32} \\
-\texttt{HolderName : string} \\
-\texttt{Password : [8]byte} \\
-\texttt{CurrencyType : uint8} \\
-\texttt{Balance : float64}
-};
-
-\end{tikzpicture}
-\caption{Memory store account structure.}
-\label{fig:memory-store-account}
-\end{figure}
-
-Lastly, the banking service and memory store layers handle the data operations. The service layer provides operations like OpenAccount that directly manipulate the storage. The memory store maintains a map of accounts, and uses synchronisation primitives to ensure that concurrent access to data is safe and does not lead to race conditions. 
-
-Separately, the monitoring feature is implemented within the banking service with a publish-subscribe mechanism. It stores a map of registered clients with their defined expiration times, and handles the goroutines for dispatching account updates using callback packets.
-
-By separating the logic into layers, we isolate concerns cleanly. For instance, semantics logic is handled in the dispatcher, and does not clutter banking service logic. Protocol encoding is handled only once in the dispatcher and handler. At the same time, this allows dependency injection in tests, by allowing developers to mock the UDP socket at the top level.
-
-The architecture is wired by a BuildHandler function that exposes the banking service and monitor manager to all handlers. This ensures that the dispatcher can make calls to the handler without having to know the underlying banking or monitoring details, hence decoupling these components.
+The architecture is wired by a \texttt{BuildHandler} function that exposes the banking service and monitor manager to all handlers. 
+This ensures that the dispatcher can make calls to the handler without having to know the underlying banking or monitoring details.
 
 \subsection{Client Architecture (C++)}
 % Three-layer diagram (Application -> Protocol -> Network). 
@@ -587,6 +691,22 @@ When the client receives a response, the response takes the reverse path. It is 
 
 At the same time, dependency injection was used to provide the client with access to various services. The client was able to access interfaces like BaseSocket and BaseCommandEncoder during its lifecycle. This allows the system to mock components for unit testing, and reduces coupling between the interface and networking/marshalling internals.
 
+The dependency injection wiring at the client's entry point:
+
+\begin{lstlisting}[language=C++, caption={Constructor-based dependency injection in main.cpp}, label={lst:di-wiring}]
+// Create concrete implementations
+auto udpSocket    = std::make_unique<NetworkUtils::UDPSocket>(serverIp, serverPort);
+auto cmdEncoder   = std::make_unique<Protocol::CommandEncoder>();
+auto msgSerializer = std::make_unique<Protocol::MessageSerializer>();
+ 
+// Inject via constructor
+auto bankClient = std::make_unique<BankClient>(
+    std::move(bankIO), std::move(udpSocket),
+    std::move(cmdEncoder), std::move(msgSerializer), flag);
+\end{lstlisting}
+
+As \texttt{BankClient} accepts \texttt{BaseSocket} and \texttt{BaseCommandEncoder} interfaces, the test suite will substitute \texttt{MockSocket} and \texttt{MockEncoder} to verify the request assembly.
+
 \subsection{Concurrency Model for Accounts}
 % Server uses sync.RWMutex on the memory store (RLock for reads, Lock for writes). 
 % Monitor manager runs its own goroutine for subscriber sweep. 
@@ -598,6 +718,26 @@ The in-memory account map, where account numbers were mapped to account data, is
 
 Each account's state is protected separately using mutexes that belongs to the account itself. After accessing the specific account from the store, the account's mutex is acquired before read or mutation operations, and only unlocked when completed. This design allows clients to concurrently operate on different accounts while ensuring correctness on individual accounts. 
 
+For operations across two accounts (like Transfer), a na\"ively locking each account could risk deadlock.
+To prevent this, we enforced a deterministic locking order.
+ 
+\begin{lstlisting}[language=Go, style=modernGo, caption={Deadlock-safe lock ordering in Transfer (bank.go)}, label={lst:lock-order}]
+// Lock both accounts in a consistent global order (lowest ID first)
+// to prevent the "deadly embrace" deadlock scenario.
+if fromAcc.AccountNumber < toAcc.AccountNumber {
+    fromAcc.Mu.Lock()
+    toAcc.Mu.Lock()
+} else {
+    toAcc.Mu.Lock()
+    fromAcc.Mu.Lock()
+}
+defer fromAcc.Mu.Unlock()
+defer toAcc.Mu.Unlock()
+\end{lstlisting}
+
+This makes sure that any two goroutines performing a transfer between the same accounts acquire the locks in the same order.
+This eliminates circular waits.
+
 % ---------------------------------------------------------
 \section{Banking Services \& Custom Operations}
 % ~1.5 pages
@@ -607,7 +747,7 @@ Each account's state is protected separately using mutexes that belongs to the a
 
 The server implements four core banking services:
 
-\textbf{OpenAccount (S1):} Creates a new account with an initial balance, currency, and password. The server generates a unique account number, and stores the account under the global store write lock. Thi service returns the generated account number.
+\textbf{OpenAccount (S1):} Creates a new account with an initial balance, currency, and password. The server generates a unique account number, and stores the account under the global store write lock. This service returns the generated account number.
 
 \textbf{CloseAccount (S2):} Deletes an account after verifying credentials. The handler retrieves the account, validates the user's credentials, locks the account to prevent concurrent mutations, and removes it from the store. Notifications are sent to monitor subscribers.
 
@@ -617,6 +757,33 @@ The server implements four core banking services:
 
 All modifying operations above trigger monitor callbacks after state changes. Errors are reported via the reply header's status code, allowing clients to distinguish between errors like authentication failures and missing accounts.
 
+All services use a shared set of status codes.
+They are transmitted as a \texttt{uint16} in the reply header's status code field.
+Both the Go server's (\texttt{protocol.go}) and the C++ client's (\texttt{protocolStatus.h}) define the same enumerations to ensure consistency.
+ 
+\begin{table}[h]
+\centering
+\caption{Status Code Mapping (shared between Go server and C++ client)}
+\label{tab:status-codes}
+\begin{tabular}{c l p{0.52\linewidth}}
+\toprule
+\textbf{Code} & \textbf{Name} & \textbf{Triggered by} \\
+\midrule
+0 & \texttt{SUCCESS}               & Operation completed without error \\
+1 & \texttt{ACCOUNT\_NOT\_FOUND}    & Account number does not exist in the store \\
+2 & \texttt{INVALID\_CREDENTIALS}   & Password does not match the stored hash \\
+3 & \texttt{ACCOUNT\_MISMATCH}      & Holder name does not match the account \\
+4 & \texttt{CURRENCY\_MISMATCH}     & Request currency differs from the account's currency \\
+5 & \texttt{INSUFFICIENT\_FUNDS}    & Withdrawal or transfer amount exceeds balance \\
+6 & \texttt{TRANSFER\_SAME\_ACCOUNT}& Source and destination accounts are identical \\
+7 & \texttt{INTERNAL\_SERVER\_ERROR} & Catch-all for unexpected server-side failures \\
+\bottomrule
+\end{tabular}
+\end{table}
+ 
+On the server side, the handler maps errors from the banking service to these codes via \texttt{mapBankingError()} function. 
+On the client side, the \texttt{to\_string()} helper converts the received code into a readable label to output.
+ 
 \subsection{Monitor Service (S5)}
 
 The monitor feature allows clients to subscribe to real-time account update notifications. When a client issues a monitor request, specifying a timeout interval, the server registers the client's address and expiration time within a mutex-protected subscriber map. A background goroutine periodically sweeps this map, removing expired entries.
@@ -625,6 +792,77 @@ Whenever a modifying operation (S1-S4) occurs, the handler invokes \texttt{Notif
 
 On the client side, after receiving a monitor acknowledgment, the application enters a blocking receive loop on the UDP socket, collecting callbacks until the timeout expires. User input is disabled during this period. 
 
+Figure~\ref{fig:monitor-sequence} shows the monitor lifecycle.
+Client~B will first register for monitoring. 
+When Client~A performs a deposit, the server will then push the callback to Client~B in real time.
+ 
+\begin{figure}[H]
+\centering
+\resizebox{\linewidth}{!}{
+\begin{tikzpicture}[
+    font=\small,
+    >=Latex,
+    actor/.style={rectangle, draw, rounded corners=3pt, minimum width=2.4cm, minimum height=0.7cm, align=center, font=\small\bfseries},
+    msg/.style={->, thick},
+    note/.style={rectangle, draw=black!40, rounded corners=2pt, fill=lightyellowbg, font=\scriptsize, align=left, inner sep=3pt}
+]
+ 
+% --- Lifeline positions ---
+\def\cax{0}       % Client A
+\def\svx{5.5}     % Server
+\def\cbx{11}      % Client B
+ 
+% --- Actor boxes ---
+\node[actor, fill=lightorangebg, draw=clientred] (ca) at (\cax, 0) {Client A};
+\node[actor, fill=lightbluebg, draw=serverblue]  (sv) at (\svx, 0) {Server};
+\node[actor, fill=lightorangebg, draw=clientred]  (cb) at (\cbx, 0) {Client B};
+ 
+% --- Lifelines ---
+% Increased lifeline depth to -11 to accommodate the new spacing
+\draw[dashed, black!30] (\cax, -0.35) -- (\cax, -11.0);
+\draw[dashed, black!30] (\svx, -0.35) -- (\svx, -11.0);
+\draw[dashed, black!30] (\cbx, -0.35) -- (\cbx, -11.0);
+ 
+% --- Step 1: Client B registers ---
+\def\ya{-1.2}
+\draw[msg, serverblue] (\cbx, \ya) -- node[above, font=\scriptsize] {Monitor(interval=30s)} (\svx, \ya);
+\draw[msg, dashed, serverblue] (\svx, \ya-0.6) -- node[above, font=\scriptsize] {Ack (STATUS=SUCCESS)} (\cbx, \ya-0.6);
+\node[note] at (\cbx+1.6, \ya-1.1) {Client B enters\\blocking recv loop};
+ 
+% --- Step 2: Client A deposits ---
+\def\yb{-3.4}
+\draw[msg, clientred] (\cax, \yb) -- node[above, font=\scriptsize] {Deposit(\$500, Acc\#10000)} (\svx, \yb);
+\node[note] at (\svx+0.1, \yb-0.55) {Server updates\\balance, calls\\NotifyAll()};
+% FIX: Increased offset from \yb-0.15 to \yb-1.0
+\draw[msg, dashed, clientred] (\svx, \yb-1.0) -- node[below, font=\scriptsize] {Reply: Balance=\$1500} (\cax, \yb-1.0);
+ 
+% --- Step 3: Server pushes callback to Client B ---
+% Shifted \yc down slightly from -5.2 to -5.4 to make room for the fix above
+\def\yc{-5.4}
+\draw[msg, thick, callbackorange] (\svx, \yc) -- node[above, font=\scriptsize] {Callback: Acc\#10000, Balance=\$1500} (\cbx, \yc);
+
+ 
+% --- Step 4: Client A opens new account ---
+% Shifted \yd down from -6.6 to -6.8
+\def\yd{-6.8}
+\draw[msg, clientred] (\cax, \yd) -- node[above, font=\scriptsize] {OpenAccount(``Dave'', SGD, \$200)} (\svx, \yd);
+% FIX: Increased offset from \yd-0.15 to \yd-0.8
+\draw[msg, dashed, clientred] (\svx, \yd-0.8) -- node[below, font=\scriptsize] {Reply: Acc\#10001} (\cax, \yd-0.8);
+% Shifted callback further down so it clears the reply line
+\draw[msg, thick, callbackorange] (\svx, \yd-1.6) -- node[above, font=\scriptsize] {Callback: Acc\#10001, ``Dave'', \$200} (\cbx, \yd-1.6);
+ 
+% --- Step 5: Monitor interval expires ---
+% Shifted \ye down from -8.6 to -9.4
+\def\ye{-9.4}
+\draw[thick, dotted, black!50] (\svx-0.3, \ye) -- (\cbx+0.3, \ye);
+\node[note] at (\cbx+1.6, \ye) {Interval expires,\\Client B resumes\\normal menu};
+\node[font=\scriptsize\itshape, black!60] at (\svx+2.7, \ye-0.02) {30s timeout};
+ 
+\end{tikzpicture}
+}
+\caption{Sequence diagram of the monitor/callback lifecycle.}
+\label{fig:monitor-sequence}
+\end{figure}
 \subsection{GetBalance (Idempotent Operation)}
 
 GetBalance queries an account's current balance without modifying state. After credential and currency validation, the server reads the balance under the account's mutex and replies with this value. Because the operation is read-only, it is inherently \textit{idempotent}: repeating the request yields the same result without side effects. This property is valuable in UDP networks: if a reply is lost and the client retries, the outcome remains correct. Under both at-least-once and at-most-once semantics, idempotent operations are safe to retry, simplifying the reliability mechanisms.
@@ -651,7 +889,11 @@ UDP is fundamentally an unreliable protocol, where packets could be lost, reorde
 
 In this model, during a failed transmission, the client retransmits requests with the same request ID, until a response arrives. The server executes each request it receives without filtering or caching of results.
 
-\textbf{Client-side mechanism:} After encoding and serialising a request, the client sends it via UDP, and awaits a reply with a 3-second timeout. If no reply arrives within the timeout, the client retransmits with an exponential backoff, doubling the timeout period. This occurs up to a maximum of 3 attempts.
+\textbf{Client-side mechanism:} After encoding and serialising a request, the client sends it via UDP, and awaits a reply with a 5-second timeout. If no reply arrives within the timeout, the client retransmits with an exponential backoff, doubling the timeout period.
+The timeout sequence is 5\,s $\rightarrow$ 10\,s $\rightarrow$ 20\,s $\rightarrow$ 40\,s $\rightarrow$ 80\,s.
+This gives the network up to 155 seconds in total to deliver a reply.
+This occurs up to a max of 5 attempts.
+
 
 \textbf{Server-side mechanism:} The dispatcher receives the request header and immediately dispatches it to the handler for execution, without filtering for duplication. All requests that are received are processed regardless of whether a similar request had previously arrived.
 
@@ -677,14 +919,14 @@ In the event that the request is lost, and the server never received it, when th
 \draw[arrow] (s_exec) -- (c_timeout);
 \draw[arrow] (c_timeout) -- (c_retry);
 \draw[arrow] (c_retry) -- (s_exec2);
-\draw[arrow, dashed, red] (s_exec2) -- node[above] {duplicate execution} ($(s_exec)!0.5!(s_exec2)$);
+\draw[arrow, dashed, red] (s_exec2) -- node[above, yshift=3mm] {duplicate execution} ($(s_exec)!0.5!(s_exec2)$);
 \end{tikzpicture}
 }
 \caption{At-least-once semantics: retransmission on timeout can cause duplicate execution.}
 \label{fig:at-least-once-flow}
 \end{figure}
 
-Therefore, at-least-once is safe only for idempotent operations like GetBalance, which can be repeated and still yield the same result. However, non-idempotent operations like Transfer are not suitable for this, as duplicate executions can lead to incorrect behaviour. For instance, a duplicate transfer would unexpectedly move funds twice, making this semantic unsuitable for banking operations without additional protections.
+As depicted in Figure~\ref{fig:at-least-once-flow}, at-least-once is safe only for idempotent operations like GetBalance, which can be repeated and still yield the same result. However, non-idempotent operations like Transfer are not suitable for this, as duplicate executions can lead to incorrect behaviour. For instance, a duplicate transfer would unexpectedly move funds twice, making this semantic unsuitable for banking operations without additional protections.
 
 \subsection{At-Most-Once Semantics}
 
@@ -697,6 +939,21 @@ In this model, the client has a similar retry mechanism as at-least-once mode. H
     \item If a match is found, the request is a retransmission, and we return the cached reply immediately.
     \item Else, the handler executes and caches the reply bytes before returning them.
 \end{enumerate}
+
+This is the core duplication detection logic in the dispatcher:
+
+\begin{lstlisting}[language=Go, style=modernGo, caption={Duplicate detection in the at-most-once dispatcher (dispatcher.go)}, label={lst:dedup}]
+// Check cache before executing --- a hit means the client
+// is retransmitting because our previous reply got lost.
+if cached, found := d.history.Lookup(clientKey, header.RequestID); found {
+    log.Printf("duplicate detected for request %d, returning cached reply",
+        header.RequestID)
+    return cached, nil
+}
+// First time seeing this request: execute and cache
+reply := d.handler(data, addr)
+d.history.Store(clientKey, header.RequestID, reply)
+\end{lstlisting}
 
 \begin{figure}[H]
 \centering
@@ -717,12 +974,17 @@ In this model, the client has a similar retry mechanism as at-least-once mode. H
 \node[decision, right=of s2, fill=lightyellowbg] (d2) {Req\#1 in\\ cache?};
 \node[box, right=of d2, fill=lightgreenbg] (e2) {Return Cached Reply\\ (No Re-execution)};
 \node[box, below=1.2cm of e2, fill=lightbluebg] (c4) {Client: Receive Reply};
-\coordinate (lostTop) at ($(e1.north)+(0,0.9)$);
 
 \draw[arrow] (c1) -- (s1);
 \draw[arrow] (s1) -- (d1);
 \draw[arrow] (d1) -- node[above] {no} (e1);
-\draw[arrow, dashed, red] (e1.north) -- (lostTop) -| node[pos=0.6, above] {reply lost} (c2.north);
+
+% FIX: Drops down 0.6cm (exactly halfway between the rows), 
+% goes straight across to the left, then drops into c2.
+\draw[arrow, dashed, red] (e1.south) -- ++(0,-0.6) coordinate (mid) 
+    -- (mid -| c2.north) node[midway, below] {reply lost} 
+    -- (c2.north);
+
 \draw[arrow] (c2) -- (c3);
 \draw[arrow] (c3) -- (s2);
 \draw[arrow] (s2) -- (d2);
@@ -730,18 +992,26 @@ In this model, the client has a similar retry mechanism as at-least-once mode. H
 \draw[arrow] (e2) -- (c4);
 \end{tikzpicture}
 }
-\caption{At-most-once semantics: duplicate requests are detected and cached replies are returned without re-execution.}
+\caption{At-most-once semantics.}
 \label{fig:at-most-once-flow}
 \end{figure}
 
 
-Each request is processed a maximum of once. This is the ideal for banking, where monetary transfers must execute exactly once per submission as intended. However, this semantic requires the system to scale its memory usage proportionally to the number of active clients and their request backlog, which could grow greatly in production. Additionally, the use of an incremented request ID in the client introduces coordination overhead in this implementation.
+As shown in Figure~\ref{fig:at-most-once-flow}, each request is processed a maximum of once. This is the ideal for banking, where monetary transfers must execute exactly once per submission as intended. However, this semantic requires the system to scale its memory usage proportionally to the number of active clients and their request backlog, which could grow greatly in production. Additionally, the use of an incremented request ID in the client introduces coordination overhead in this implementation.
 
-To address these issues, when the server receives a new request with an ID of N, the dispatcher evicts previous cache entries with an ID below (N - windowSize), bounding cache memory to O(clients * 10). This assumes that clients never retransmit requests that are older than a certain time range. At the same time, all cache entries for the client are evicted when the client disconnects to save memory.
+To address these issues, we structured the reply history to use a two level map.
+The outer key is client's \texttt{IP:port} string and the inner key is the 32-bit request ID.
+This structure will allow for O(1) lookup time per request.
+When the server receives a new request with an ID~$N$, the dispatcher calls \texttt{EvictBefore(clientAddr, N - windowSize)}.
+This would remove all cache entries for request IDs less than $N - 10$, bounding cache memory to $O(\text{clients} \times \text{windowSize})$.
+
 
 \subsection{Loss Simulator Design}
 
-To validate the difference between both semantics when messages are lost, a loss simulator was implemented in the server. It utilises a seeded pseudo-random number generator, configured with a probability between 0.0 and 1.0.
+To validate the difference between both semantics when messages are lost, a loss simulator (\texttt{losssim.go}) was implemented in the server. 
+It wraps a \texttt{rand.Rand} instance with a fixed seed, allowing for experiments to be reproducible across runs (two runs with the same seed produce the same drop sequences).
+The drop probability is configurable via the CLI argument (i.e. \texttt{./server at-most-once 0.3} for 30\% loss).
+It is configured with a probability between 0.0 and 1.0.
 
 The loss simulator can be injected at either of two points:
 \begin{enumerate}
@@ -749,35 +1019,33 @@ The loss simulator can be injected at either of two points:
     \item \textbf{Reply-level loss:} After the handler produces a reply, the loss simulator may drop it before it is sent to the client, simulating the scenario where the client's receive mechanism times out.
 \end{enumerate}
 
-For this implementation, we focus on reply-level loss only, for simplicity of testing the results of different invocation semantics.
+For this implementation, we focus on reply-level loss only.
+This is the more dangerous scenario whereby the server has already executed and mutated the state.
+The client, having not received the confirmation, would retransmit and trigger a duplicate execution under the at-least-once semantics.
+This is the failure that we are trying to demonstrate.
 
 \subsection{Experimental Validation}
 
 To validate the semantic models, a suite of 38 integration tests was developed. These tests launch the real C++ client and Go server as separate processes, communicating over localhost UDP. Key test scenarios include:
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
-\caption{Representative Fault Tolerance Test Cases}
-\label{tab:test-scenarios}
-\small
-\begin{tabular}{|l|l|l|p{6cm}|c|}
-\hline
-\textbf{Operation} & \textbf{Semantics} & \textbf{Loss Rate} & \textbf{Expected Outcome} & \textbf{Observed} \\
-\hline
-GetBalance & at-least-once & 0\% & Correct balance returned & True \\
-\hline
-GetBalance & at-least-once & 30\% & Correct balance as it is idempotent and retries are safe & True \\
-\hline
-Deposit \$100 & at-least-once & 0\% & Balance $+\$100$, account notified & True \\
-\hline
-Deposit \$100 & at-least-once & 30\% & Balance $+\$100$ to $+\$200$ upon packet loss and retry success & True \\
-\hline
-Deposit \$100 & at-most-once & 30\% & Balance $+\$100$ exactly upon packet loss and duplicate detection & True \\
-\hline
-Transfer \$50 & at-least-once & 30\% & Source $-\$50$ to $-\$100$ upon packet loss and retry success & True \\
-\hline
-Transfer \$50 & at-most-once & 30\% & Source $-\$50$ exactly upon packet loss and duplicate detection & True \\
-\hline
+\caption{Experimental validation: expected vs.\ observed outcomes.}
+\label{tab:experimental-validation}
+\begin{tabular}{l l l p{4.2cm} p{3.2cm}}
+\toprule
+\textbf{Operation} & \textbf{Semantics} & \textbf{Loss} & \textbf{Expected Outcome} & \textbf{Observed Result} \\
+\midrule
+GetBalance & at-least-once & 0\% & Correct balance returned & Balance = \$1000 \checkmark \\
+GetBalance & at-least-once & 30\% & Correct (idempotent, safe to retry) & Balance = \$1000 \checkmark \\
+\midrule
+Deposit \$100 & at-least-once & 0\% & Balance $+\$100$ & Balance = \$1100 \checkmark \\
+Deposit \$100 & at-least-once & 30\% & Duplicate: $+\$100$ to $+\$200$ & Balance = \$1200 \texttimes \\
+Deposit \$100 & at-most-once & 30\% & Exactly $+\$100$ (dedup) & Balance = \$1100 \checkmark \\
+\midrule
+Transfer \$50 & at-least-once & 30\% & Duplicate: source $-\$100$ & Alice=\$900, Bob=\$600 \texttimes \\
+Transfer \$50 & at-most-once & 30\% & Exactly $-\$50$ (dedup) & Alice=\$950, Bob=\$550 \checkmark \\
+\bottomrule
 \end{tabular}
 \end{table}
 
@@ -797,6 +1065,43 @@ For non-idempotent operations under at-most-once semantics, the server's request
     \item Transfer \$50 with 30\% loss rate: Even if multiple response packets were lost, source is debited exactly \$50 and destination is credited exactly \$50.
 \end{itemize}
 
+Our results are tested against an integration test suite.
+It runs the real C++ Client against the real Go Server in our CI Pipeline.
+The following is an example test output from our \texttt{TestComparison\_SameScenarioBothModes}.
+It executes the same Transfer scenario of both semantics but at 30\% packet loss.
+
+\begin{lstlisting}[
+  caption={Integration test output: at-least-once Transfer under 30\% loss},
+  label={lst:alo-evidence},
+  basicstyle=\ttfamily\scriptsize,
+  frame=single,
+  backgroundcolor=\color{codebg}
+]
+=== RUN   TestComparison_SameScenarioBothModes/at-least-once
+[Dispatcher] At-least-once: executed request 5 from 127.0.0.1:54321
+[Dispatcher] At-least-once: executed request 5 from 127.0.0.1:54321
+    integration_test.go:1285: [at-least-once] Alice=800.00, Bob=700.00
+    integration_test.go:1253: REPORT EVIDENCE: Transfer duplicated!
+--- PASS
+\end{lstlisting}
+ 
+\begin{lstlisting}[
+  caption={Integration test output: at-most-once Transfer under 30\% loss},
+  label={lst:amo-evidence},
+  basicstyle=\ttfamily\scriptsize,
+  frame=single,
+  backgroundcolor=\color{codebg}
+]
+=== RUN   TestComparison_SameScenarioBothModes/at-most-once
+[Dispatcher] At-most-once: executed and cached request 5 from 127.0.0.1:54321
+[Dispatcher] At-most-once: duplicate detected for request 5 from 127.0.0.1:54321,
+             returning cached reply
+    integration_test.go:1285: [at-most-once] Alice=900.00, Bob=600.00
+--- PASS
+\end{lstlisting}
+ 
+In the at-least-once run (Listing~\ref{lst:alo-evidence}), request~5 (the Transfer) was executed twice by the server because the first reply was dropped and the client retransmitted. Alice lost \$200 instead of \$100. In the at-most-once run (Listing~\ref{lst:amo-evidence}), the server's dispatcher detected the duplicate retransmission and returned the cached reply without re-executing the handler, preserving the correct balances.
+
 To conclude, the choice of invocation semantics directly impacts correctness of the system. For banking systems that require this accuracy, and handles non-idempotent operations, at-most-once semantics are necessary. 
 
 % ---------------------------------------------------------
@@ -809,26 +1114,23 @@ The project employs a two-tier testing approach: unit tests for individual compo
 
 The client includes 48 unit tests across four GoogleTest suites, with dependency mocks to isolate each layer.
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
-\caption{C++ Unit Test Coverage Summary}
-\label{tab:cpp-unit-tests}
-\begin{tabular}{|l|p{0.29\linewidth}|p{0.46\linewidth}|}
-\hline
-    \textbf{Suite} & \textbf{Scope} & \textbf{Key checks} \\
-\hline
+\caption{C++ client unit test suites and their scope.}
+\label{tab:unit-test-suites}
+\begin{tabular}{l p{0.29\linewidth} p{0.46\linewidth}}
+\toprule
+\textbf{Suite} & \textbf{Scope} & \textbf{Key checks} \\
+\midrule
 CommandEncoder & TLV request/response encoding for all services & Big-endian fields, variable-length strings, and IEEE-754 amount round-trip correctness \\
-\hline
 MessageSerializer & 18-byte message header and payload framing & Header round-trip (IPv4, port, status, length), short-packet rejection, overflow-safe length handling \\
-\hline
 UDPSocket & UDP send/receive integration on loopback & Timeout options (\texttt{SO\_RCVTIMEO}, \texttt{SO\_SNDTIMEO}), \texttt{SO\_REUSEADDR}, and \texttt{getsockname()} correctness \\
-\hline
 BankClient & CLI parsing and command construction & Input validation (account/currency/password) and correct request assembly before dispatch \\
-\hline
+\bottomrule
 \end{tabular}
 \end{table}
 
-By mocking components like \texttt{BaseSocket} and \texttt{BaseCommandEncoder}, the tests does not rely on network dependencies, and execute deterministically.
+By mocking components like \texttt{BaseSocket} and \texttt{BaseCommandEncoder}, the tests do not rely on network dependencies, and execute deterministically.
 
 \subsection{Integration Tests (End-to-End)}
 
@@ -842,91 +1144,64 @@ The integration test suite (\texttt{integration\_test.go}) is written in Go and 
     \item Terminates both processes and reports pass/fail.
 \end{enumerate}
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
-\caption{Integration Test Categories and Coverage}
+\caption{Integration test categories and coverage summary.}
 \label{tab:integration-test-categories}
-\begin{tabular}{|l|p{0.66\linewidth}|}
-\hline
-	\textbf{Category} & \textbf{Coverage summary} \\
-\hline
+\begin{tabular}{l p{0.66\linewidth}}
+\toprule
+\textbf{Category} & \textbf{Coverage summary} \\
+\midrule
 Baseline (no loss) & Verifies all seven services end-to-end under normal network conditions. \\
-\hline
 Concurrency & Runs multiple clients in parallel to validate consistency and account-total conservation. \\
-\hline
 Fault tolerance (10\%/30\%/50\%) & Compares at-least-once vs at-most-once behavior under packet loss, and confirms that duplicate side effects only occur in at-least-once for non-idempotent operations. \\
-\hline
 Stress and edge cases & Tests rapid-fire requests, large balances, and invalid boundary inputs (e.g., withdraw \$0). \\
-\hline
 Isolation & Executes each test in an isolated process/port with fresh server state to avoid cross-test interference. \\
-\hline
+\bottomrule
 \end{tabular}
-\end{table}.
-
+\end{table}
 
 % ---------------------------------------------------------
-\section{Assumptions, Limitations \& Future Work}
-
+\section{Assumptions and Limitations }
+ 
 \subsection{System Assumptions}
-
-The implementation operates under the following assumptions:
-
-\begin{enumerate}
-    \item \textbf{Single currency per account:} Each account is fixed to one currency (SGD, USD, or EUR), and transfers between accounts of different currencies are rejected. 
-    
-    \item \textbf{In-memory storage:} All account data is stored in a transient Go map, with no persistence to a disk or database. If the server crashes, all data is lost.    
-\end{enumerate}
-
+ 
+Our implementation has two main assumptions.
+First, each account is fixed to a single currency (SGD, USD, or EUR).
+This means that transfers between accounts of different currencies are rejected. 
+Second, all account data is stored in a transient Go map with no persistence.
+If the server crashes, all data is lost.
+ 
 \subsection{Known Limitations}
-
-The system can be improved in areas of memory management and security:
-
-\begin{enumerate}
-    \item \textbf{Unbounded reply history growth (at-most-once):} The server's request history cache grows with each unique request, which could exhaust server memory in the long run. While the current implementation supports manual eviction, a time-based or size-based eviction policy could be used instead.
-    
-    \item \textbf{No wire encryption:} All messages are transmitted insecurely in plaintext over UDP. An attacker can eavesdrop on account numbers, balances, and passwords, or forge replies.
-        
-    \item \textbf{Fixed password length (8 bytes):} The wire protocol enforces an 8-byte password field, truncating longer passwords, and zero-padding shorter passwords. This is inflexible and weak for real passwords.
-
-\end{enumerate}
-
-\subsection{Future Work}
-
-Based on acknowledged assumptions and limitations, several extensions would be valuable:
-
-\begin{enumerate}
-    \item \textbf{Persistent storage:} Implement a persistent SQL database for the account store, and use transactions to ensure atomicity of multi-account operations.
-    
-    \item \textbf{Authentication and encryption:} Implement password hashing, add client-side TLS handshake for mutual authentication, and encrypt all message payloads using AES-256.
-    
-    \item \textbf{Multi-currency and exchange rates:} Allow transfers between accounts in different currencies by utilising a live exchange rate API.
-\end{enumerate}
-
-\subsection{Key Takeaways}
-
-This project demonstrates several core principles of distributed systems design:
-
-\begin{enumerate}
-    \item \textbf{Unreliable networks require explicit protocols:} UDP provides no guarantees, therefore custom retransmission and duplicate detection logic were essential for reliability.
-    
-    \item \textbf{Invocation semantics shape correctness:} At-least-once and at-most-once have different guarantees. While idempotent operations are safe under at-least-once mode; non-idempotent operations require at-most-once. Choosing the wrong semantics silently corrupts data.
-        
-    \item \textbf{Cross-language interoperability is possible but fragile:} Agreeing on byte-level formats (big-endian, IEEE-754, fixed-size fields) and marshalling every field explicitly is tedious but necessary for systems without a shared RPC framework.
-\end{enumerate}
-
+ 
+Our system also has several limitations.
+The at-most-once request history cache grows with each unique request.
+This could exhaust server memory over time. 
+While our current implementation supports manual eviction via a sliding window, a time based/size based eviction policy would be better.
+On the security front, all messages are transmitted in plaintext over UDP.
+Account numbers, balances, and passwords by right should be encrypted.
+Our protocol enforces a maximum 8-byte password field, which truncates longer passwords.
+ 
 % ---------------------------------------------------------
 \section{Conclusion}
+ 
+This project set out to consolidate our understanding of interprocess communication and remote invocation.
+It sucessfully gave us real world understanding for which reading the textbook alone could not. 
+When we were building the wire protocol by hand, deciding on header layouts, TLV field IDs, endianness conventions, we gained a more concrete appreciation for the tedious yet crucial details that RPC frameworks abstract away for us.
+Every misaligned byte we had to debug, every silent corruption we had to fix taught us the importance of marshalling standards.
+ 
+The most important lesson came about when working on both invocation semantics side by side.
+It was one thing to know the theory but implementating it was a whole different ball game.
+We unfortunately watched the Transfer debit an account twice in test runs way too many times.
+This experience gave us a deeper appreciation for the request history cache, making its memory cost feel less like a textbook trade off and more like a necessary engineering decision.
 
-This report presented a complete implementation of a distributed banking system that supports cross-language interoperability, custom binary protocol design, concurrent access control, and fault-tolerant invocation semantics.
+Our choice of working with two languages was also really eye opening.
+It forced us to confront many of the assumptions we would never have noticed in a single language system.
+Go's fixed \texttt{[8]byte} password type and C++'s variable-length \texttt{std::string} only agreed on the wire because we explicitly defined the contract. 
+This is the same coordination problem that any distributed team faces when integrating any system.
 
-It also successfully demonstrated core banking operations (Open, Close, Deposit, Withdraw, Transfer, GetBalance) with full atomic semantics and real-time monitoring. The infrastructure is supported by customisations at the transport layer that use a custom 18-byte header format and Type-Length-Value payload encoding, negotiated without RPC frameworks.
-
-The server's concurrency model combines a read-write mutex on the global account map with per-account mutexes for individual operations. Transfer operations use deterministic lock ordering to prevent deadlock while maintaining atomicity across two accounts.
-
-Fault tolerance of the system is analysed through the evaluation of different invocation semantics, under simulated packet losses. While at-least-once mode has a simpler implementation, it leads to phantom duplicate executions on non-idempotent operations. Conversely, while at-most-once mode is safer for all operation types, where the request history cache ensures that each operation executes at most once regardless of network conditions, its implementation is more complex in terms of memory usage.
-
-The comprehensive test suite with 48 unit tests and 38 integration tests validates correctness across the entire architecture, from low-level socket I/O to high-level banking logic, and from no packet loss to 50\% loss scenarios.
-
-This implementation serves as a blueprint for real-world distributed systems. It emphasises explicit protocol design, careful concurrency control, and empirical validation under realistic fault scenarios. While production banking systems would require additional security and memory management features, this project captures the essential challenges and solutions of distributed financial transactions.
-
+In the end, this was an extremely fruitful project. 
+It reinforced the principle that in a distributed system, correctness is not handled by application logic alone. 
+We often take for granted the protocols, semantics, and failure models upon which we heavily depend.
+ 
 \end{document}
