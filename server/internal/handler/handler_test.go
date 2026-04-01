@@ -376,6 +376,8 @@ func TestHandleTransfer_Success(t *testing.T) {
 		marshal.TLVUint32(marshal.FieldAccountNumber, srcAccNo),
 		marshal.TLVString(marshal.FieldAccountPassword, "xfer_src"),
 		marshal.TLVUint32(marshal.FieldTxAccountNumber, dstAccNo),
+		marshal.TLVString(marshal.FieldTxAccountOwnerName, "Leo"),
+		marshal.TLVUint8(marshal.FieldCurrency, uint8(models.SGD)),
 		marshal.TLVFloat64(marshal.FieldMonetaryValue, 200.0),
 	})
 
@@ -405,6 +407,8 @@ func TestHandleTransfer_SameAccount(t *testing.T) {
 		marshal.TLVUint32(marshal.FieldAccountNumber, accNo),
 		marshal.TLVString(marshal.FieldAccountPassword, "self_xfr"),
 		marshal.TLVUint32(marshal.FieldTxAccountNumber, accNo), // same account!
+		marshal.TLVString(marshal.FieldTxAccountOwnerName, "Mike"),
+		marshal.TLVUint8(marshal.FieldCurrency, uint8(models.SGD)),
 		marshal.TLVFloat64(marshal.FieldMonetaryValue, 100.0),
 	})
 

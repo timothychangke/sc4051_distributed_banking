@@ -14,3 +14,13 @@ std::string Protocol::to_string(Service svc) {
         default:                                 return "UNKNOWN_SERVICE";
     }
 }
+
+std::string Protocol::to_string(CurrencyType cur_type) {
+    switch (cur_type) {
+        case Protocol::CurrencyType::SGD:        return "SGD";
+        case Protocol::CurrencyType::USD:        return "USD";
+        case Protocol::CurrencyType::EUR:        return "EUR";
+        
+        default:                                 return "UNKNOWN_CURRENCY _TYPE";
+    }
+}

@@ -17,16 +17,17 @@
 #include <memory>
 #include <chrono>
 #include <thread>
-#include <cmath>
 #include <algorithm>
-#include <cctype> 
+#include <cctype>
 #include <limits>
+
 
 #include "protocol.h"
 #include "message.h"
 #include "bankIO.h"
 #include "baseSocket.h"
 #include "baseCmdEncoder.h"
+#include "callbackEncoder.h"
 #include "baseMsgSerializer.h"
 
 #include "result.h"
@@ -34,7 +35,7 @@
 #include "semantics.h"
 #include "protocolStatus.h"
 
-#define MAX_TRIES 3
+#define MAX_TRIES 5
 #define MAX_PW_LEN 8
 #define BACKOFF 2
 
@@ -44,7 +45,8 @@ public:
     BankClient( 
         std::unique_ptr<BankIO> bankIO,
         std::unique_ptr<NetworkUtils::BaseSocket> socket,
-        std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder,
+        std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder, 
+        std::unique_ptr<Protocol::BaseCallbackEncoder> callbackEncoder, 
         std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer,
         Semantics::InvocationFlag flag 
     );
@@ -57,23 +59,36 @@ protected:
     std::unique_ptr<BankIO> bankIO;
     std::unique_ptr<NetworkUtils::BaseSocket> socket;
     std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder;
+    std::unique_ptr<Protocol::BaseCallbackEncoder> callbackEncoder;
     std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer;
     Semantics::InvocationFlag flag;
     static const std::unordered_map<std::string, Protocol::CurrencyType> stringToCurrency;
     
-    void send_to_server(const Protocol::Command& req);
-    void monitor_server_updates();
+    Result<Protocol::Message, Error::InternalError> execute_request_pipeline(const Protocol::Command& cmd);
+    void execute_client_req(const Protocol::Command& req);
+    void monitor_server_updates(const Protocol::Command& cmd);
+    void listen_server(uint32_t time);
+
+    Result<std::vector<uint8_t>, Error::InternalError> prepare_message(const Protocol::Command& req);
+    Result<std::vector<uint8_t>, Error::InternalError> send_to_server(const std::vector<uint8_t>& data);
+    Result<Protocol::Message, Error::InternalError> decode_message(const std::vector<uint8_t>& data);
+    Result<std::monostate, Error::InternalError> decode_status_code(const Protocol::Message& msg);
+    void decode_command(const Protocol::Message& msg);
+
     void trimString(std::string& str);
     bool isAlpha(const std::string& str);
     bool isAlphaNumeric(const std::string& str);
     bool isWithinMaxLength(const std::string& str);
- 
-    Result<Protocol::Command, Error::InternalError> collect_user_input();    
+
+    Protocol::Message build_message(const std::vector<uint8_t>& data);
+    Result<Protocol::Command, Error::InternalError> build_command();    
     Result<std::monostate, Error::InternalError> fill_account_creation_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_auth_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_currency_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_amount_details(Protocol::Command& req);
     Result<std::monostate, Error::InternalError> fill_transfer_account_details(Protocol::Command& req);
+    Result<std::monostate, Error::InternalError> fill_monitor_details(Protocol::Command& req);
+
     Result<std::string, Error::InternalError> getValidatedString(const std::string& prompt);
     Result<std::string, Error::InternalError> getValidatedPassword(const std::string& prompt);
     Result<Protocol::CurrencyType, Error::InternalError> getValidatedCurrency(const std::string& prompt);

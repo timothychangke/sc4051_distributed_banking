@@ -310,7 +310,8 @@ func handleTransfer(cmd *marshal.ParsedCommand, reqID uint32, addr *net.UDPAddr,
 	// Transfer (non-idempotent op): requires sender name, sender account,
 	// password, destination account, and amount
 	if cmd.AccountOwnerName == nil || cmd.AccountNumber == nil ||
-		cmd.AccountPassword == nil || cmd.TxAccountNumber == nil || cmd.MonetaryValue == nil {
+		cmd.AccountPassword == nil || cmd.TxAccountNumber == nil ||
+		cmd.TxAccountOwnerName == nil || cmd.Currency == nil || cmd.MonetaryValue == nil {
 		log.Printf("[Handler] Transfer: missing required fields from %s", addr)
 		return marshal.BuildErrorReply(reqID, addr, protocol.StatusErrInternal)
 	}

@@ -5,12 +5,14 @@ BankClient::BankClient(
     std::unique_ptr<BankIO> bankIO,
     std::unique_ptr<NetworkUtils::BaseSocket> socket,
     std::unique_ptr<Protocol::BaseCommandEncoder> cmdEncoder,
+    std::unique_ptr<Protocol::BaseCallbackEncoder> callbackEncoder,
     std::unique_ptr<Protocol::BaseMessageSerializer> msgSerializer,
     Semantics::InvocationFlag flag
 )
     : bankIO(std::move(bankIO)),
       socket(std::move(socket)),
       cmdEncoder(std::move(cmdEncoder)),
+      callbackEncoder(std::move(callbackEncoder)),
       msgSerializer(std::move(msgSerializer)),
       flag(flag),
       current_request_id(0){
@@ -36,7 +38,7 @@ void BankClient::run() {
         
         bankIO->clear_ui();
         bankIO->print_service_menu();
-        auto req = collect_user_input();
+        auto req = build_command();
         if(!req){
             if (req.error() != Error::InternalError::USER_CANCELED){
                 Error::InternalError err = req.error();
@@ -47,15 +49,20 @@ void BankClient::run() {
                 continue;
             }
         }
-        bankIO->print("[ SENDING REQUEST TO SERVER ]\n");
-        send_to_server(req.value());
+        bankIO->print("[ SENDING REQUEST TO SERVER ]\n", Colour::CYAN);
+        if (req.value().service == Protocol::Service::MONITOR){
+            monitor_server_updates(req.value());
+        }   
+        else{
+            execute_client_req(req.value());
+        }
         bankIO->wait_for_enter();
 
     }
     
 }
 
-Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input() {
+Result<Protocol::Command, Error::InternalError> BankClient::build_command() {
     int user_input = bankIO->read_int();
     if(user_input == 0){
         return Result<Protocol::Command, Error::InternalError>::fail(
@@ -63,24 +70,23 @@ Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input()
     }
 
     Protocol::Service service_type = static_cast<Protocol::Service>(user_input);
-    Protocol::Command req {};
-    req.service = service_type;
+    Protocol::Command cmd {};
+    cmd.service = service_type;
     
     switch (service_type) {
         case Protocol::Service::OPEN:
             bankIO->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
             bankIO->print_box_top();
-            if (auto res = fill_account_creation_details(req); !res)
+            if (auto res = fill_account_creation_details(cmd); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
             bankIO->print_box_bottom();
             break;
 
         case Protocol::Service::CLOSE:
         case Protocol::Service::GET_BALANCE:
-        case Protocol::Service::MONITOR:
             bankIO->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
             bankIO->print_box_top();
-            if (auto res = fill_auth_details(req); !res)
+            if (auto res = fill_auth_details(cmd); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
             bankIO->print_box_bottom();
             break;
@@ -89,11 +95,11 @@ Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input()
         case Protocol::Service::WITHDRAW:
             bankIO->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
             bankIO->print_box_top();
-            if (auto res = fill_auth_details(req); !res)
+            if (auto res = fill_auth_details(cmd); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
-            if (auto res = fill_currency_details(req); !res)
+            if (auto res = fill_currency_details(cmd); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
-            if (auto res = fill_amount_details(req); !res)
+            if (auto res = fill_amount_details(cmd); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
             bankIO->print_box_bottom();
             break;
@@ -101,13 +107,23 @@ Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input()
         case Protocol::Service::TRANSFER_FUNDS:
             bankIO->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
             bankIO->print_box_top();
-            if (auto res = fill_auth_details(req); !res)
+            if (auto res = fill_auth_details(cmd); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
-            if (auto res = fill_transfer_account_details(req); !res)
+            if (auto res = fill_transfer_account_details(cmd); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
-            if (auto res = fill_currency_details(req); !res)
+            if (auto res = fill_currency_details(cmd); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
-            if (auto res = fill_amount_details(req); !res)
+            if (auto res = fill_amount_details(cmd); !res)
+                return Result<Protocol::Command, Error::InternalError>::fail(res.error());
+            bankIO->print_box_bottom();
+            break;
+
+        case Protocol::Service::MONITOR:
+            bankIO->print("ACTIVE SERVICE :" + Protocol::to_string(service_type), Colour::BOLD_CYAN);
+            bankIO->print_box_top();
+            if (auto res = fill_auth_details(cmd); !res)
+                return Result<Protocol::Command, Error::InternalError>::fail(res.error());
+             if (auto res = fill_monitor_details(cmd); !res)
                 return Result<Protocol::Command, Error::InternalError>::fail(res.error());
             bankIO->print_box_bottom();
             break;
@@ -118,7 +134,7 @@ Result<Protocol::Command, Error::InternalError> BankClient::collect_user_input()
             Error::InternalError::INVALID_SERVICE);
     }
     
-    return req;
+    return cmd;
 }
 
 void BankClient::trimString(std::string& str) {
@@ -206,7 +222,8 @@ Result<std::string, Error::InternalError> BankClient::getValidatedPassword(const
 Result<Protocol::CurrencyType, Error::InternalError> BankClient::getValidatedCurrency(const std::string& prompt){
     for(int i=0; i < MAX_TRIES; i++) {
         bankIO->print_prompt(prompt + " (or type 'quit' to cancel)");
-        std::string input = bankIO->read_line(); 
+        std::string input = bankIO->read_line();
+        trimString(input);
         if (input == "quit") {
             return Result<Protocol::CurrencyType, Error::InternalError>::fail(
                 Error::InternalError::USER_CANCELED);
@@ -289,16 +306,16 @@ Result<std::monostate, Error::InternalError> BankClient::fill_transfer_account_d
     return std::monostate{};
 }
 
-void BankClient::send_to_server(const Protocol::Command& req_com) {
-    
-    // 1. encode the Command struct
-    auto res_enc = cmdEncoder->encode_message(req_com);
-    if (!res_enc) {
-        bankIO->print_error("[Client] Failed to encode command: " + Error::to_string(res_enc.error()));
-        return;
-    }
-    
-    // 2. build the Message struct
+Result<std::monostate, Error::InternalError> BankClient::fill_monitor_details(Protocol::Command& req) {
+    auto maybe_time = getValidatedNumber<uint32_t>("Desired Monitor Time (In Seconds)");
+    if (!maybe_time) return Result<std::monostate, Error::InternalError>::fail(maybe_time.error());
+    req.monitor_timeout_seconds = maybe_time.value();
+
+    return std::monostate{};
+}
+
+Protocol::Message BankClient::build_message(const std::vector<uint8_t>& data) {
+
     Protocol::Message msg{};
     msg.type = Protocol::MessageType::Request;
     msg.flag = flag;
@@ -313,89 +330,201 @@ void BankClient::send_to_server(const Protocol::Command& req_com) {
     msg.id.ipv4_address = local_ip;
     msg.id.port = local_port;
     msg.payload.status_code = 0;
-    msg.payload.content = res_enc.value(); 
+    msg.payload.content = data;
 
-    // 3. serialize the Message
-    auto request = msgSerializer->serialize(msg);
-    if (!request) {
-        bankIO->print_error("[Client] Failed to serialize message: " + Error::to_string(request.error()));
-        return;
+    return msg;
+}
+
+Result<std::vector<uint8_t>, Error::InternalError> BankClient::prepare_message(const Protocol::Command& cmd){
+
+    auto res_enc = cmdEncoder->encode_message(cmd);
+    if (!res_enc) {
+        bankIO->print_error("[Client] Failed to encode command: " + Error::to_string(res_enc.error()));
+        return Result<std::vector<uint8_t>, Error::InternalError>::fail(res_enc.error());
+    }
+    
+    Protocol::Message msg = build_message(res_enc.value());
+    auto res_ser = msgSerializer->serialize(msg);
+    if (!res_ser) {
+        bankIO->print_error("[Client] Failed to serialize message: " + Error::to_string(res_ser.error()));
+        return Result<std::vector<uint8_t>, Error::InternalError>::fail(res_ser.error());
     }
 
-    // 4. send via socket with exponential backoff 
-    int cur_backoff = BACKOFF;
-    bool success = false;
+    return res_ser;
+}
 
-    Result<std::monostate, Error::InternalError> res_send;
+Result<std::vector<uint8_t>, Error::InternalError> BankClient::send_to_server(const std::vector<uint8_t>& data){
+
+    int cur_backoff = BACKOFF;
     Result<std::vector<uint8_t>, Error::InternalError> res_recv;
+    Error::InternalError err; 
 
     for (int i = 1; i <= MAX_TRIES; i++) {
-        res_send = socket->send_message(request.value());
+        auto res_send = socket->send_message(data);
         if (res_send) {
-            res_recv = socket->receive_message();
+            while (true) {
+                res_recv = socket->receive_message();
+                if (!res_recv) break; 
+                const auto& raw = res_recv.value();
+                if (!raw.empty() && raw[0] == static_cast<uint8_t>(Protocol::MessageType::Callback)) {
+                    continue; 
+                }
+                break; 
+            }
         }
-
         if (res_send && res_recv) {
             bankIO->print("[SUCCESS: Message sent and received from server]\n", Colour::CYAN);
-            success = true;
-            break;
+            return res_recv;
         }
-
         if (i < MAX_TRIES) {
             bankIO->print("[!] Attempt " + std::to_string(i) + " failed. Retrying in " + std::to_string(cur_backoff) + "s...\n", Colour::YELLOW);
             std::this_thread::sleep_for(std::chrono::seconds(cur_backoff));
             cur_backoff *= 2;
         } else {
-             if (!res_send) bankIO->print_error("Final send failure after " + std::to_string(MAX_TRIES) + " attempts: " + Error::to_string(res_send.error()));
-             else bankIO->print_error("Final receive failure after " + std::to_string(MAX_TRIES) + " attempts: " + Error::to_string(res_recv.error()));
+             if (!res_send) {
+                bankIO->print_error("Final send failure after " + std::to_string(MAX_TRIES) + " attempts: " + Error::to_string(res_send.error()));
+                err = res_send.error();
+            }
+             else {
+                bankIO->print_error("Final receive failure after " + std::to_string(MAX_TRIES) + " attempts: " + Error::to_string(res_recv.error()));
+                err = res_recv.error();
+            } 
         }
     }
 
-    if (!success) return;
-    
-    // 5. deserialize the response Message
-    auto res_msg_res = msgSerializer->deserialize(res_recv.value());
-    if (!res_msg_res) {
-        bankIO->print_error("[Client] Failed to deserialize response: " + Error::to_string(res_msg_res.error()));
-        return;
+    return Result<std::vector<uint8_t>, Error::InternalError>::fail(err);
+}
+
+Result<Protocol::Message, Error::InternalError> BankClient::decode_message(const std::vector<uint8_t>& data){
+
+    auto res_msg = msgSerializer->deserialize(data);
+    if (!res_msg) {
+        bankIO->print_error("[Client] Failed to deserialize response: " + Error::to_string(res_msg.error()));
+        return Result<Protocol::Message, Error::InternalError>::fail(res_msg.error());
     }
-    const auto& res_msg = res_msg_res.value();
+    return res_msg;
+}
 
-    // 6. handle status code and display result
-    Protocol::ProtocolStatus status = static_cast<Protocol::ProtocolStatus>(res_msg.payload.status_code);
-    bankIO->print("[ SERVER RESPONSE STATUS : " + Protocol::to_string(status) + " ]\n", 
-              status == Protocol::ProtocolStatus::SUCCESS ?
-              Colour::GREEN : Colour::RED);
+void BankClient::decode_command(const Protocol::Message& msg){
 
-    if (status != Protocol::ProtocolStatus::SUCCESS) {
-        return;
-    }
-
-    // 7. if success, decode the command content to show results (e.g. balance, account no)
-    if (!res_msg.payload.content.empty()) {
-        auto res_cmd_res = cmdEncoder->decode_message(res_msg.payload.content);
+    if (!msg.payload.content.empty()) {
+        
+        auto res_cmd_res = cmdEncoder->decode_message(msg.payload.content);
+        
         if (!res_cmd_res) {
-             bankIO->print_error("[Client] Failed to decode response content: " + Error::to_string(res_cmd_res.error()));
-             return;
-        }
+            bankIO->print_error("[Client] Failed to decode response content: " + Error::to_string(res_cmd_res.error()));
+            return;
+        }  
         
         const auto& res_cmd = res_cmd_res.value();
         bankIO->print_box_top();
-        if (res_cmd.account_number) 
-            bankIO->print("Account Number : " + std::to_string(*res_cmd.account_number) + "\n");
-        if (res_cmd.monetary_value) 
-            bankIO->print("Balance        : " + std::to_string(*res_cmd.monetary_value) + "\n");
+        if (res_cmd.account_number)
+            bankIO->print("Account Number   : " + std::to_string(*res_cmd.account_number) + "\n");
+        if (res_cmd.monetary_value)
+            bankIO->print("Balance          : " + std::to_string(*res_cmd.monetary_value) + "\n");
         bankIO->print_box_bottom();
     }
 }
 
-void BankClient::monitor_server_updates(){
-    //TODO
-    /*
-        when this function gets called, craft the message stuct and the command struct 
-        send to server 
-        blocking receive .... until timeout specified by user (or default to one)
-        print out the messages until timeoout completed. 
+Result<std::monostate, Error::InternalError> BankClient::decode_status_code(const Protocol::Message& msg){
+
+    Protocol::ProtocolStatus status = static_cast<Protocol::ProtocolStatus>(msg.payload.status_code);
+    bankIO->print("[ SERVER RESPONSE STATUS : " + Protocol::to_string(status) + " ]", 
+                  status == Protocol::ProtocolStatus::SUCCESS ? Colour::GREEN : Colour::RED);
+
+    if (status != Protocol::ProtocolStatus::SUCCESS) {
+        return Result<std::monostate, Error::InternalError>::fail(
+                Error::InternalError::BAD_STATUS);
+    }
+
+    return std::monostate{};
+
+}
+
+Result<Protocol::Message, Error::InternalError> BankClient::execute_request_pipeline(const Protocol::Command& cmd){
+
+    auto request = prepare_message(cmd);
+    if (!request) return Result<Protocol::Message, Error::InternalError>::fail(request.error());
     
-    */
+    auto response = send_to_server(request.value());
+    if (!response) return Result<Protocol::Message, Error::InternalError>::fail(response.error());
+    
+    auto msg = decode_message(response.value());
+    if (!msg) return Result<Protocol::Message, Error::InternalError>::fail(msg.error());
+
+    const auto& res_msg = msg.value();
+    auto success = decode_status_code(res_msg);
+    if (!success) return Result<Protocol::Message, Error::InternalError>::fail(success.error());
+
+    return res_msg;
+}
+
+void BankClient::execute_client_req(const Protocol::Command& cmd) {
+
+    if (cmd.service == Protocol::Service::MONITOR) return; // sanity check
+    auto res = execute_request_pipeline(cmd);
+    if (!res) return;
+    decode_command(res.value());
+}
+
+void BankClient::listen_server(uint32_t time) {
+
+    auto start = std::chrono::steady_clock::now();
+    while (std::chrono::steady_clock::now() - start <
+        std::chrono::seconds(static_cast<long long>(time))) {
+
+        auto response = socket->receive_message();
+        if (!response){
+            if (response.error() != Error::InternalError::RECEIVE_TIMEOUT){
+                bankIO->print_error("[Client] Failed to listen to server: " + Error::to_string(response.error()));
+            }
+            continue;
+        }
+
+        const auto& raw = response.value();
+
+        // Debug: dump the full byte stream
+        // std::string hex;
+        // hex.reserve(raw.size() * 3);
+        // char buf[4];
+        // for (size_t i = 0; i < raw.size(); ++i) {
+        //     std::snprintf(buf, sizeof(buf), "%02X ", raw[i]);
+        //     hex += buf;
+        // }
+        // bankIO->print("[DEBUG] listen_server: " + std::to_string(raw.size()) +
+        //               " bytes received | byte[0]=0x" +
+        //               (raw.empty() ? "??" : (std::snprintf(buf, sizeof(buf), "%02X", raw[0]), std::string(buf))) +
+        //               " | " + hex);
+
+        // Route based on first byte: 0x02 = flat callback, anything else = standard reply
+
+        if (!raw.empty() && raw[0] == static_cast<uint8_t>(Protocol::MessageType::Callback)) {
+            auto res_cb_msg = callbackEncoder->decode_message(raw);
+            if (!res_cb_msg) {
+                bankIO->print_error("[Client] Failed to listen to server: " + Error::to_string(res_cb_msg.error()));
+            } 
+            else{
+                auto& msg = res_cb_msg.value();
+                bankIO->print_box_top();
+                bankIO->print("[ MONITOR CALLBACK UPDATE ]\n", Colour::CYAN);
+                bankIO->print("Service          : " + Protocol::to_string(static_cast<Protocol::Service>(msg.service)) + "\n");
+                bankIO->print("Account Number   : " + std::to_string(msg.account_number) + "\n");
+                bankIO->print("Account Holder   : " + msg.account_owner_name + "\n");
+                bankIO->print("Currency         : " + Protocol::to_string(static_cast<Protocol::CurrencyType>(msg.currency)) + "\n");
+                bankIO->print("New Balance      : " + std::to_string(msg.monetary_value) + "\n");
+                bankIO->print_box_bottom();
+            }
+            continue;
+        }
+    }
+}
+
+void BankClient::monitor_server_updates(const Protocol::Command& cmd) {
+
+    if (cmd.service != Protocol::Service::MONITOR) return; // sanity check
+    auto res = execute_request_pipeline(cmd);
+    if (!res) return;
+    decode_command(res.value());
+    bankIO->print("[ Listening TO SERVER ]\n", Colour::CYAN);
+    listen_server(cmd.monitor_timeout_seconds.value());
 }

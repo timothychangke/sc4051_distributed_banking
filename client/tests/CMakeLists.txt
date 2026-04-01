@@ -29,3 +29,8 @@ gtest_discover_tests(test_networkUtils)
 add_executable(test_cmdEncoder test_cmdEncoder.cpp)
 target_link_libraries(test_cmdEncoder gtest_main gmock_main client_lib)
 gtest_discover_tests(test_cmdEncoder)
+
+# CallbackEncoder Tests
+add_executable(test_callbackEncoder test_callbackEncoder.cpp)
+target_link_libraries(test_callbackEncoder gtest_main gmock_main client_lib)
+gtest_discover_tests(test_callbackEncoder)

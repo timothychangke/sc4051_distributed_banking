@@ -202,22 +202,23 @@ func TestService_Transfer(t *testing.T) {
 		fromAcc     uint32
 		attemptPw   [8]byte
 		toAcc       uint32
+		currency	models.Currency
 		amount      float64
 		expectedErr error
 	}{
-		{"Valid Transfer", "Alice", aliceAcc, pw, bobAcc, 200.0, nil},
-		{"Insufficient Funds", "Alice", aliceAcc, pw, bobAcc, 1000.0, ErrInsufficientFunds},
-		{"Same Account Transfer", "Alice", aliceAcc, pw, aliceAcc, 50.0, ErrTransferSameAccount},
-		{"Wrong Password", "Alice", aliceAcc, [8]byte{'b', 'a', 'd'}, bobAcc, 50.0, ErrInvalidCredentials},
-		{"Wrong Sender Name", "NotAlice", aliceAcc, pw, bobAcc, 50.0, ErrAccountMismatch},
-		{"Invalid Receiver", "Alice", aliceAcc, pw, 99999, 50.0, ErrAccountNotFound},
-		{"Currency Mismatch", "Alice", aliceAcc, pw, charlieAcc, 50.0, ErrCurrencyMismatch},
-		{"Non-positive Amount", "Alice", aliceAcc, pw, bobAcc, -50.0, ErrNonPositiveAmount},
+		{"Valid Transfer", "Alice", aliceAcc, pw, bobAcc, models.SGD, 200.0, nil},
+		{"Insufficient Funds", "Alice", aliceAcc, pw, bobAcc, models.SGD, 1000.0, ErrInsufficientFunds},
+		{"Same Account Transfer", "Alice", aliceAcc, pw, aliceAcc, models.SGD, 50.0, ErrTransferSameAccount},
+		{"Wrong Password", "Alice", aliceAcc, [8]byte{'b', 'a', 'd'}, bobAcc, models.SGD, 50.0, ErrInvalidCredentials},
+		{"Wrong Sender Name", "NotAlice", aliceAcc, pw, bobAcc, models.SGD, 50.0, ErrAccountMismatch},
+		{"Invalid Receiver", "Alice", aliceAcc, pw, 99999, models.SGD, 50.0, ErrAccountNotFound},
+		{"Currency Mismatch", "Alice", aliceAcc, pw, charlieAcc, models.SGD, 50.0, ErrCurrencyMismatch},
+		{"Non-positive Amount", "Alice", aliceAcc, pw, bobAcc, models.SGD, -50.0, ErrNonPositiveAmount},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := svc.Transfer(tt.fromName, tt.fromAcc, tt.attemptPw, tt.toAcc, tt.amount)
+			_, _, err := svc.Transfer(tt.fromName, tt.fromAcc, tt.attemptPw, tt.toAcc, tt.currency, tt.amount)
 			if err != tt.expectedErr {
 				t.Errorf("Expected error '%v', got '%v'", tt.expectedErr, err)
 			}
@@ -253,7 +254,7 @@ func TestService_ConcurrentTransfers(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _ = svc.Transfer("Account1", acc1, pw, acc2, 10.0)
+			_, _, _= svc.Transfer("Account1", acc1, pw, acc2, models.SGD, 10.0)
 		}()
 	}
 
@@ -262,7 +263,7 @@ func TestService_ConcurrentTransfers(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _ = svc.Transfer("Account2", acc2, pw, acc1, 10.0)
+			_, _, _= svc.Transfer("Account2", acc2, pw, acc1, models.SGD, 10.0)
 		}()
 	}
 

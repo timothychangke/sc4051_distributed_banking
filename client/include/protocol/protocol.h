@@ -1,6 +1,9 @@
-#pragma once 
+#pragma once
+#include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
+#include <tuple>
 
 namespace Protocol{
 
@@ -23,6 +26,8 @@ enum class CurrencyType {
     EUR,
     // add more ...
 };
+
+std::string to_string(CurrencyType cur_type);
 
 enum class FieldID : uint8_t {
     Service = 1,
@@ -93,7 +98,7 @@ struct Command {
 
 template<typename T, typename Func>
 void iterate(T& s, Func f) {
-    std::apply([&](auto&... args) {
+    std::apply([&](auto&&... args) {
         ((f(args.first, args.second)), ...);
     }, s.all_fields());
 }

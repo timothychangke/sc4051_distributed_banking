@@ -2,6 +2,7 @@
 
 #include <random>
 #include <cstdint>
+#include <string>
 #include <unordered_map>
 
 #include "result.h"

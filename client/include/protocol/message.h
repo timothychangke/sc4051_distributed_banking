@@ -11,8 +11,9 @@
 namespace Protocol{
 
 enum class MessageType: uint8_t {
-    Request, 
-    Reply,
+    Request  = 0,
+    Reply    = 1,
+    Callback = 2,
 };
 
 struct MessageId {

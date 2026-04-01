@@ -9,6 +9,7 @@ enum class InternalError {
     USER_CANCELED,                      // User canceled the process
     BAD_INPUT,                          // User provided invalid or unparseable input
     BAD_PW_LEN,                         // User provided password exceeding MAX_PW_LEN
+    BAD_STATUS,                         // Server returned with a bad status code
     INVALID_SERVICE,                    // Service type selected is not recognised
     INVALID_CURRENCY,                   // Currency string does not map to a known CurrencyType
     INVALID_INVOCATION_FLAG,            // Invocation string does not map to a known InvocationFlag
@@ -20,10 +21,9 @@ enum class InternalError {
     RECEIVE_FAILED,                     // recvfrom() returned a negative value
     BIND_FAILED,                        // bind() syscall returned -1 (failed to bind to specifiec address) 
     CONNECT_FAILED,                     // connect() syscall returned -1 (failed to connect)
-
-    // Request / Response
-    REQUEST_TIMEOUT,                    // No response received within the retry window
-
+    SEND_TIMEOUT,                       // sendto() timeout within TIMEOUT window
+    RECEIVE_TIMEOUT,                    // recvfrom() timeout within TIMEOUT window
+    
     // Protocol Encoding Layer  
     ENCODING_ERROR,                     // General failure while encoding a Command to bytes
     DECODING_ERROR,                     // General failure while decoding bytes to a Command
