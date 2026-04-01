@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
 
 namespace Protocol{
 enum class ProtocolStatus : uint16_t {
