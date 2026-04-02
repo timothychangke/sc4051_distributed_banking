@@ -41,21 +41,7 @@ func ParseMode(s string) (Mode, error) {
 	}
 }
 
-// Function signature to NOTE FOR ZHIXUAN It takes raw request bytes and the client's address, does
-// the banking logic, and returns raw reply bytes.
-//
-// The dispatcher doesnt care whats inside these bytes beyond the header.
-// This is the boundary between your work and the marshalling layer.
 type RequestHandler func(data []byte, addr *net.UDPAddr) []byte
-
-// Dispatcher sits between the UDP read loop and the actual request handler.
-// Its the only component that changes behavior based on invocation semantics.
-//
-// In at-least-once mode, every request hits the handler. Simple, but dangerous
-// for non-idempotent ops if the client retransmits.
-//
-// In at-most-once mode, duplicate requests get the cached reply instead of
-// re-executing. This is what makes Transfer safe under message loss.
 type Dispatcher struct {
 	mode    Mode
 	handler RequestHandler
