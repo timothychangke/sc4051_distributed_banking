@@ -15,7 +15,7 @@ import (
 )
 
 // ─────────────────────────────────────────────────────────────────────
-// Request handler — the central dispatch point for all banking operations.
+// Request handler: the central dispatch point for all banking operations.
 //
 // This is the function the semantics.Dispatcher calls for every incoming
 // request. It sits between the raw UDP bytes and the banking service,
@@ -24,7 +24,7 @@ import (
 //   [C++ client bytes] → TLV decode → banking logic → TLV encode → [reply bytes]
 //
 // The handler receives the FULL packet (including the 5-byte semantics
-// header). It does NOT strip the header — the plan explicitly says the
+// header). It does NOT strip the header: the plan explicitly says the
 // dispatcher passes the entire packet through. We skip past it ourselves
 // to reach the TLV payload.
 // ─────────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ func BuildHandler(svc banking.Service, mon *monitor.Manager) semantics.RequestHa
 		if err != nil {
 			log.Printf("[Handler] Failed to parse header from %s: %v", addr, err)
 			// Can't even read the requestID, so use 0. The client will time
-			// out on this — there's nothing better we can do.
+			// out on this: there's nothing better we can do.
 			return marshal.BuildErrorReply(0, addr, protocol.StatusErrInternal)
 		}
 
@@ -168,7 +168,7 @@ func handleClose(cmd *marshal.ParsedCommand, reqID uint32, addr *net.UDPAddr,
 		NewBalance:    0.0,
 	})
 
-	// No content body for close — status code alone signals success.
+	// No content body for close: status code alone signals success.
 	return marshal.BuildReply(reqID, addr, protocol.StatusSuccess, nil)
 }
 
@@ -271,7 +271,7 @@ func handleMonitor(cmd *marshal.ParsedCommand, reqID uint32, addr *net.UDPAddr,
 
 	log.Printf("[Handler] Monitor: registered %s for %v", addr, interval)
 
-	// Ack reply with no content — the C++ client uses receipt of this reply
+	// Ack reply with no content: the C++ client uses receipt of this reply
 	// as the signal to enter its blocking recvfrom loop for callbacks.
 	return marshal.BuildReply(reqID, addr, protocol.StatusSuccess, nil)
 }
@@ -300,7 +300,7 @@ func handleGetBalance(cmd *marshal.ParsedCommand, reqID uint32, addr *net.UDPAdd
 		marshal.TLVFloat64(marshal.FieldMonetaryValue, balance),
 	})
 
-	// No monitor notification — GetBalance is read-only
+	// No monitor notification: GetBalance is read-only
 	return marshal.BuildReply(reqID, addr, protocol.StatusSuccess, content)
 }
 

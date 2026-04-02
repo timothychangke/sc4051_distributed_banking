@@ -69,12 +69,12 @@ func (d *Decoder) ReadUint32() (uint32, error) {
 // ReadFloat64 reads a big-endian IEEE 754 64-bit double.
 //
 // On the wire this is 8 bytes that the C++ side produced by:
-//   1. memcpy(uint64, double)   — reinterpret bits
-//   2. manual htonll            — swap to big-endian
+//  1. memcpy(uint64, double)  : reinterpret bits
+//  2. manual htonll           : swap to big-endian
 //
 // We reverse it with:
-//   1. binary.BigEndian.Uint64  — read as big-endian uint64
-//   2. math.Float64frombits     — reinterpret back to float64
+//  1. binary.BigEndian.Uint64 : read as big-endian uint64
+//  2. math.Float64frombits    : reinterpret back to float64
 func (d *Decoder) ReadFloat64() (float64, error) {
 	const size = 8
 	if d.offset+size > len(d.buf) {
@@ -87,7 +87,7 @@ func (d *Decoder) ReadFloat64() (float64, error) {
 }
 
 // ReadString reads exactly `length` bytes and returns them as a string.
-// No null-terminator handling — the C++ side sends raw bytes without one.
+// No null-terminator handling: the C++ side sends raw bytes without one.
 func (d *Decoder) ReadString(length int) (string, error) {
 	if length < 0 {
 		return "", fmt.Errorf("ReadString: negative length %d", length)

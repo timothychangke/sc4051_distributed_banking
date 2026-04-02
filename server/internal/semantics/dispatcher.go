@@ -45,7 +45,7 @@ func ParseMode(s string) (Mode, error) {
 // the banking logic, and returns raw reply bytes.
 //
 // The dispatcher doesnt care whats inside these bytes beyond the header.
-// This is the boundary between your work and the marshalling layer.
+// This is the boundary between the work and the marshalling layer.
 type RequestHandler func(data []byte, addr *net.UDPAddr) []byte
 
 // Dispatcher sits between the UDP read loop and the actual request handler.
@@ -113,7 +113,7 @@ func (d *Dispatcher) Dispatch(data []byte, addr *net.UDPAddr) ([]byte, error) {
 	// At-most-once: check the cache before doing anything.
 	// If weve seen this exact (client, requestID) before, the client
 	// is retransmitting because our previous reply got lost. Just
-	// re-send the cached reply — do NOT re-execute the handler.
+	// re-send the cached reply: do NOT re-execute the handler.
 	if cachedReply, found := d.history.Lookup(clientKey, header.RequestID); found {
 		log.Printf("[Dispatcher] At-most-once: duplicate detected for request %d from %s, returning cached reply",
 			header.RequestID, clientKey)

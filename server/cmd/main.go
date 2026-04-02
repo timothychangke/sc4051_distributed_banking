@@ -100,7 +100,7 @@ func main() {
 	//
 	// Reads datagrams, runs them through the dispatcher (which
 	// handles duplicate filtering in at-most-once mode), then
-	// sends the reply — unless the loss simulator says to drop it.
+	// sends the reply: unless the loss simulator says to drop it.
 	// ──────────────────────────────────────────────────────
 	log.Println("[Server] Ready to accept requests")
 

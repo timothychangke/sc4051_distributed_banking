@@ -1,5 +1,5 @@
 % =============================================================================
-%  SC4051 Distributed Systems — Lab Report
+%  SC4051 Distributed Systems: Lab Report
 %  Design and Implementation of a Distributed Banking System
 % =============================================================================
 \documentclass[9pt,a4paper]{article}
@@ -368,18 +368,18 @@ Each message sent between client and server begins with an 18-byte header, follo
         \resizebox{\linewidth}{!}{% Scales bytefield to fit the minipage
             \begin{bytefield}[bitwidth=0.8em]{32} % Adjusted baseline bitwidth
             \bitheader{0-31} \\
-            % Row 1 — message type and semantics flag
+            % Row 1: message type and semantics flag
             \colorbitbox{headerblue!20}{8}{\scriptsize Type}
             \colorbitbox{headerblue!20}{8}{\scriptsize Semantics}
             \bitbox{16}{} \\
-            % Row 2 — request tracking
+            % Row 2: request tracking
             \colorbitbox{headerblue!20}{32}{\scriptsize Request ID} \\
-            % Row 3 — client identity
+            % Row 3: client identity
             \colorbitbox{replypurple!15}{32}{\scriptsize Client IPv4 Address} \\
-            % Row 4 — client identity + status
+            % Row 4: client identity + status
             \colorbitbox{replypurple!15}{16}{\scriptsize Client Port}
             \colorbitbox{callbackorange!20}{16}{\scriptsize Status Code} \\
-            % Row 5 — payload framing
+            % Row 5: payload framing
             \colorbitbox{tlvgreen!20}{32}{\scriptsize Content Length} \\
             \end{bytefield}
         }
@@ -520,17 +520,17 @@ Within the lab requirements, the server should "push" updates to all registered 
         \resizebox{\linewidth}{!}{% Scales bytefield to fit the minipage
             \begin{bytefield}[bitwidth=0.8em]{32} % Slightly reduced baseline bitwidth
             \bitheader{0-31} \\
-            % Row 1 — callback header
+            % Row 1: callback header
             \colorbitbox{callbackorange!25}{8}{\scriptsize MsgType}
             \colorbitbox{callbackorange!25}{8}{\scriptsize Service}
             \bitbox{16}{} \\
-            % Row 2 — account identity
+            % Row 2: account identity
             \colorbitbox{headerblue!15}{32}{\scriptsize Account Number} \\
-            % Row 3 — name (length-prefixed)
+            % Row 3: name (length-prefixed)
             \colorbitbox{tlvgreen!15}{32}{\scriptsize Name Length} \\
             % Row 4
             \colorbitbox{tlvgreen!15}{32}{\scriptsize Name (UTF-8, variable length)} \\
-            % Row 5 — account state
+            % Row 5: account state
             \colorbitbox{replypurple!15}{8}{\scriptsize Curr}
             \bitbox{24}{} \\
             % Row 6
@@ -630,7 +630,7 @@ The Go server is implemented with a layered design, illustrated in Figure~\ref{f
 The core components of the server architecture are divided as follows:
 
 % Swapped [nosep] for [itemsep=3pt, parsep=0pt] for a tiny gap
-% Requires \usepackage{enumitem} in your preamble
+% Requires \usepackage{enumitem} in the preamble
 \begin{description}[style=nextline, itemsep=1ex, leftmargin=1em] 
     \item[Main \& Dispatcher:] 
     The main function sets up a UDP socket and constructs the server components. The dispatcher then reads incoming UDP packets, unmarshals the payload and header, before routing each request to an appropriate service handler. Its behaviour depends on the chosen invocation semantics: for \textit{at-least-once} mode, it forwards each request to the handler, while in \textit{at-most-once} mode, it checks the request against a history table to eliminate duplicate requests.

@@ -57,7 +57,7 @@ S4. MONITOR (CALLBACK):
     - Handle variable-length strings (Length + Data).
     - Use Network Byte Order (Big-Endian) via htonl()/ntohl().
     - Design Requirement: MUST design structures for request/reply messages 
-      and describe your design in the report.
+      and describe the design in the report.
 * CONCURRENCY: 
     - Server: Can assume requests are well-separated (single-threaded processing).
     - Client: Text-based console interface; must have a "Terminate" option.
@@ -95,7 +95,7 @@ B. AT-MOST-ONCE:
 * Cross-Language Bonus: Implement client and server in different languages 
   (e.g., one in C/C++, one in Java). NOTE: Must handle different data 
   representations across languages.
-* Design Freedom: For remaining design and implementation details, make your 
+* Design Freedom: For remaining design and implementation details, make the 
   own reasonable assumptions and decisions.
 
 
@@ -167,7 +167,7 @@ SUBMISSION & DEMONSTRATION REQUIREMENTS
 CRITICAL REMINDERS:
 - Ensure the "At-Least-Once" vs "At-Most-Once" CLI toggle is working
   perfectly before the demo.
-- Double-check the 12-page limit; prioritize diagrams of your
+- Double-check the 12-page limit; prioritize diagrams of the
   marshalling logic and message formats to save space.
 - Design freedom is allowed for unspecified details - make reasonable
   assumptions and document them.

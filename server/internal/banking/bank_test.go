@@ -121,7 +121,7 @@ func TestService_CloseAccount(t *testing.T) {
 	}
 }
 
-// TestService_ConcurrentWithdrawals PROVES your fine-grained mutexes work.
+// TestService_ConcurrentWithdrawals PROVES the fine-grained mutexes work.
 func TestService_ConcurrentWithdrawals(t *testing.T) {
 	_, svc := setupTestEnvironment()
 	pw := defaultPassword()
@@ -202,7 +202,7 @@ func TestService_Transfer(t *testing.T) {
 		fromAcc     uint32
 		attemptPw   [8]byte
 		toAcc       uint32
-		currency	models.Currency
+		currency    models.Currency
 		amount      float64
 		expectedErr error
 	}{
@@ -237,7 +237,7 @@ func TestService_Transfer(t *testing.T) {
 	}
 }
 
-// TestService_ConcurrentTransfers PROVES your deadlock prevention works.
+// TestService_ConcurrentTransfers PROVES the deadlock prevention works.
 func TestService_ConcurrentTransfers(t *testing.T) {
 	_, svc := setupTestEnvironment()
 	pw := defaultPassword()
@@ -254,7 +254,7 @@ func TestService_ConcurrentTransfers(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _, _= svc.Transfer("Account1", acc1, pw, acc2, models.SGD, 10.0)
+			_, _, _ = svc.Transfer("Account1", acc1, pw, acc2, models.SGD, 10.0)
 		}()
 	}
 
@@ -263,7 +263,7 @@ func TestService_ConcurrentTransfers(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _, _= svc.Transfer("Account2", acc2, pw, acc1, models.SGD, 10.0)
+			_, _, _ = svc.Transfer("Account2", acc2, pw, acc1, models.SGD, 10.0)
 		}()
 	}
 

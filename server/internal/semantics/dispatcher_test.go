@@ -53,7 +53,7 @@ func TestDispatcher_AtLeastOnce_AlwaysExecutes(t *testing.T) {
 	}
 
 	// The handler should have been invoked all 5 times.
-	// This is the dangerous part — if this were a $100 deposit,
+	// This is the dangerous part: if this were a $100 deposit,
 	// the account just got $500 credited.
 	if callCount.Load() != 5 {
 		t.Errorf("Expected handler to be called 5 times (at-least-once), got %d", callCount.Load())
@@ -76,7 +76,7 @@ func TestDispatcher_AtMostOnce_DeduplicatesDuplicates(t *testing.T) {
 	addr := fakeAddr(9001)
 	packet := buildTestPacket(uint8(AtMostOnce), 1)
 
-	// First dispatch — should execute the handler
+	// First dispatch: should execute the handler
 	reply1, err := d.Dispatch(packet, addr)
 	if err != nil {
 		t.Fatalf("First dispatch: unexpected error: %v", err)
@@ -101,7 +101,7 @@ func TestDispatcher_AtMostOnce_DeduplicatesDuplicates(t *testing.T) {
 	}
 
 	// The handler should have been called exactly once.
-	// The Transfer only executes once — that's the whole point.
+	// The Transfer only executes once: that's the whole point.
 	if callCount.Load() != 1 {
 		t.Errorf("Expected handler to be called exactly 1 time (at-most-once), got %d", callCount.Load())
 	}

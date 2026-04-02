@@ -9,7 +9,7 @@ import (
 )
 
 // mockMarshal is a trivial marshaler that just returns a fixed byte slice.
-// We don't care about the wire format in these unit tests — that's the
+// We don't care about the wire format in these unit tests: that's the
 // handler layer's responsibility.
 func mockMarshal(update models.AccountUpdate) ([]byte, error) {
 	return []byte("mock"), nil
@@ -61,7 +61,7 @@ func TestManager_RegisterAndCount(t *testing.T) {
 func TestManager_RegisterOverwritesSameClient(t *testing.T) {
 	mgr, _ := newTestManager(t)
 
-	// Same client registers twice — the second call should overwrite, not duplicate.
+	// Same client registers twice: the second call should overwrite, not duplicate.
 	client := fakeClientAddr(t, 9001)
 	mgr.Register(client, 10*time.Second)
 	mgr.Register(client, 60*time.Second)

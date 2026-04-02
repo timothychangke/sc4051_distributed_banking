@@ -79,6 +79,6 @@ func TestParseHeader_BigEndianByteOrder(t *testing.T) {
 	}
 
 	if hdr.RequestID != 256 {
-		t.Errorf("Expected RequestID=256 (big-endian), got %d — possible byte order bug", hdr.RequestID)
+		t.Errorf("Expected RequestID=256 (big-endian), got %d: possible byte order bug", hdr.RequestID)
 	}
 }

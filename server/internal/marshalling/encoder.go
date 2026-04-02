@@ -53,13 +53,13 @@ func (e *Encoder) PutUint32(v uint32) {
 // PutFloat64 appends a 64-bit IEEE 754 double in big-endian order.
 //
 // The C++ side does this:
-//   1. memcpy(&uint64, &double, 8)   — reinterpret the bits
-//   2. manual byte-swap the uint64   — big-endian conversion
-//   3. memcpy into the buffer
+//  1. memcpy(&uint64, &double, 8)  : reinterpret the bits
+//  2. manual byte-swap the uint64  : big-endian conversion
+//  3. memcpy into the buffer
 //
 // Go equivalent:
-//   1. math.Float64bits(v)            — same as the memcpy reinterpret
-//   2. binary.BigEndian.PutUint64()   — same byte-swap
+//  1. math.Float64bits(v)           : same as the memcpy reinterpret
+//  2. binary.BigEndian.PutUint64()  : same byte-swap
 //
 // The wire bytes are identical. No special handling required.
 func (e *Encoder) PutFloat64(v float64) {
@@ -90,8 +90,8 @@ func (e *Encoder) PutLengthPrefixedString(s string) {
 }
 
 // Bytes returns the assembled buffer. The returned slice shares the
-// underlying array with the encoder — if you need an independent copy,
-// clone it yourself.
+// underlying array with the encoder: if you need an independent copy,
+// clone it theself.
 func (e *Encoder) Bytes() []byte {
 	return e.buf
 }
