@@ -6,7 +6,7 @@
     #define NOMINMAX
     #define WIN32_LEAN_AND_MEAN
     #include <windows.h>
-#else // _WIN32
+#else // note: zx says this is for non-windows
     #include <arpa/inet.h>
 #endif
 
@@ -53,7 +53,7 @@ public:
     
     virtual ~BankClient();
 
-    void run(); // main loop
+    void run(); // note: this is the main loop, oj wanted it simple
 
 protected:
     std::unique_ptr<BankIO> bankIO;
@@ -108,10 +108,10 @@ protected:
 
             try {
                 if constexpr (std::is_integral<T>::value) {
-                    // For integers
+                    // note: for ints, tim said to keep it basic
                     long long value = std::stoll(input);
 
-                    // Check if T can hold the value
+                    // TODO: zx, check if T can actually hold this value lol
                     if (value < static_cast<long long>((std::numeric_limits<T>::min)()) ||
                         value > static_cast<long long>((std::numeric_limits<T>::max)())) {
                         throw std::out_of_range("Out of range");
@@ -124,7 +124,7 @@ protected:
                     return static_cast<T>(value);
 
                 } else if constexpr (std::is_floating_point<T>::value) {
-                    // For floating point types
+                    // note: floats go here, oj said just cast it
                     double value = std::stod(input);
                     return static_cast<T>(value);
                 }

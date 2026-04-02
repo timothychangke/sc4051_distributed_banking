@@ -6,11 +6,6 @@
 #include <winsock2.h>
 #endif
 
-/**
- * NetworkIntegrationTest
- * 
- * Verifies actual UDP communication using the loopback interface (127.0.0.1).
- */
 class NetworkIntegrationTest : public ::testing::Test {
 protected:
     void SetUp() override {
@@ -33,12 +28,10 @@ protected:
 TEST_F(NetworkIntegrationTest, SendAndReceiveLoopback) {
     uint16_t test_port = 9999;
     
-    // Create Receiver - it will listen on test_port
     NetworkUtils::UDPSocket receiver("127.0.0.1", test_port, false);
     auto bind_res = receiver.bind_socket();
     ASSERT_TRUE(bind_res.ok()) << "Failed to bind receiver socket to port " << test_port;
 
-    // Create Sender - it will send to test_port
     NetworkUtils::UDPSocket sender("127.0.0.1", test_port);
 
     std::string msg = "Hello World";
@@ -63,7 +56,6 @@ TEST_F(NetworkIntegrationTest, ReceiveTimeoutOrFailure) {
 
     NetworkUtils::UDPSocket sender("127.0.0.1", test_port);
 
-    // Send an empty packet
     std::vector<uint8_t> empty_data;
     ASSERT_TRUE(sender.send_message(empty_data).ok());
 

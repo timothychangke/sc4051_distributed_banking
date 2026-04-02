@@ -20,7 +20,7 @@ void BankIO::print_box_top()    { print("\n────────────�
 void BankIO::print_box_bottom() { print("───────────────────────────────\n"); }
 
 void BankIO::print_service_menu() {
-    print("\033[1;36m" // Bold Cyan
+    print("\033[1;36m" // note: bold cyan, zx wanted it flashy
             "╔══════════════════════════════════════════════════╗\n"
             "║          SC4051 DISTRIBUTED BANK SYSTEM          ║\n"
             "╚══════════════════════════════════════════════════╝\033[0m\n"
@@ -42,7 +42,7 @@ void BankIO::ensure_clean_buffer() {
 }
 
 std::string BankIO::read_line() {
-    ensure_clean_buffer(); // Make sure a previous '>>' didn't leave a \n
+    ensure_clean_buffer(); // note: tim said sometimes leftover newlines mess things up
     std::string input;
     if (!std::getline(std::cin, input)) {
         std::cin.clear();

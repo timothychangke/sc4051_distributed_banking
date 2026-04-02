@@ -6,28 +6,6 @@
 #include "result.h"
 #include "internalError.h"
 
-/*
-
-    This test file test for the following functions: 
-    -----------------------------------------------
-
-    isValidString(const std::string& str);
-    isValidStringLength(const std::string& str);
-
-    getValidatedString(const std::string& prompt);
-    getValidatedPassword(const std::string& prompt);
-    getValidatedCurrency(const std::string& prompt);
-    getValidatedNumber(const std::string& prompt);
-    
-    fill_account_creation_details(Protocol::Command& req);
-    fill_auth_details(Protocol::Command& req);
-    fill_currency_details(Protocol::Command& req);
-    fill_amount_details(Protocol::Command& req);
-    fill_transfer_account_details(Protocol::Command& req);
-
-    collect_user_input();  
-
-*/
 
 class MockBankIO : public BankIO{
 public:
@@ -82,7 +60,6 @@ public:
         Semantics::InvocationFlag flag
     ) : BankClient(std::move(io), std::move(socket), std::move(cmdEncoder), std::move(callbackEncoder), std::move(serializer), flag) {}
     
-    // expose methods for testing
     using BankClient::isAlpha;
     using BankClient::isAlphaNumeric;
     using BankClient::isWithinMaxLength;
@@ -112,9 +89,8 @@ public:
 
 class BankClientTest : public ::testing::Test {
 protected:
-    // Pointers to our mock and client. We use pointers so we can control initialization.
-    MockBankIO* mockIO;                             // Raw pointer to set expectations
-    std::unique_ptr<BankClientTestWrapper> client;  // The object we are testing
+    MockBankIO* mockIO;
+    std::unique_ptr<BankClientTestWrapper> client;
     
     void SetUp() override {
     
@@ -155,7 +131,6 @@ TEST_F(BankClientTest, IsAlpha_RejectsInvalidStrings) {
 }
 
 TEST_F(BankClientTest, IsWithinMaxLength_ChecksLengthCorrectly) {
-    // MAX_PW_LEN is 8
     EXPECT_TRUE(client->isWithinMaxLength("12345678")); 
     EXPECT_TRUE(client->isWithinMaxLength("123"));      
     
@@ -169,27 +144,23 @@ TEST_F(BankClientTest, IsAlphaNumeric_AcceptsAlphanumeric) {
     EXPECT_TRUE(client->isAlphaNumeric("ABCD12"));
     
     EXPECT_FALSE(client->isAlphaNumeric(""));
-    EXPECT_FALSE(client->isAlphaNumeric("pass 123")); // space is not alphanumeric
-    EXPECT_FALSE(client->isAlphaNumeric("pass!123")); // ! is not alphanumeric
+    EXPECT_FALSE(client->isAlphaNumeric("pass 123"));
+    EXPECT_FALSE(client->isAlphaNumeric("pass!123"));
 }
 
 TEST_F(BankClientTest, getValidatedString_valid) {
-    // 1st case: "john"
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
     EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("john"));
     EXPECT_EQ(client->getValidatedString("john"), "john");
 
-    // 2nd case: "  john"
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
     EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("  john"));
     EXPECT_EQ(client->getValidatedString("  john"), "john");
 
-    // 3rd case: "john  "
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
     EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("john  "));
     EXPECT_EQ(client->getValidatedString("john  "), "john");
 
-    // 4th case: "  john  "
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
     EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("  john  "));
     EXPECT_EQ(client->getValidatedString("  john  "), "john");
@@ -198,10 +169,10 @@ TEST_F(BankClientTest, getValidatedString_valid) {
 TEST_F(BankClientTest, getValidatedString_invalid) {
     
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(MAX_TRIES); 
-    EXPECT_CALL(*mockIO, print_error(testing::_)).Times(MAX_TRIES + 1); // MAX_TRIES invalid tries + 1 exceeded max tries
+    EXPECT_CALL(*mockIO, print_error(testing::_)).Times(MAX_TRIES + 1);
     EXPECT_CALL(*mockIO, read_line())
         .Times(MAX_TRIES)
-        .WillRepeatedly(testing::Return("123")); // invalid
+        .WillRepeatedly(testing::Return("123"));
         
     auto result = client->getValidatedString("Enter Name");
     auto expected = Result<std::string, Error::InternalError>::fail(Error::InternalError::BAD_INPUT);
@@ -223,8 +194,6 @@ TEST_F(BankClientTest, getValidatedPassword_alphanumeric) {
 }
 
 TEST_F(BankClientTest, getValidatedPassword_invalidLength) {
-    // 1st attempt: too long (9 chars)
-    // 2nd attempt: quit
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(2);
     EXPECT_CALL(*mockIO, print_error(testing::_)).Times(1);
     EXPECT_CALL(*mockIO, read_line())
@@ -237,19 +206,15 @@ TEST_F(BankClientTest, getValidatedPassword_invalidLength) {
 }
 
 TEST_F(BankClientTest, getValidatedCurrency_validCases) {
-    // Test case insensitivity and mapping
     
-    // Case 1: "sgd" -> SGD
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
     EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("sgd"));
     EXPECT_EQ(client->getValidatedCurrency("Currency").value(), Protocol::CurrencyType::SGD);
 
-    // Case 2: "USD" -> USD
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
     EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("USD"));
     EXPECT_EQ(client->getValidatedCurrency("Currency").value(), Protocol::CurrencyType::USD);
 
-    // Case 3: "Eur" -> EUR
     EXPECT_CALL(*mockIO, print_prompt(testing::_)).Times(1);
     EXPECT_CALL(*mockIO, read_line()).WillOnce(testing::Return("Eur"));
     EXPECT_EQ(client->getValidatedCurrency("Currency").value(), Protocol::CurrencyType::EUR);
