@@ -41,7 +41,7 @@ func MarshalCallbackUpdate(update models.AccountUpdate) ([]byte, error) {
 	totalSize := 1 + 1 + 4 + 4 + len(update.HolderName) + 1 + 8
 	enc := NewEncoderWithCap(totalSize)
 
-	// Byte 0: Message type — 0x02 tells the client this is a callback, not a reply
+	// Byte 0: Message type: 0x02 tells the client this is a callback, not a reply
 	enc.PutUint8(MsgTypeCallback)
 
 	// Byte 1: Which operation triggered this update (Open=1, Close=2, etc.)

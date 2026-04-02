@@ -44,7 +44,7 @@ func TestLossSimulator_StatisticalDistribution(t *testing.T) {
 	tolerance := 0.05
 
 	if math.Abs(observedRate-rate) > tolerance {
-		t.Errorf("Expected drop rate ~%.2f, observed %.4f (over %d trials) — outside %.0f%% tolerance",
+		t.Errorf("Expected drop rate ~%.2f, observed %.4f (over %d trials): outside %.0f%% tolerance",
 			rate, observedRate, trials, tolerance*100)
 	}
 }
@@ -89,7 +89,7 @@ func TestLossSimulator_DeterministicWithSameSeed(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 		if ls1.ShouldDrop() != ls2.ShouldDrop() {
-			t.Fatalf("Trial %d: same seed produced different results — determinism broken", i)
+			t.Fatalf("Trial %d: same seed produced different results: determinism broken", i)
 		}
 	}
 }

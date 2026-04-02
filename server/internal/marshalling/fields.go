@@ -6,7 +6,7 @@ package marshal
 // These MUST match the C++ client's Protocol::FieldID enum byte-for-byte.
 // If even one is off, the cross-language TLV decoder silently misreads
 // every field in the packet. Confirm values against protocol.h before
-// shipping — the .cpp files only reference these by name, not by number.
+// shipping: the .cpp files only reference these by name, not by number.
 // ─────────────────────────────────────────────────────────────────────
 const (
 	FieldService               uint8 = 0x01
@@ -22,7 +22,9 @@ const (
 )
 
 // Every TLV field on the wire is prefixed with:
-//   [1 byte FieldID] [4 bytes FieldLength (big-endian)]
+//
+//	[1 byte FieldID] [4 bytes FieldLength (big-endian)]
+//
 // so the minimum overhead per field is 5 bytes before the value even starts.
 const TLVHeaderSize = 5
 

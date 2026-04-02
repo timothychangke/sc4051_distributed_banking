@@ -120,7 +120,7 @@ func TestPasswordStringToFixed_ExactLength(t *testing.T) {
 }
 
 func TestPasswordStringToFixed_ShortPassword(t *testing.T) {
-	pw := "abc" // 3 bytes — should be zero-padded
+	pw := "abc" // 3 bytes: should be zero-padded
 	got := PasswordStringToFixed(pw)
 	expected := [8]byte{'a', 'b', 'c', 0, 0, 0, 0, 0}
 	if got != expected {
@@ -137,7 +137,7 @@ func TestPasswordStringToFixed_EmptyPassword(t *testing.T) {
 }
 
 func TestPasswordStringToFixed_LongPassword(t *testing.T) {
-	pw := "verylongpassword" // 16 bytes — truncated to first 8
+	pw := "verylongpassword" // 16 bytes: truncated to first 8
 	got := PasswordStringToFixed(pw)
 	expected := [8]byte{'v', 'e', 'r', 'y', 'l', 'o', 'n', 'g'}
 	if got != expected {

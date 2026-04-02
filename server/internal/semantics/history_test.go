@@ -31,7 +31,7 @@ func TestReplyHistory_StoreAndLookup(t *testing.T) {
 func TestReplyHistory_LookupMiss(t *testing.T) {
 	h := NewReplyHistory()
 
-	// Nothing stored yet — everything should miss
+	// Nothing stored yet: everything should miss
 	_, found := h.Lookup("127.0.0.1:9001", 1)
 	if found {
 		t.Error("Expected cache miss on empty history")
@@ -161,7 +161,7 @@ func TestReplyHistory_ConcurrentAccess(t *testing.T) {
 			wg.Add(1)
 			go func(c string, id uint32) {
 				defer wg.Done()
-				// We don't care about the result — we're testing for panics
+				// We don't care about the result: we're testing for panics
 				// and data races, not correctness of intermediate reads.
 				_, _ = h.Lookup(c, id)
 			}(client, reqID)

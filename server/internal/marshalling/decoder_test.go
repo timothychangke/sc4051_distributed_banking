@@ -135,7 +135,7 @@ func TestReadBytes(t *testing.T) {
 
 	assertBytesEqual(t, got, input)
 
-	// Verify it's a copy — mutating the result shouldn't affect the decoder
+	// Verify it's a copy: mutating the result shouldn't affect the decoder
 	got[0] = 0x00
 	if dec.buf[0] != 0xDE {
 		t.Error("ReadBytes returned a reference to the internal buffer, not a copy")
@@ -345,7 +345,7 @@ func TestUnderflowDoesNotAdvanceOffset(t *testing.T) {
 	dec.ReadUint8()
 	offsetBefore := dec.Offset()
 
-	// Now every read should fail — and the offset shouldn't move
+	// Now every read should fail: and the offset shouldn't move
 	dec.ReadUint8()
 	dec.ReadUint16()
 	dec.ReadUint32()
@@ -429,9 +429,9 @@ func TestRoundTrip_TLVField(t *testing.T) {
 
 	// Encode (what the C++ client does)
 	enc := NewEncoder()
-	enc.PutUint8(FieldMonetaryValue)    // tag
-	enc.PutUint32(8)                    // length: float64 is 8 bytes
-	enc.PutFloat64(amount)              // value
+	enc.PutUint8(FieldMonetaryValue) // tag
+	enc.PutUint32(8)                 // length: float64 is 8 bytes
+	enc.PutFloat64(amount)           // value
 
 	// Decode (what our Go TLV decoder will do)
 	dec := NewDecoder(enc.Bytes())
@@ -567,7 +567,7 @@ func TestDecodeCppOpenAccountRequest(t *testing.T) {
 			t.Fatalf("field %d: unknown tag 0x%02X", fieldCount, tag)
 		}
 
-		// Just skip past the value — we're testing the loop structure, not the values
+		// Just skip past the value: we're testing the loop structure, not the values
 		if err := dec.Skip(int(length)); err != nil {
 			t.Fatalf("field %d: skip %d bytes: %v", fieldCount, length, err)
 		}

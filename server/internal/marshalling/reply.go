@@ -41,7 +41,7 @@ const MsgTypeReply uint8 = 0x01
 // BuildReply constructs a complete reply packet that the C++ MessageSerializer
 // can deserialize. The requestID is echoed back so the client can match this
 // reply to its outstanding request. The clientAddr is included because the C++
-// wire format expects it — we echo the client's own address back to them.
+// wire format expects it: we echo the client's own address back to them.
 //
 // The content parameter is the service-specific response body (e.g., TLV-encoded
 // new balance after a deposit). Pass nil for replies that carry no content
@@ -55,7 +55,7 @@ func BuildReply(requestID uint32, clientAddr *net.UDPAddr, statusCode uint8, con
 	// Pre-allocate the exact size so we don't waste time growing the slice
 	enc := NewEncoderWithCap(ReplyHeaderSize + contentLen)
 
-	// Byte 0: Message type — always 0x01 for a normal reply
+	// Byte 0: Message type: always 0x01 for a normal reply
 	enc.PutUint8(MsgTypeReply)
 
 	// Byte 1: Invocation flag. The C++ client expects an 18-byte header including
@@ -72,7 +72,7 @@ func BuildReply(requestID uint32, clientAddr *net.UDPAddr, statusCode uint8, con
 	enc.PutUint32(IPv4ToUint32(clientAddr))
 
 	// Bytes 10-11: Client's port as a big-endian uint16.
-	// Same deal — must be present for alignment even if unused.
+	// Same deal: must be present for alignment even if unused.
 	enc.PutUint16(uint16(clientAddr.Port))
 
 	// Bytes 12-13: Status code widened to uint16.

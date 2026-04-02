@@ -12,7 +12,7 @@ import (
 // The C++ client encodes each field as:
 //   [FieldID (1 byte)] [FieldLength (4 bytes, big-endian)] [FieldValue (N bytes)]
 //
-// Fields can arrive in ANY order and are OPTIONAL — only present fields
+// Fields can arrive in ANY order and are OPTIONAL: only present fields
 // are serialized. The decoder loops until there aren't enough bytes left
 // for another TLV header (5 bytes = 1 tag + 4 length).
 //
@@ -39,14 +39,14 @@ type ParsedCommand struct {
 // DecodeTLV parses the TLV-encoded payload portion of a client request.
 // The caller should pass ONLY the payload bytes (i.e., after stripping the
 // 5-byte semantics header). This mirrors the C++ CommandEncoder::decode_message()
-// loop exactly — same field IDs, same length checks, same byte order.
+// loop exactly: same field IDs, same length checks, same byte order.
 func DecodeTLV(payload []byte) (*ParsedCommand, error) {
 	cmd := &ParsedCommand{}
 	offset := 0
 
 	for {
 		// Need at least 5 bytes for the next TLV header (1 tag + 4 length).
-		// If we don't have that many left, we're done — this is not an error,
+		// If we don't have that many left, we're done: this is not an error,
 		// it's how the C++ encoder signals "no more fields."
 		if offset+TLVHeaderSize > len(payload) {
 			break
@@ -70,7 +70,7 @@ func DecodeTLV(payload []byte) (*ParsedCommand, error) {
 		valueBytes := payload[offset : offset+int(fieldLen)]
 
 		// Decode each field based on its tag. The expected sizes here match
-		// what the C++ CommandEncoder writes — if a field has the wrong length,
+		// what the C++ CommandEncoder writes: if a field has the wrong length,
 		// something went very wrong on the wire.
 		switch fieldID {
 		case FieldService:
@@ -188,7 +188,7 @@ func TLVFloat64(fieldID uint8, v float64) TLVField {
 }
 
 // TLVString creates a TLV field containing raw string bytes.
-// The TLV length header handles the size — no separate length prefix inside the value.
+// The TLV length header handles the size: no separate length prefix inside the value.
 func TLVString(fieldID uint8, v string) TLVField {
 	return TLVField{ID: fieldID, Value: []byte(v)}
 }
