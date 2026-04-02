@@ -6,11 +6,6 @@ import (
 	"math"
 	"testing"
 )
-
-// ─────────────────────────────────────────────────────────────────────
-// Happy path: read primitives from known byte sequences
-// ─────────────────────────────────────────────────────────────────────
-
 func TestReadUint8(t *testing.T) {
 	dec := NewDecoder([]byte{0x00, 0xFF, 0x42})
 
@@ -85,9 +80,9 @@ func TestReadFloat64(t *testing.T) {
 }
 
 func TestReadFloat64_KnownWireBytes(t *testing.T) {
-	// The exact bytes for 100.50 in big-endian IEEE 754.
-	// Cross-check this against a hex dump from the C++ client to verify
-	// the two sides agree on float encoding.
+	
+	
+	
 	wire := []byte{0x40, 0x59, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00}
 
 	dec := NewDecoder(wire)
@@ -135,7 +130,7 @@ func TestReadBytes(t *testing.T) {
 
 	assertBytesEqual(t, got, input)
 
-	// Verify it's a copy: mutating the result shouldn't affect the decoder
+	
 	got[0] = 0x00
 	if dec.buf[0] != 0xDE {
 		t.Error("ReadBytes returned a reference to the internal buffer, not a copy")
@@ -154,9 +149,9 @@ func TestReadBytes_Empty(t *testing.T) {
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Offset tracking and helpers
-// ─────────────────────────────────────────────────────────────────────
+
+
+
 
 func TestOffset(t *testing.T) {
 	dec := NewDecoder(make([]byte, 20))
@@ -165,8 +160,8 @@ func TestOffset(t *testing.T) {
 		t.Errorf("initial Offset() = %d, want 0", dec.Offset())
 	}
 
-	dec.ReadUint8()  // +1
-	dec.ReadUint32() // +4
+	dec.ReadUint8()  
+	dec.ReadUint32() 
 	if dec.Offset() != 5 {
 		t.Errorf("after reading 5 bytes, Offset() = %d, want 5", dec.Offset())
 	}
@@ -179,25 +174,25 @@ func TestRemaining(t *testing.T) {
 		t.Errorf("initial Remaining() = %d, want 10", dec.Remaining())
 	}
 
-	dec.ReadUint32() // consumes 4
+	dec.ReadUint32() 
 	if dec.Remaining() != 6 {
 		t.Errorf("after ReadUint32, Remaining() = %d, want 6", dec.Remaining())
 	}
 }
 
 func TestSkip(t *testing.T) {
-	// Simulate skipping the 5-byte semantics header to get to TLV payload
+	
 	buf := []byte{
-		0x01,                   // ServiceID
-		0x00, 0x00, 0x00, 0x2A, // RequestID = 42
-		0x03,                   // first TLV field tag (FieldAccountOwnerName)
-		0x00, 0x00, 0x00, 0x03, // TLV length = 3
-		'B', 'o', 'b', // "Bob"
+		0x01,                   
+		0x00, 0x00, 0x00, 0x2A, 
+		0x03,                   
+		0x00, 0x00, 0x00, 0x03, 
+		'B', 'o', 'b', 
 	}
 
 	dec := NewDecoder(buf)
 
-	// Skip the 5-byte header
+	
 	if err := dec.Skip(5); err != nil {
 		t.Fatalf("Skip(5): %v", err)
 	}
@@ -206,7 +201,7 @@ func TestSkip(t *testing.T) {
 		t.Errorf("after Skip(5), Offset() = %d, want 5", dec.Offset())
 	}
 
-	// Now we should be able to read the TLV field tag
+	
 	tag, err := dec.ReadUint8()
 	if err != nil {
 		t.Fatalf("ReadUint8: %v", err)
@@ -226,9 +221,9 @@ func TestSkip_Zero(t *testing.T) {
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Error cases: every Read must fail cleanly on underflow
-// ─────────────────────────────────────────────────────────────────────
+
+
+
 
 func TestReadUint8_Underflow(t *testing.T) {
 	dec := NewDecoder([]byte{})
@@ -242,7 +237,7 @@ func TestReadUint8_Underflow(t *testing.T) {
 }
 
 func TestReadUint16_Underflow(t *testing.T) {
-	// Only 1 byte available, need 2
+	
 	dec := NewDecoder([]byte{0x01})
 	_, err := dec.ReadUint16()
 	if err == nil {
@@ -254,7 +249,7 @@ func TestReadUint16_Underflow(t *testing.T) {
 }
 
 func TestReadUint32_Underflow(t *testing.T) {
-	// Only 3 bytes available, need 4
+	
 	dec := NewDecoder([]byte{0x01, 0x02, 0x03})
 	_, err := dec.ReadUint32()
 	if err == nil {
@@ -266,7 +261,7 @@ func TestReadUint32_Underflow(t *testing.T) {
 }
 
 func TestReadFloat64_Underflow(t *testing.T) {
-	// Only 7 bytes available, need 8
+	
 	dec := NewDecoder(make([]byte, 7))
 	_, err := dec.ReadFloat64()
 	if err == nil {
@@ -334,18 +329,18 @@ func TestSkip_NegativeCount(t *testing.T) {
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Underflow doesn't corrupt state: offset should stay where it was
-// ─────────────────────────────────────────────────────────────────────
+
+
+
 
 func TestUnderflowDoesNotAdvanceOffset(t *testing.T) {
 	dec := NewDecoder([]byte{0x01})
 
-	// Read the one available byte
+	
 	dec.ReadUint8()
 	offsetBefore := dec.Offset()
 
-	// Now every read should fail: and the offset shouldn't move
+	
 	dec.ReadUint8()
 	dec.ReadUint16()
 	dec.ReadUint32()
@@ -359,12 +354,12 @@ func TestUnderflowDoesNotAdvanceOffset(t *testing.T) {
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Round-trip: Encoder → Decoder should produce the original values
-// ─────────────────────────────────────────────────────────────────────
+
+
+
 
 func TestRoundTrip_AllPrimitives(t *testing.T) {
-	// Encode
+	
 	enc := NewEncoder()
 	enc.PutUint8(0x42)
 	enc.PutUint16(9999)
@@ -372,7 +367,7 @@ func TestRoundTrip_AllPrimitives(t *testing.T) {
 	enc.PutFloat64(3.14159265358979)
 	enc.PutString("Hello, World!")
 
-	// Decode
+	
 	dec := NewDecoder(enc.Bytes())
 
 	u8, err := dec.ReadUint8()
@@ -415,25 +410,25 @@ func TestRoundTrip_AllPrimitives(t *testing.T) {
 		t.Errorf("string = %q, want %q", str, "Hello, World!")
 	}
 
-	// Should have consumed every byte
+	
 	if dec.Remaining() != 0 {
 		t.Errorf("Remaining() = %d, want 0 (all bytes consumed)", dec.Remaining())
 	}
 }
 
 func TestRoundTrip_TLVField(t *testing.T) {
-	// Simulate a full TLV encode/decode cycle for a MonetaryValue field.
-	// This is the exact flow that happens when the C++ client sends a
-	// deposit amount and the Go server decodes it.
+	
+	
+	
 	amount := 2500.75
 
-	// Encode (what the C++ client does)
+	
 	enc := NewEncoder()
-	enc.PutUint8(FieldMonetaryValue) // tag
-	enc.PutUint32(8)                 // length: float64 is 8 bytes
-	enc.PutFloat64(amount)           // value
+	enc.PutUint8(FieldMonetaryValue) 
+	enc.PutUint32(8)                 
+	enc.PutFloat64(amount)           
 
-	// Decode (what our Go TLV decoder will do)
+	
 	dec := NewDecoder(enc.Bytes())
 
 	tag, err := dec.ReadUint8()
@@ -466,26 +461,26 @@ func TestRoundTrip_TLVField(t *testing.T) {
 }
 
 func TestRoundTrip_MultipleFieldsAnyOrder(t *testing.T) {
-	// The C++ client can send fields in any order. Verify we can encode
-	// two fields and decode them back regardless of ordering.
+	
+	
 
-	// Build: Currency field first, then AccountNumber
+	
 	enc := NewEncoder()
 
-	// Currency TLV
+	
 	enc.PutUint8(FieldCurrency)
-	enc.PutUint32(1) // length = 1
-	enc.PutUint8(1)  // SGD = 1
+	enc.PutUint32(1) 
+	enc.PutUint8(1)  
 
-	// AccountNumber TLV
+	
 	enc.PutUint8(FieldAccountNumber)
-	enc.PutUint32(4) // length = 4
+	enc.PutUint32(4) 
 	enc.PutUint32(10042)
 
-	// Decode and verify we get both fields regardless of order
+	
 	dec := NewDecoder(enc.Bytes())
 
-	// First field: Currency
+	
 	tag1, _ := dec.ReadUint8()
 	len1, _ := dec.ReadUint32()
 	if tag1 != FieldCurrency || len1 != 1 {
@@ -496,7 +491,7 @@ func TestRoundTrip_MultipleFieldsAnyOrder(t *testing.T) {
 		t.Errorf("currency = %d, want 1 (SGD)", curr)
 	}
 
-	// Second field: AccountNumber
+	
 	tag2, _ := dec.ReadUint8()
 	len2, _ := dec.ReadUint32()
 	if tag2 != FieldAccountNumber || len2 != 4 {
@@ -512,43 +507,43 @@ func TestRoundTrip_MultipleFieldsAnyOrder(t *testing.T) {
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Edge case: decoding from a buffer produced by the C++ client.
-// These are manually constructed byte slices that match what the C++
-// CommandEncoder::encode_message would produce.
-// ─────────────────────────────────────────────────────────────────────
+
+
+
+
+
 
 func TestDecodeCppOpenAccountRequest(t *testing.T) {
-	// Simulate a C++ OpenAccount request payload (after the 5-byte semantics header).
-	// Fields: Service=1, AccountOwnerName="Alice", AccountPassword="pass1234", Currency=1, MonetaryValue=500.0
+	
+	
 	enc := NewEncoder()
 
-	// Service (tag=0x01, len=1, val=1)
+	
 	enc.PutUint8(0x01)
 	enc.PutUint32(1)
-	enc.PutUint8(1) // OPEN
+	enc.PutUint8(1) 
 
-	// AccountOwnerName (tag=0x03, len=5, val="Alice")
+	
 	enc.PutUint8(0x03)
 	enc.PutUint32(5)
 	enc.PutString("Alice")
 
-	// AccountPassword (tag=0x04, len=8, val="pass1234")
+	
 	enc.PutUint8(0x04)
 	enc.PutUint32(8)
 	enc.PutString("pass1234")
 
-	// Currency (tag=0x08, len=1, val=1 SGD)
+	
 	enc.PutUint8(0x08)
 	enc.PutUint32(1)
 	enc.PutUint8(1)
 
-	// MonetaryValue (tag=0x07, len=8, val=500.0)
+	
 	enc.PutUint8(0x07)
 	enc.PutUint32(8)
 	enc.PutFloat64(500.0)
 
-	// Now decode the whole thing field by field
+	
 	dec := NewDecoder(enc.Bytes())
 	fieldCount := 0
 
@@ -567,7 +562,7 @@ func TestDecodeCppOpenAccountRequest(t *testing.T) {
 			t.Fatalf("field %d: unknown tag 0x%02X", fieldCount, tag)
 		}
 
-		// Just skip past the value: we're testing the loop structure, not the values
+		
 		if err := dec.Skip(int(length)); err != nil {
 			t.Fatalf("field %d: skip %d bytes: %v", fieldCount, length, err)
 		}
@@ -585,31 +580,31 @@ func TestDecodeCppOpenAccountRequest(t *testing.T) {
 }
 
 func TestDecodeCppMonitorRegistrationRequest(t *testing.T) {
-	// Simulate a C++ Monitor registration request payload (after the 5-byte
-	// semantics header). This uses the NEW fields added in the client rev2:
-	//   - FieldMonitorUpdates (0x09): variable-length string
-	//   - FieldMonitorTimeoutSeconds (0x0A): uint32 seconds
+	
+	
+	
+	
 	enc := NewEncoder()
 
-	// Service (tag=0x01, len=1, val=5 MONITOR)
+	
 	enc.PutUint8(FieldService)
 	enc.PutUint32(1)
-	enc.PutUint8(5) // ServiceMonitor
+	enc.PutUint8(5) 
 
-	// MonitorTimeoutSeconds (tag=0x0A, len=4, val=60)
+	
 	enc.PutUint8(FieldMonitorTimeoutSeconds)
 	enc.PutUint32(4)
-	enc.PutUint32(60) // 60 seconds
+	enc.PutUint32(60) 
 
-	// MonitorUpdates (tag=0x09, len=3, val="all")
+	
 	enc.PutUint8(FieldMonitorUpdates)
 	enc.PutUint32(3)
 	enc.PutString("all")
 
-	// Decode and verify each field
+	
 	dec := NewDecoder(enc.Bytes())
 
-	// Field 1: Service
+	
 	tag, _ := dec.ReadUint8()
 	length, _ := dec.ReadUint32()
 	if tag != FieldService || length != 1 {
@@ -620,7 +615,7 @@ func TestDecodeCppMonitorRegistrationRequest(t *testing.T) {
 		t.Errorf("service = %d, want 5 (Monitor)", svc)
 	}
 
-	// Field 2: MonitorTimeoutSeconds
+	
 	tag, _ = dec.ReadUint8()
 	length, _ = dec.ReadUint32()
 	if tag != FieldMonitorTimeoutSeconds || length != 4 {
@@ -631,7 +626,7 @@ func TestDecodeCppMonitorRegistrationRequest(t *testing.T) {
 		t.Errorf("timeout = %d, want 60", timeout)
 	}
 
-	// Field 3: MonitorUpdates
+	
 	tag, _ = dec.ReadUint8()
 	length, _ = dec.ReadUint32()
 	if tag != FieldMonitorUpdates || length != 3 {

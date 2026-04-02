@@ -8,17 +8,9 @@ import (
 	"bank-server/pkg/models"
 )
 
-// ─────────────────────────────────────────────────────────────────────
-// Callback packet tests.
-//
-// The callback format is flat (not TLV), so we verify each field at
-// its exact byte offset. The C++ client's monitor loop reads these
-// bytes sequentially: if anything is misaligned, it's game over.
-// ─────────────────────────────────────────────────────────────────────
-
 func TestMarshalCallbackUpdate_MinimumSize(t *testing.T) {
-	// With an empty holder name, the minimum size is:
-	// 1 (MsgType) + 1 (ServiceID) + 4 (AccNo) + 4 (name len) + 0 (name) + 1 (Currency) + 8 (Balance) = 19
+	
+	
 	update := models.AccountUpdate{
 		ServiceID:     1,
 		AccountNumber: 10000,
@@ -50,7 +42,7 @@ func TestMarshalCallbackUpdate_MsgType(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Byte 0: Must be 0x02 (MsgTypeCallback)
+	
 	if data[0] != MsgTypeCallback {
 		t.Errorf("byte 0 (MsgType): want 0x%02X, got 0x%02X", MsgTypeCallback, data[0])
 	}
@@ -58,7 +50,7 @@ func TestMarshalCallbackUpdate_MsgType(t *testing.T) {
 
 func TestMarshalCallbackUpdate_ServiceID(t *testing.T) {
 	update := models.AccountUpdate{
-		ServiceID:     4, // Withdraw
+		ServiceID:     4, 
 		AccountNumber: 10001,
 		HolderName:    "Bob",
 		CurrencyType:  models.USD,
@@ -70,7 +62,7 @@ func TestMarshalCallbackUpdate_ServiceID(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Byte 1: ServiceID
+	
 	if data[1] != 4 {
 		t.Errorf("byte 1 (ServiceID): want 4, got %d", data[1])
 	}
@@ -90,7 +82,7 @@ func TestMarshalCallbackUpdate_AccountNumber(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Bytes 2-5: AccountNumber in big-endian
+	
 	gotAccNo := binary.BigEndian.Uint32(data[2:6])
 	if gotAccNo != 0x0000CAFE {
 		t.Errorf("bytes 2-5 (AccountNumber): want 0x0000CAFE, got 0x%08X", gotAccNo)
@@ -111,13 +103,13 @@ func TestMarshalCallbackUpdate_HolderName(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Bytes 6-9: Name length as big-endian uint32
+	
 	nameLen := binary.BigEndian.Uint32(data[6:10])
-	if nameLen != 7 { // "Charlie" = 7 bytes
+	if nameLen != 7 { 
 		t.Errorf("name length: want 7, got %d", nameLen)
 	}
 
-	// Bytes 10-16: The name string itself
+	
 	gotName := string(data[10 : 10+nameLen])
 	if gotName != "Charlie" {
 		t.Errorf("name: want 'Charlie', got '%s'", gotName)
@@ -125,12 +117,12 @@ func TestMarshalCallbackUpdate_HolderName(t *testing.T) {
 }
 
 func TestMarshalCallbackUpdate_FullPacket(t *testing.T) {
-	// Verify the complete packet layout with a realistic example
+	
 	update := models.AccountUpdate{
-		ServiceID:     3, // Deposit
+		ServiceID:     3, 
 		AccountNumber: 10042,
 		HolderName:    "Alice",
-		CurrencyType:  models.USD, // 2
+		CurrencyType:  models.USD, 
 		NewBalance:    1500.75,
 	}
 
@@ -139,7 +131,7 @@ func TestMarshalCallbackUpdate_FullPacket(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Expected total: 1 + 1 + 4 + 4 + 5("Alice") + 1 + 8 = 24 bytes
+	
 	expectedSize := 1 + 1 + 4 + 4 + 5 + 1 + 8
 	if len(data) != expectedSize {
 		t.Fatalf("total size: want %d, got %d", expectedSize, len(data))
@@ -147,46 +139,46 @@ func TestMarshalCallbackUpdate_FullPacket(t *testing.T) {
 
 	offset := 0
 
-	// MsgType
+	
 	if data[offset] != MsgTypeCallback {
 		t.Errorf("MsgType: want 0x02, got 0x%02X", data[offset])
 	}
 	offset++
 
-	// ServiceID
+	
 	if data[offset] != 3 {
 		t.Errorf("ServiceID: want 3, got %d", data[offset])
 	}
 	offset++
 
-	// AccountNumber
+	
 	accNo := binary.BigEndian.Uint32(data[offset : offset+4])
 	if accNo != 10042 {
 		t.Errorf("AccountNumber: want 10042, got %d", accNo)
 	}
 	offset += 4
 
-	// Name length
+	
 	nameLen := binary.BigEndian.Uint32(data[offset : offset+4])
 	if nameLen != 5 {
 		t.Errorf("NameLen: want 5, got %d", nameLen)
 	}
 	offset += 4
 
-	// Name
+	
 	name := string(data[offset : offset+int(nameLen)])
 	if name != "Alice" {
 		t.Errorf("Name: want 'Alice', got '%s'", name)
 	}
 	offset += int(nameLen)
 
-	// Currency
-	if data[offset] != 2 { // USD = 2
+	
+	if data[offset] != 2 { 
 		t.Errorf("Currency: want 2, got %d", data[offset])
 	}
 	offset++
 
-	// Balance
+	
 	bits := binary.BigEndian.Uint64(data[offset : offset+8])
 	balance := math.Float64frombits(bits)
 	if balance != 1500.75 {
@@ -218,7 +210,7 @@ func TestMarshalCallbackUpdate_AllCurrencyTypes(t *testing.T) {
 			t.Fatalf("error for currency %d: %v", tc.expected, err)
 		}
 
-		// Currency byte is after: MsgType(1) + ServiceID(1) + AccNo(4) + NameLen(4) + Name(1)
+		
 		currOffset := 1 + 1 + 4 + 4 + 1
 		if data[currOffset] != tc.expected {
 			t.Errorf("currency %d: want %d at offset %d, got %d",
@@ -247,7 +239,7 @@ func TestMarshalCallbackUpdate_LongName(t *testing.T) {
 		t.Errorf("total size: want %d, got %d", expectedSize, len(data))
 	}
 
-	// Read the name back out
+	
 	nameLen := binary.BigEndian.Uint32(data[6:10])
 	if nameLen != uint32(len(longName)) {
 		t.Errorf("name length: want %d, got %d", len(longName), nameLen)
@@ -260,7 +252,7 @@ func TestMarshalCallbackUpdate_LongName(t *testing.T) {
 
 func TestMarshalCallbackUpdate_ZeroBalance(t *testing.T) {
 	update := models.AccountUpdate{
-		ServiceID:     2, // Close
+		ServiceID:     2, 
 		AccountNumber: 10001,
 		HolderName:    "A",
 		CurrencyType:  models.SGD,
@@ -272,7 +264,7 @@ func TestMarshalCallbackUpdate_ZeroBalance(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Balance is the last 8 bytes
+	
 	balanceOffset := len(data) - 8
 	bits := binary.BigEndian.Uint64(data[balanceOffset : balanceOffset+8])
 	balance := math.Float64frombits(bits)

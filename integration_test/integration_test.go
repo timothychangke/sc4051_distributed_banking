@@ -1,27 +1,3 @@
-// integration_test.go: Full integration test suite for the Distributed Banking System.
-//
-// This file drives the real C++ client binary against the real Go server binary,
-// piping commands through stdin and asserting on the stdout output.
-//
-// HOW IT WORKS:
-//   1. Each test spins up a fresh Go server on port 2222 (the hardcoded default).
-//   2. It launches the C++ client via a PTY wrapper (script/stdbuf) so stdout isn't
-//      block-buffered: this is critical because the C++ client uses std::cout without flush.
-//   3. Commands are fed through stdin; responses are read from stdout.
-//   4. Assertions check that the client printed the expected results.
-//
-// IMPORTANT: Because the server hardcodes port 2222, tests run SEQUENTIALLY.
-// A global mutex prevents overlapping server instances.
-//
-// PREREQUISITES:
-//   - Go server binary:   go build -o ./bin/server ./cmd/main.go
-//   - C++ client binary:  (your makefile) -> ./bin/client
-//
-// RUN:
-//   go test -v -timeout 600s -count=1 ..
-//
-// OVERRIDE PATHS:
-//   SERVER_BIN=./bin/server CLIENT_BIN=./bin/client go test -v .
 
 package integration_test
 
@@ -41,9 +17,9 @@ import (
 	"time"
 )
 
-// ---------------------------------------------------------------------------
-// Configuration: update these paths to match your build output locations.
-// ---------------------------------------------------------------------------
+
+
+
 
 func serverBin() string {
 	if v := os.Getenv("SERVER_BIN"); v != "" {
@@ -65,32 +41,32 @@ func clientBin() string {
 	return "../client/build/client"
 }
 
-// The server hardcodes port 2222, so every test must use this port.
-// A global mutex ensures only one server runs at a time.
+
+
 const serverPort = 2222
 
 var serverMu sync.Mutex
 
 func TestMain(m *testing.M) {
-	// Best-effort cleanup: if nothing is on the port, the command silently fails.
+	
 	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 		kill := exec.Command("sh", "-c", "kill -9 $(lsof -ti :2222) 2>/dev/null")
 		_ = kill.Run()
-		// Give the OS a moment to release the socket.
+		
 		time.Sleep(500 * time.Millisecond)
 	}
 
 	os.Exit(m.Run())
 }
 
-// ---------------------------------------------------------------------------
-// Menu option constants: these MUST match your C++ client's menu.
-//
-// Your actual client menu (from bankIO.cpp):
-//   1 = OPEN       3 = DEPOSIT     7 = TRANSFER
-//   2 = CLOSE      4 = WITHDRAW    0 = EXIT
-//   5 = MONITOR    6 = BALANCE
-// ---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
 
 const (
 	MenuOpenAccount  = "1"
@@ -103,7 +79,7 @@ const (
 	MenuExit         = "0"
 )
 
-// Your C++ client expects currency as uppercase strings, not numbers.
+
 const (
 	CurrSGD = "SGD"
 	CurrUSD = "USD"
@@ -115,20 +91,20 @@ const (
 	SemanticsAtMostOnce  = "-m"
 )
 
-// How long we'll wait for a response before declaring timeout.
+
 const defaultTimeout = 8 * time.Second
 
-// ANSI escape code stripper: the client uses color codes and clear_ui() escape sequences.
-// We need to strip these so our string matching works on clean text.
+
+
 var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]|\x1b\[\?[0-9;]*[a-zA-Z]`)
 
 func stripANSI(s string) string {
 	return ansiRegex.ReplaceAllString(s, "")
 }
 
-// ---------------------------------------------------------------------------
-// ServerProcess manages the lifecycle of a Go server subprocess.
-// ---------------------------------------------------------------------------
+
+
+
 
 type ServerProcess struct {
 	cmd    *exec.Cmd
@@ -139,8 +115,8 @@ type ServerProcess struct {
 	errBuf *lineBuffer
 }
 
-// startServer launches the Go server and waits for it to bind.
-// Caller MUST hold serverMu or call this from within a test that serializes.
+
+
 func startServer(t *testing.T, mode string, extraArgs ...string) *ServerProcess {
 	t.Helper()
 
@@ -174,8 +150,8 @@ func startServer(t *testing.T, mode string, extraArgs ...string) *ServerProcess 
 		t.Fatalf("failed to start server: %v", err)
 	}
 
-	// Wait until the server has bound the UDP socket and printed its startup line.
-	// We look for "Listening" in the log output as the ready signal.
+	
+	
 	ready := sp.waitForOutput("Listening", 8*time.Second)
 	if !ready {
 		time.Sleep(2 * time.Second)
@@ -184,20 +160,20 @@ func startServer(t *testing.T, mode string, extraArgs ...string) *ServerProcess 
 	t.Cleanup(func() {
 		_ = cmd.Process.Signal(os.Interrupt)
 
-		// Give it a moment to shut down gracefully.
+		
 		done := make(chan error, 1)
 		go func() { done <- cmd.Wait() }()
 
 		select {
 		case <-done:
-			// Clean exit.
+			
 		case <-time.After(2 * time.Second):
-			// Force kill if it didn't respond to interrupt.
+			
 			_ = cmd.Process.Kill()
 			_ = cmd.Wait()
 		}
 
-		// Wait for the OS to release the UDP port.
+		
 		time.Sleep(500 * time.Millisecond)
 	})
 
@@ -223,20 +199,20 @@ func (sp *ServerProcess) allOutput() string {
 	return sp.outBuf.snapshot() + "\n" + sp.errBuf.snapshot()
 }
 
-// ---------------------------------------------------------------------------
-// ClientProcess manages the C++ client subprocess.
-//
-// THE KEY INSIGHT: When stdout is piped (not a TTY), the C++ standard library
-// uses full buffering on std::cout. Your client never calls std::flush, so
-// the test sees ZERO output until the process exits or the 4KB buffer fills.
-//
-// We fix this by launching the client through a PTY wrapper:
-//   macOS:  script -q /dev/null ./client <args>
-//   Linux:  stdbuf -oL ./client <args>
-//
-// This forces line-buffered or unbuffered stdout so we can read responses
-// in real time as the client prints them.
-// ---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 type ClientProcess struct {
 	cmd    *exec.Cmd
@@ -250,18 +226,18 @@ func startClient(t *testing.T, extraArgs ...string) *ClientProcess {
 	clientArgs := []string{"127.0.0.1", fmt.Sprintf("%d", serverPort)}
 	clientArgs = append(clientArgs, extraArgs...)
 
-	// Build the actual command with a PTY/unbuffer wrapper.
+	
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
 		cmd = exec.Command(clientBin(), clientArgs...)
 	case "linux":
-		// Linux: `stdbuf -oL` forces line-buffered stdout.
+		
 		stdbufArgs := []string{"-oL", clientBin()}
 		stdbufArgs = append(stdbufArgs, clientArgs...)
 		cmd = exec.Command("stdbuf", stdbufArgs...)
 	default:
-		// Fallback: run directly and hope for the best.
+		
 		cmd = exec.Command(clientBin(), clientArgs...)
 	}
 
@@ -273,7 +249,7 @@ func startClient(t *testing.T, extraArgs ...string) *ClientProcess {
 	if err != nil {
 		t.Fatalf("failed to pipe client stdout: %v", err)
 	}
-	cmd.Stderr = cmd.Stdout // merge stderr into the same stream
+	cmd.Stderr = cmd.Stdout 
 
 	cp := &ClientProcess{
 		cmd:    cmd,
@@ -287,7 +263,7 @@ func startClient(t *testing.T, extraArgs ...string) *ClientProcess {
 		t.Fatalf("failed to start client: %v", err)
 	}
 
-	// Wait for the menu to appear: this confirms the client started and stdout is flowing.
+	
 	if !cp.waitForOutput("SYSTEM", 5*time.Second) {
 		t.Fatalf("client did not print menu within 5s.\nCaptured output:\n%s", cp.outputSnapshot())
 	}
@@ -308,9 +284,9 @@ func (cp *ClientProcess) send(line string) {
 	_, _ = io.WriteString(cp.stdin, line)
 }
 
-// sendLines writes multiple lines with a small delay between each.
-// The C++ client reads some fields with `read_int()` (cin >>) and others with
-// `read_line()` (getline). The delay ensures each value is consumed before the next.
+
+
+
 func (cp *ClientProcess) sendLines(lines ...string) {
 	for _, l := range lines {
 		cp.send(l)
@@ -318,11 +294,11 @@ func (cp *ClientProcess) sendLines(lines ...string) {
 	}
 }
 
-// pressEnter sends a bare newline to satisfy `wait_for_enter()` calls.
-// The C++ client calls this after every operation: cin.ignore() + cin.get().
+
+
 func (cp *ClientProcess) pressEnter() {
-	cp.send("") // consumed by cin.ignore()
-	cp.send("") // consumed by cin.get()
+	cp.send("") 
+	cp.send("") 
 	time.Sleep(300 * time.Millisecond)
 }
 
@@ -341,7 +317,7 @@ func (cp *ClientProcess) outputContains(substr string) bool {
 	return cp.outBuf.containsClean(substr)
 }
 
-// outputSnapshot returns the ANSI-stripped, cleaned output for assertions and debugging.
+
 func (cp *ClientProcess) outputSnapshot() string {
 	return cp.outBuf.cleanSnapshot()
 }
@@ -350,9 +326,9 @@ func (cp *ClientProcess) clearOutput() {
 	cp.outBuf.clear()
 }
 
-// ---------------------------------------------------------------------------
-// lineBuffer: thread-safe text accumulator that also strips ANSI codes.
-// ---------------------------------------------------------------------------
+
+
+
 
 type lineBuffer struct {
 	mu    sync.Mutex
@@ -365,7 +341,7 @@ func newLineBuffer() *lineBuffer {
 
 func (lb *lineBuffer) drain(r io.Reader) {
 	scanner := bufio.NewScanner(r)
-	// Increase buffer size: the client might blast a lot of ANSI codes in one line.
+	
 	scanner.Buffer(make([]byte, 0, 64*1024), 64*1024)
 	for scanner.Scan() {
 		lb.mu.Lock()
@@ -374,7 +350,7 @@ func (lb *lineBuffer) drain(r io.Reader) {
 	}
 }
 
-// contains checks raw lines (including ANSI codes).
+
 func (lb *lineBuffer) contains(substr string) bool {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
@@ -386,7 +362,7 @@ func (lb *lineBuffer) contains(substr string) bool {
 	return false
 }
 
-// containsClean checks lines after stripping ANSI escape codes.
+
 func (lb *lineBuffer) containsClean(substr string) bool {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
@@ -405,7 +381,7 @@ func (lb *lineBuffer) snapshot() string {
 	return strings.Join(lb.lines, "\n")
 }
 
-// cleanSnapshot returns all captured output with ANSI codes stripped.
+
 func (lb *lineBuffer) cleanSnapshot() string {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
@@ -422,41 +398,41 @@ func (lb *lineBuffer) clear() {
 	lb.lines = lb.lines[:0]
 }
 
-// ---------------------------------------------------------------------------
-// High-level client action helpers.
-//
-// Each helper:
-//   1. Clears the output buffer (so we only see the new response).
-//   2. Sends the menu selection.
-//   3. Sends the field values in the exact order your C++ client expects.
-//   4. Sends an extra Enter to satisfy wait_for_enter().
-//   5. Returns the captured output for assertion.
-//
-// INPUT ORDER (from your C++ bankClient.cpp):
-//   Open:     Name, Password, Currency(str), Balance
-//   Close:    Name, AccNo, Password
-//   Deposit:  Name, AccNo, Password, Currency(str), Amount
-//   Withdraw: Name, AccNo, Password, Currency(str), Amount
-//   Monitor:  Name, AccNo, Password   (then interval is asked separately)
-//   Balance:  Name, AccNo, Password
-//   Transfer: Name, AccNo, Password, ToAccNo, Amount
-// ---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 func openAccount(t *testing.T, cp *ClientProcess, name, password, currency, balance string) string {
 	t.Helper()
 	cp.clearOutput()
 	cp.sendLines(MenuOpenAccount, name, password, currency, balance)
 
-	// Wait for the server to respond with the account number.
+	
 	if !cp.waitForOutput("10", defaultTimeout) {
-		// Might have printed a different format: grab whatever we have.
+		
 		time.Sleep(1 * time.Second)
 	}
 
-	// Press Enter to get past wait_for_enter() and back to the menu.
+	
 	cp.pressEnter()
 
-	// Give the client time to reprint the menu.
+	
 	time.Sleep(300 * time.Millisecond)
 	return cp.outputSnapshot()
 }
@@ -526,11 +502,11 @@ func transfer(t *testing.T, cp *ClientProcess, name, fromAcc, password, toName, 
 func registerMonitor(t *testing.T, cp *ClientProcess, name, accNo, password, intervalSec string) {
 	t.Helper()
 	cp.clearOutput()
-	// Monitor calls fill_auth_details first (name, accNo, pw), then asks for interval.
-	// But based on the checklist, monitor just needs the interval.
-	// Your actual implementation may vary: adjust these fields if needed.
+	
+	
+	
 	cp.sendLines(MenuMonitor, name, accNo, password, intervalSec)
-	// Monitor blocks the client, so we do NOT press Enter: it's waiting for callbacks.
+	
 }
 
 func exitClient(cp *ClientProcess) {
@@ -538,9 +514,9 @@ func exitClient(cp *ClientProcess) {
 	time.Sleep(500 * time.Millisecond)
 }
 
-// ---------------------------------------------------------------------------
-// Assertion and extraction helpers.
-// ---------------------------------------------------------------------------
+
+
+
 
 func assertContains(t *testing.T, haystack, needle, context string) {
 	t.Helper()
@@ -570,12 +546,12 @@ func assertContainsAnyOf(t *testing.T, haystack string, needles []string, contex
 		context, needles, haystack)
 }
 
-// extractAccountNumber pulls the first number >= 10000 from the output string.
+
 func extractAccountNumber(output string) (string, bool) {
-	// Match any number >= 10000 that appears in the output,
-	// even if glued to non-digit characters like box-drawing chars.
+	
+	
 	re := regexp.MustCompile(`\b(\d{5,})\b`)
-	// \b won't match against unicode box chars, so also try a looser pattern:
+	
 	if matches := re.FindAllString(output, -1); len(matches) > 0 {
 		for _, m := range matches {
 			n, err := strconv.Atoi(m)
@@ -585,7 +561,7 @@ func extractAccountNumber(output string) (string, bool) {
 		}
 	}
 
-	// Fallback: scan for digit sequences anywhere in the string.
+	
 	re2 := regexp.MustCompile(`(\d{5,})`)
 	for _, m := range re2.FindAllString(output, -1) {
 		n, err := strconv.Atoi(m)
@@ -598,10 +574,10 @@ func extractAccountNumber(output string) (string, bool) {
 }
 
 func extractBalance(output string) (float64, bool) {
-	// The C++ client prints "Balance        : <value>" in its response box.
-	// We use a regex to grab the number directly after "Balance" + any
-	// whitespace/colon combo, which avoids confusion with menu items like
-	// "6. BALANCE" that don't have a colon followed by a number.
+	
+	
+	
+	
 	re := regexp.MustCompile(`(?i)balance\s*:\s*([0-9]+\.?[0-9]*)`)
 	if m := re.FindStringSubmatch(output); len(m) == 2 {
 		f, err := strconv.ParseFloat(m[1], 64)
@@ -610,7 +586,7 @@ func extractBalance(output string) (float64, bool) {
 		}
 	}
 
-	// Fallback: return the last non-negative float in the output.
+	
 	var lastVal float64
 	found := false
 	for _, word := range strings.Fields(output) {
@@ -628,21 +604,21 @@ func floatEquals(a, b, epsilon float64) bool {
 	return math.Abs(a-b) < epsilon
 }
 
-// ---------------------------------------------------------------------------
-// lockServer grabs the global mutex so only one test uses port 2222 at a time.
-// It returns an unlock function that should be deferred.
-// ---------------------------------------------------------------------------
+
+
+
+
 func lockServer(t *testing.T) {
 	t.Helper()
 	serverMu.Lock()
 	t.Cleanup(func() { serverMu.Unlock() })
 }
 
-// ==========================================================================
-//
-//  SECTION 2A: OPEN ACCOUNT
-//
-// ==========================================================================
+
+
+
+
+
 
 func TestOpenAccount_HappyPath(t *testing.T) {
 	lockServer(t)
@@ -702,11 +678,11 @@ func TestOpenAccount_DifferentCurrencies(t *testing.T) {
 	exitClient(client)
 }
 
-// ==========================================================================
-//
-//  SECTION 2B: CLOSE ACCOUNT
-//
-// ==========================================================================
+
+
+
+
+
 
 func TestCloseAccount_HappyPath(t *testing.T) {
 	lockServer(t)
@@ -719,7 +695,7 @@ func TestCloseAccount_HappyPath(t *testing.T) {
 	closeOut := closeAccount(t, client, "Alice", accNo, "pass1234")
 	assertNotContains(t, strings.ToLower(closeOut), "error", "close happy path")
 
-	// Verify account is gone.
+	
 	balOut := getBalance(t, client, "Alice", accNo, "pass1234")
 	assertContainsAnyOf(t, balOut, []string{"error", "not found", "invalid"}, "balance after close should fail")
 
@@ -737,7 +713,7 @@ func TestCloseAccount_WrongPassword(t *testing.T) {
 	closeOut := closeAccount(t, client, "Alice", accNo, "wrongpwd")
 	assertContainsAnyOf(t, closeOut, []string{"error", "invalid"}, "close wrong password")
 
-	// Account must still exist.
+	
 	balOut := getBalance(t, client, "Alice", accNo, "pass1234")
 	assertContains(t, balOut, "1000", "balance after failed close")
 
@@ -769,11 +745,11 @@ func TestCloseAccount_NonExistent(t *testing.T) {
 	exitClient(client)
 }
 
-// ==========================================================================
-//
-//  SECTION 2C: DEPOSIT & WITHDRAW
-//
-// ==========================================================================
+
+
+
+
+
 
 func TestDeposit_HappyPath(t *testing.T) {
 	lockServer(t)
@@ -880,26 +856,26 @@ func TestDeposit_FloatingPointPrecision(t *testing.T) {
 	exitClient(client)
 }
 
-// ==========================================================================
-//
-//  SECTION 2D: MONITOR (CALLBACK)
-//
-// ==========================================================================
+
+
+
+
+
 
 func TestMonitor_ReceivesOpenAccountUpdate(t *testing.T) {
 	lockServer(t)
 	_ = startServer(t, "at-least-once")
 
-	// Client B registers for monitoring.
+	
 	clientB := startClient(t, SemanticsAtLeastOnce)
 	registerMonitor(t, clientB, "Monitor", "10000", "pass1234", "30")
 	time.Sleep(1 * time.Second)
 
-	// Client A opens an account.
+	
 	clientA := startClient(t, SemanticsAtLeastOnce)
 	openAccount(t, clientA, "Dave", "pass1234", CurrSGD, "500.00")
 
-	// Client B should receive a callback.
+	
 	if !clientB.waitForOutput("Dave", 5*time.Second) && !clientB.waitForOutput("500", 3*time.Second) {
 		t.Logf("Monitor output:\n%s", clientB.outputSnapshot())
 		t.Error("monitoring client did not receive OpenAccount callback")
@@ -966,7 +942,7 @@ func TestMonitor_NoCallbackOnFailedOperation(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	clientB.clearOutput()
 
-	// Failed withdraw (wrong password): should NOT trigger callback.
+	
 	clientA := startClient(t, SemanticsAtLeastOnce)
 	withdraw(t, clientA, "Alice", accNo, "wrongpwd", CurrSGD, "100.00")
 
@@ -1011,11 +987,11 @@ func TestMonitor_MultipleConcurrentMonitors(t *testing.T) {
 	exitClient(clientA)
 }
 
-// ==========================================================================
-//
-//  SECTION 3: CUSTOM OPERATIONS (GetBalance & Transfer)
-//
-// ==========================================================================
+
+
+
+
+
 
 func TestGetBalance_HappyPath(t *testing.T) {
 	lockServer(t)
@@ -1153,11 +1129,11 @@ func TestTransfer_DestinationNotFound(t *testing.T) {
 	exitClient(client)
 }
 
-// ==========================================================================
-//
-//  SECTION 4: FAULT TOLERANCE & INVOCATION SEMANTICS
-//
-// ==========================================================================
+
+
+
+
+
 
 func TestCLIToggle_AtLeastOnce(t *testing.T) {
 	lockServer(t)
@@ -1310,11 +1286,11 @@ func TestComparison_SameScenarioBothModes(t *testing.T) {
 	}
 }
 
-// ==========================================================================
-//
-//  SECTION 1: PERSISTENCE
-//
-// ==========================================================================
+
+
+
+
+
 
 func TestPersistence_AcrossMultipleRequests(t *testing.T) {
 	lockServer(t)
@@ -1342,11 +1318,11 @@ func TestPersistence_AcrossMultipleRequests(t *testing.T) {
 	exitClient(client)
 }
 
-// ==========================================================================
-//
-//  SECTION 5: CLIENT INTERFACE & SERVER OUTPUT
-//
-// ==========================================================================
+
+
+
+
+
 
 func TestClientMenu_ShowsAllOptions(t *testing.T) {
 	lockServer(t)
@@ -1378,7 +1354,7 @@ func TestClientExit_CleansUp(t *testing.T) {
 
 	select {
 	case <-done:
-		// Process exited: success.
+		
 	case <-time.After(5 * time.Second):
 		t.Error("client did not exit within 5 seconds")
 	}
@@ -1399,18 +1375,18 @@ func TestServerPrints_IncomingRequests(t *testing.T) {
 	exitClient(client)
 }
 
-// ==========================================================================
-//
-//  SECTION 6: CROSS-LANGUAGE INTEROPERABILITY
-//
-// ==========================================================================
+
+
+
+
+
 
 func TestCrossLanguage_AllServicesWork(t *testing.T) {
 	lockServer(t)
 	_ = startServer(t, "at-least-once")
 	client := startClient(t, SemanticsAtLeastOnce)
 
-	// S1: Open
+	
 	out := openAccount(t, client, "Alice", "pass1234", CurrSGD, "1000.00")
 	accAlice, ok := extractAccountNumber(out)
 	if !ok {
@@ -1422,26 +1398,26 @@ func TestCrossLanguage_AllServicesWork(t *testing.T) {
 		t.Fatal("S1 Open (Bob) failed")
 	}
 
-	// S3: Deposit
+	
 	depOut := deposit(t, client, "Alice", accAlice, "pass1234", CurrSGD, "250.00")
 	assertContains(t, depOut, "1250", "S3 Deposit")
 
-	// S3: Withdraw
+	
 	wdOut := withdraw(t, client, "Alice", accAlice, "pass1234", CurrSGD, "100.00")
 	assertContains(t, wdOut, "1150", "S3 Withdraw")
 
-	// S6: GetBalance
+	
 	balOut := getBalance(t, client, "Alice", accAlice, "pass1234")
 	assertContains(t, balOut, "1150", "S6 GetBalance")
 
-	// S7: Transfer
+	
 	txOut := transfer(t, client, "Alice", accAlice, "pass1234", "Bob", accBob, CurrSGD, "150.00")
 	assertContains(t, txOut, "1000", "S7 Transfer Alice")
 
 	bobBal := getBalance(t, client, "Bob", accBob, "pass5678")
 	assertContains(t, bobBal, "650", "S7 Transfer Bob")
 
-	// S2: Close
+	
 	closeOut := closeAccount(t, client, "Bob", accBob, "pass5678")
 	assertNotContains(t, strings.ToLower(closeOut), "error", "S2 Close")
 
@@ -1452,11 +1428,11 @@ func TestCrossLanguage_AllServicesWork(t *testing.T) {
 	exitClient(client)
 }
 
-// ==========================================================================
-//
-//  BONUS: STRESS TEST
-//
-// ==========================================================================
+
+
+
+
+
 
 func TestStress_RapidOperations(t *testing.T) {
 	if testing.Short() {

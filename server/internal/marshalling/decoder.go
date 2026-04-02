@@ -7,20 +7,6 @@ import (
 	"math"
 )
 
-// ─────────────────────────────────────────────────────────────────────
-// Decoder reads primitives from a byte slice at a moving offset.
-//
-// Every Read* method checks bounds before touching memory, advances
-// the offset on success, and returns a clear error on buffer underflow.
-// This mirrors the C++ CommandEncoder::decode_* functions which do the
-// same bounds check before each memcpy.
-//
-// Usage:
-//   dec := NewDecoder(wireBytes)
-//   msgType, err := dec.ReadUint8()
-//   reqID, err := dec.ReadUint32()
-//   balance, err := dec.ReadFloat64()
-// ─────────────────────────────────────────────────────────────────────
 
 var (
 	// ErrBufferUnderflow means we tried to read past the end of the buffer.
@@ -66,15 +52,6 @@ func (d *Decoder) ReadUint32() (uint32, error) {
 	return v, nil
 }
 
-// ReadFloat64 reads a big-endian IEEE 754 64-bit double.
-//
-// On the wire this is 8 bytes that the C++ side produced by:
-//  1. memcpy(uint64, double)  : reinterpret bits
-//  2. manual htonll           : swap to big-endian
-//
-// We reverse it with:
-//  1. binary.BigEndian.Uint64 : read as big-endian uint64
-//  2. math.Float64frombits    : reinterpret back to float64
 func (d *Decoder) ReadFloat64() (float64, error) {
 	const size = 8
 	if d.offset+size > len(d.buf) {
@@ -129,9 +106,6 @@ func (d *Decoder) Offset() int {
 	return d.offset
 }
 
-// Skip advances the offset by n bytes without reading them.
-// Handy for jumping past a header you've already parsed elsewhere
-// (e.g. the 5-byte semantics header before the TLV payload).
 func (d *Decoder) Skip(n int) error {
 	if n < 0 {
 		return fmt.Errorf("Skip: negative count %d", n)

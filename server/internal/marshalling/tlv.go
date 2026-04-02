@@ -6,23 +6,6 @@ import (
 	"math"
 )
 
-// ─────────────────────────────────────────────────────────────────────
-// TLV Decoder for the C++ client's CommandEncoder payload format.
-//
-// The C++ client encodes each field as:
-//   [FieldID (1 byte)] [FieldLength (4 bytes, big-endian)] [FieldValue (N bytes)]
-//
-// Fields can arrive in ANY order and are OPTIONAL: only present fields
-// are serialized. The decoder loops until there aren't enough bytes left
-// for another TLV header (5 bytes = 1 tag + 4 length).
-//
-// This file is the single most important piece of cross-language glue.
-// If anything here is wrong, every request from the C++ client fails.
-// ─────────────────────────────────────────────────────────────────────
-
-// ParsedCommand holds the fields extracted from a TLV-encoded request payload.
-// Fields are pointers so we can distinguish "not present" (nil) from "zero value".
-// For example, an account number of 0 is different from no account number at all.
 type ParsedCommand struct {
 	Service               *uint8
 	AccountNumber         *uint32
@@ -36,18 +19,11 @@ type ParsedCommand struct {
 	MonitorTimeoutSeconds *uint32 // monitor interval in seconds
 }
 
-// DecodeTLV parses the TLV-encoded payload portion of a client request.
-// The caller should pass ONLY the payload bytes (i.e., after stripping the
-// 5-byte semantics header). This mirrors the C++ CommandEncoder::decode_message()
-// loop exactly: same field IDs, same length checks, same byte order.
 func DecodeTLV(payload []byte) (*ParsedCommand, error) {
 	cmd := &ParsedCommand{}
 	offset := 0
 
 	for {
-		// Need at least 5 bytes for the next TLV header (1 tag + 4 length).
-		// If we don't have that many left, we're done: this is not an error,
-		// it's how the C++ encoder signals "no more fields."
 		if offset+TLVHeaderSize > len(payload) {
 			break
 		}
@@ -142,12 +118,6 @@ func DecodeTLV(payload []byte) (*ParsedCommand, error) {
 	return cmd, nil
 }
 
-// EncodeTLVFields encodes a set of TLV fields into a byte slice.
-// This is used to build reply content that the C++ client can decode
-// with its existing CommandEncoder::decode_message().
-//
-// Each field is written as [FieldID(1)][Length(4 BE)][Value(N)].
-// The caller passes field entries which are appended sequentially.
 func EncodeTLVFields(fields []TLVField) []byte {
 	enc := NewEncoder()
 	for _, f := range fields {

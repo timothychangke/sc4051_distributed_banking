@@ -6,18 +6,7 @@ import (
 	"testing"
 )
 
-// ─────────────────────────────────────────────────────────────────────
-// TLV decoder tests.
-//
-// These tests manually construct byte buffers that match what the C++
-// CommandEncoder produces. If these pass, we can be confident that
-// real packets from the C++ client will decode correctly.
-// ─────────────────────────────────────────────────────────────────────
 
-// buildTLVField is a test helper that constructs a single TLV entry
-// exactly the way the C++ CommandEncoder does:
-//
-//	[FieldID (1 byte)] [FieldLength (4 bytes, BE)] [Value (N bytes)]
 func buildTLVField(fieldID uint8, value []byte) []byte {
 	buf := make([]byte, 0, 1+4+len(value))
 	buf = append(buf, fieldID)
@@ -50,21 +39,21 @@ func buildTLVString(fieldID uint8, s string) []byte {
 	return buildTLVField(fieldID, []byte(s))
 }
 
-// --- DecodeTLV tests ---
+
 
 func TestDecodeTLV_EmptyPayload(t *testing.T) {
 	cmd, err := DecodeTLV([]byte{})
 	if err != nil {
 		t.Fatalf("unexpected error on empty payload: %v", err)
 	}
-	// All fields should be nil since nothing was encoded
+	
 	if cmd.Service != nil || cmd.AccountNumber != nil || cmd.AccountOwnerName != nil {
 		t.Error("expected all fields to be nil for empty payload")
 	}
 }
 
 func TestDecodeTLV_SingleFieldService(t *testing.T) {
-	payload := buildTLVUint8(FieldService, 3) // ServiceDeposit = 3
+	payload := buildTLVUint8(FieldService, 3) 
 
 	cmd, err := DecodeTLV(payload)
 	if err != nil {
@@ -126,8 +115,8 @@ func TestDecodeTLV_StringFields(t *testing.T) {
 }
 
 func TestDecodeTLV_FullOpenAccountRequest(t *testing.T) {
-	// Simulate exactly what the C++ client sends for an Open Account request:
-	// Service=1, Name="Bob", Password="secret12", Currency=1(SGD), Balance=500.0
+	
+	
 	var payload []byte
 	payload = append(payload, buildTLVUint8(FieldService, 1)...)
 	payload = append(payload, buildTLVString(FieldAccountOwnerName, "Bob")...)
@@ -155,16 +144,16 @@ func TestDecodeTLV_FullOpenAccountRequest(t *testing.T) {
 	if *cmd.MonetaryValue != 500.0 {
 		t.Errorf("Balance: want 500.0, got %f", *cmd.MonetaryValue)
 	}
-	// Fields that weren't sent should remain nil
+	
 	if cmd.AccountNumber != nil {
 		t.Error("AccountNumber should be nil for Open request")
 	}
 }
 
 func TestDecodeTLV_FieldsInReverseOrder(t *testing.T) {
-	// The C++ iterate() walks fields in declaration order, but our decoder
-	// must handle ANY order. This test verifies that by sending fields
-	// in the opposite order from what the C++ client typically sends.
+	
+	
+	
 	var payload []byte
 	payload = append(payload, buildTLVFloat64(FieldMonetaryValue, 100.50)...)
 	payload = append(payload, buildTLVUint8(FieldCurrency, 2)...)
@@ -193,7 +182,7 @@ func TestDecodeTLV_FieldsInReverseOrder(t *testing.T) {
 }
 
 func TestDecodeTLV_TransferRequest(t *testing.T) {
-	// Transfer needs both source and destination account fields
+	
 	var payload []byte
 	payload = append(payload, buildTLVUint8(FieldService, 7)...)
 	payload = append(payload, buildTLVString(FieldAccountOwnerName, "Alice")...)
@@ -219,7 +208,7 @@ func TestDecodeTLV_TransferRequest(t *testing.T) {
 }
 
 func TestDecodeTLV_MonitorRegistration(t *testing.T) {
-	// The new client sends monitor timeout as a TLV field, not flat bytes
+	
 	var payload []byte
 	payload = append(payload, buildTLVUint8(FieldService, 5)...)
 	payload = append(payload, buildTLVUint32(FieldMonitorTimeoutSeconds, 60)...)
@@ -239,7 +228,7 @@ func TestDecodeTLV_MonitorRegistration(t *testing.T) {
 }
 
 func TestDecodeTLV_UnknownFieldID(t *testing.T) {
-	// A field ID that doesn't exist in our enum should produce an error
+	
 	payload := buildTLVUint8(0xFF, 42)
 
 	_, err := DecodeTLV(payload)
@@ -249,12 +238,12 @@ func TestDecodeTLV_UnknownFieldID(t *testing.T) {
 }
 
 func TestDecodeTLV_TruncatedFieldValue(t *testing.T) {
-	// Construct a TLV header that claims 4 bytes but only has 2
+	
 	buf := []byte{FieldAccountNumber}
 	lenBuf := make([]byte, 4)
-	binary.BigEndian.PutUint32(lenBuf, 4) // claims 4 bytes of value
+	binary.BigEndian.PutUint32(lenBuf, 4) 
 	buf = append(buf, lenBuf...)
-	buf = append(buf, 0x00, 0x01) // but only 2 bytes follow
+	buf = append(buf, 0x00, 0x01) 
 
 	_, err := DecodeTLV(buf)
 	if err == nil {
@@ -263,7 +252,7 @@ func TestDecodeTLV_TruncatedFieldValue(t *testing.T) {
 }
 
 func TestDecodeTLV_WrongLengthForFixedField(t *testing.T) {
-	// AccountNumber should be exactly 4 bytes. Sending 2 should fail.
+	
 	badValue := make([]byte, 2)
 	payload := buildTLVField(FieldAccountNumber, badValue)
 
@@ -274,7 +263,7 @@ func TestDecodeTLV_WrongLengthForFixedField(t *testing.T) {
 }
 
 func TestDecodeTLV_EmptyString(t *testing.T) {
-	// Edge case: a string field with zero length is valid (empty name)
+	
 	payload := buildTLVString(FieldAccountOwnerName, "")
 
 	cmd, err := DecodeTLV(payload)
@@ -287,7 +276,7 @@ func TestDecodeTLV_EmptyString(t *testing.T) {
 }
 
 func TestDecodeTLV_Float64SpecialValues(t *testing.T) {
-	// Make sure edge-case floats round-trip correctly
+	
 	tests := []struct {
 		name string
 		val  float64
@@ -313,27 +302,27 @@ func TestDecodeTLV_Float64SpecialValues(t *testing.T) {
 }
 
 func TestDecodeTLV_IncompleteTLVHeader(t *testing.T) {
-	// Only 3 bytes: not enough for a full TLV header (need 5).
-	// This should NOT be an error; it means "no more fields."
+	
+	
 	payload := []byte{0x01, 0x00, 0x00}
 
 	cmd, err := DecodeTLV(payload)
 	if err != nil {
 		t.Fatalf("incomplete TLV header should stop cleanly, got error: %v", err)
 	}
-	// No fields should have been decoded
+	
 	if cmd.Service != nil {
 		t.Error("expected nil Service when header was incomplete")
 	}
 }
 
-// --- EncodeTLVFields tests ---
+
 
 func TestEncodeTLVFields_SingleUint32(t *testing.T) {
 	fields := []TLVField{TLVUint32(FieldAccountNumber, 10042)}
 	encoded := EncodeTLVFields(fields)
 
-	// Verify: decode it back and make sure we get the right value
+	
 	cmd, err := DecodeTLV(encoded)
 	if err != nil {
 		t.Fatalf("round-trip failed: %v", err)
@@ -390,7 +379,7 @@ func TestEncodeTLVFields_EmptyList(t *testing.T) {
 	}
 }
 
-// --- TLV convenience constructor tests ---
+
 
 func TestTLVUint8_ByteLayout(t *testing.T) {
 	f := TLVUint8(FieldCurrency, 2)

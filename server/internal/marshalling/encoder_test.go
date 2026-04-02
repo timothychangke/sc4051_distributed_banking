@@ -6,10 +6,6 @@ import (
 	"testing"
 )
 
-// ─────────────────────────────────────────────────────────────────────
-// Basic primitive tests: each Put method should write the correct
-// number of bytes in network byte order.
-// ─────────────────────────────────────────────────────────────────────
 
 func TestPutUint8(t *testing.T) {
 	enc := NewEncoder()
@@ -25,18 +21,18 @@ func TestPutUint8(t *testing.T) {
 func TestPutUint16(t *testing.T) {
 	enc := NewEncoder()
 
-	// 0x0000: zero
+	
 	enc.PutUint16(0)
-	// 0x04D2: 1234 in big-endian
+	
 	enc.PutUint16(1234)
-	// 0xFFFF: max value
+	
 	enc.PutUint16(0xFFFF)
 
 	got := enc.Bytes()
 	want := []byte{
-		0x00, 0x00, // 0
-		0x04, 0xD2, // 1234
-		0xFF, 0xFF, // 65535
+		0x00, 0x00, 
+		0x04, 0xD2, 
+		0xFF, 0xFF, 
 	}
 	assertBytesEqual(t, got, want)
 }
@@ -44,18 +40,18 @@ func TestPutUint16(t *testing.T) {
 func TestPutUint32(t *testing.T) {
 	enc := NewEncoder()
 
-	// Zero
+	
 	enc.PutUint32(0)
-	// 10000: the starting account number from MemoryStore
+	
 	enc.PutUint32(10000)
-	// Max uint32
+	
 	enc.PutUint32(0xFFFFFFFF)
 
 	got := enc.Bytes()
 	want := []byte{
-		0x00, 0x00, 0x00, 0x00, // 0
-		0x00, 0x00, 0x27, 0x10, // 10000
-		0xFF, 0xFF, 0xFF, 0xFF, // 4294967295
+		0x00, 0x00, 0x00, 0x00, 
+		0x00, 0x00, 0x27, 0x10, 
+		0xFF, 0xFF, 0xFF, 0xFF, 
 	}
 	assertBytesEqual(t, got, want)
 }
@@ -83,7 +79,7 @@ func TestPutFloat64(t *testing.T) {
 				t.Fatalf("PutFloat64 wrote %d bytes, want 8", len(got))
 			}
 
-			// Verify we can reverse it: read big-endian uint64, then reinterpret
+			
 			bits := binary.BigEndian.Uint64(got)
 			roundTrip := math.Float64frombits(bits)
 			if roundTrip != tt.val {
@@ -94,16 +90,16 @@ func TestPutFloat64(t *testing.T) {
 }
 
 func TestPutFloat64_WireBytes(t *testing.T) {
-	// Verify the exact wire bytes for a known value so we can cross-check
-	// against the C++ client's output. 100.50 is a nice test case.
+	
+	
 	enc := NewEncoder()
 	enc.PutFloat64(100.50)
 
 	got := enc.Bytes()
 
-	// IEEE 754 double for 100.50:
-	//   math.Float64bits(100.50) = 0x4059200000000000
-	// Big-endian: [0x40, 0x59, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00]
+	
+	
+	
 	want := []byte{0x40, 0x59, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00}
 	assertBytesEqual(t, got, want)
 }
@@ -149,10 +145,10 @@ func TestPutLengthPrefixedString(t *testing.T) {
 	enc.PutLengthPrefixedString("Bob")
 
 	got := enc.Bytes()
-	// [4 bytes length = 3] + [3 bytes "Bob"]
+	
 	want := []byte{
-		0x00, 0x00, 0x00, 0x03, // length = 3
-		'B', 'o', 'b', // data
+		0x00, 0x00, 0x00, 0x03, 
+		'B', 'o', 'b', 
 	}
 	assertBytesEqual(t, got, want)
 }
@@ -162,14 +158,14 @@ func TestPutLengthPrefixedString_Empty(t *testing.T) {
 	enc.PutLengthPrefixedString("")
 
 	got := enc.Bytes()
-	// Should still write the 4-byte length header (value = 0), just no data after
+	
 	want := []byte{0x00, 0x00, 0x00, 0x00}
 	assertBytesEqual(t, got, want)
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Encoder state management
-// ─────────────────────────────────────────────────────────────────────
+
+
+
 
 func TestLen(t *testing.T) {
 	enc := NewEncoder()
@@ -209,42 +205,42 @@ func TestNewEncoderWithCap(t *testing.T) {
 		t.Errorf("NewEncoderWithCap Len() = %d, want 0", enc.Len())
 	}
 
-	// Should work exactly like a normal encoder
+	
 	enc.PutUint8(0x42)
 	if enc.Bytes()[0] != 0x42 {
 		t.Errorf("first byte = 0x%02X, want 0x42", enc.Bytes()[0])
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Cross-language compatibility: build packets that match the C++ wire
-// format and verify the byte layout is exactly right.
-// ─────────────────────────────────────────────────────────────────────
+
+
+
+
 
 func TestEncoderBuildsValidTLVField(t *testing.T) {
-	// Simulate encoding a TLV field the way the C++ CommandEncoder does:
-	//   [1 byte FieldID] [4 bytes Length (BE)] [N bytes Value]
-	//
-	// Example: FieldAccountNumber = 0x02, value = 10000 (uint32)
+	
+	
+	
+	
 	enc := NewEncoder()
-	enc.PutUint8(FieldAccountNumber) // tag
-	enc.PutUint32(4)                 // length: uint32 is 4 bytes
-	enc.PutUint32(10000)             // value
+	enc.PutUint8(FieldAccountNumber) 
+	enc.PutUint32(4)                 
+	enc.PutUint32(10000)             
 
 	got := enc.Bytes()
 	want := []byte{
-		0x02,                   // FieldAccountNumber
-		0x00, 0x00, 0x00, 0x04, // length = 4
-		0x00, 0x00, 0x27, 0x10, // value = 10000
+		0x02,                   
+		0x00, 0x00, 0x00, 0x04, 
+		0x00, 0x00, 0x27, 0x10, 
 	}
 	assertBytesEqual(t, got, want)
 }
 
 func TestEncoderBuildsValidTLVStringField(t *testing.T) {
-	// Simulate encoding a TLV string field:
-	//   [1 byte FieldID] [4 bytes Length (BE)] [N bytes string data]
-	//
-	// Example: FieldAccountOwnerName = 0x03, value = "Alice"
+	
+	
+	
+	
 	enc := NewEncoder()
 	name := "Alice"
 	enc.PutUint8(FieldAccountOwnerName)
@@ -253,43 +249,43 @@ func TestEncoderBuildsValidTLVStringField(t *testing.T) {
 
 	got := enc.Bytes()
 	want := []byte{
-		0x03,                   // FieldAccountOwnerName
-		0x00, 0x00, 0x00, 0x05, // length = 5
-		'A', 'l', 'i', 'c', 'e', // value
+		0x03,                   
+		0x00, 0x00, 0x00, 0x05, 
+		'A', 'l', 'i', 'c', 'e', 
 	}
 	assertBytesEqual(t, got, want)
 }
 
 func TestEncoderBuildsReplyHeader(t *testing.T) {
-	// Build the reply header that the C++ MessageSerializer::deserialize expects:
-	//   [1B MsgType] [4B RequestID] [4B IPv4] [2B Port] [2B StatusCode] [4B ContentLen]
-	//
-	// Total fixed header = 17 bytes
+	
+	
+	
+	
 	enc := NewEncoder()
-	enc.PutUint8(0x01)        // MsgTypeReply
-	enc.PutUint32(42)         // RequestID
-	enc.PutUint32(0xC0A80001) // 192.168.0.1
-	enc.PutUint16(12345)      // Port
-	enc.PutUint16(0)          // StatusSuccess
-	enc.PutUint32(0)          // ContentLen = 0
+	enc.PutUint8(0x01)        
+	enc.PutUint32(42)         
+	enc.PutUint32(0xC0A80001) 
+	enc.PutUint16(12345)      
+	enc.PutUint16(0)          
+	enc.PutUint32(0)          
 
 	got := enc.Bytes()
 	if len(got) != 17 {
 		t.Fatalf("reply header = %d bytes, want exactly 17", len(got))
 	}
 
-	// Spot-check the MsgType
+	
 	if got[0] != 0x01 {
 		t.Errorf("MsgType = 0x%02X, want 0x01", got[0])
 	}
 
-	// Spot-check the RequestID at bytes 1-4
+	
 	reqID := binary.BigEndian.Uint32(got[1:5])
 	if reqID != 42 {
 		t.Errorf("RequestID = %d, want 42", reqID)
 	}
 
-	// Spot-check that StatusCode sits at bytes 11-12 (after IPv4 and Port)
+	
 	status := binary.BigEndian.Uint16(got[11:13])
 	if status != 0 {
 		t.Errorf("StatusCode = %d, want 0", status)
@@ -297,7 +293,7 @@ func TestEncoderBuildsReplyHeader(t *testing.T) {
 }
 
 func TestEncoderSequentialWrites(t *testing.T) {
-	// Make sure sequential writes don't clobber each other
+	
 	enc := NewEncoder()
 	enc.PutUint8(0xAA)
 	enc.PutUint16(0xBBCC)
@@ -305,25 +301,25 @@ func TestEncoderSequentialWrites(t *testing.T) {
 	enc.PutFloat64(1.0)
 	enc.PutString("hi")
 
-	// Total: 1 + 2 + 4 + 8 + 2 = 17 bytes
+	
 	if enc.Len() != 17 {
 		t.Errorf("total Len() = %d, want 17", enc.Len())
 	}
 
 	got := enc.Bytes()
-	// Verify first byte wasn't stomped
+	
 	if got[0] != 0xAA {
 		t.Errorf("first byte = 0x%02X, want 0xAA", got[0])
 	}
-	// Verify last two bytes are "hi"
+	
 	if got[15] != 'h' || got[16] != 'i' {
 		t.Errorf("last two bytes = [0x%02X 0x%02X], want ['h' 'i']", got[15], got[16])
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Helper
-// ─────────────────────────────────────────────────────────────────────
+
+
+
 
 func assertBytesEqual(t *testing.T, got, want []byte) {
 	t.Helper()

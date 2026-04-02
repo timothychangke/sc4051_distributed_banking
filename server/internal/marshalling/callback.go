@@ -4,37 +4,11 @@ import (
 	"bank-server/pkg/models"
 )
 
-// ─────────────────────────────────────────────────────────────────────
-// Callback packet builder for the monitor system.
-//
-// When a mutation happens (Open, Close, Deposit, Withdraw, Transfer),
-// the monitor manager pushes an update to all subscribed clients. These
-// callback packets use a FLAT layout (no TLV) with MsgTypeCallback (0x02)
-// so the C++ client can distinguish them from normal replies at the first byte.
-//
-// Wire layout:
-// ┌──────────┬──────────┬──────────────┬───────────────────┬──────────┬──────────┐
-// │ MsgType  │ ServiceID│ AccountNumber│ HolderName        │ Currency │ Balance  │
-// │ (1 byte) │ (1 byte) │ (4 bytes BE) │ [4B len][N data]  │ (1 byte) │ (8B BE)  │
-// │ 0x02     │          │              │                   │          │ float64  │
-// └──────────┴──────────┴──────────────┴───────────────────┴──────────┴──────────┘
-//
-// Minimum size (empty name): 1 + 1 + 4 + 4 + 0 + 1 + 8 = 19 bytes
-// ─────────────────────────────────────────────────────────────────────
 
 // MsgTypeCallback is the message type byte for monitor push updates.
 // Must stay in sync with protocol.MsgTypeCallback (0x02).
 const MsgTypeCallback uint8 = 0x02
 
-// MarshalCallbackUpdate converts an AccountUpdate into the raw bytes
-// that get pushed to monitoring clients over UDP. This function is
-// injected into monitor.NewManager() at startup so the monitor system
-// doesn't need to know anything about wire formats.
-//
-// The layout is flat and fixed-order (not TLV) because:
-//   - Callback packets are fire-and-forget, no request/reply matching needed
-//   - The C++ client's monitor loop expects a specific byte sequence
-//   - TLV overhead is unnecessary when every callback has the same fields
 func MarshalCallbackUpdate(update models.AccountUpdate) ([]byte, error) {
 	// Pre-calculate the total size so we allocate once.
 	// 1 (MsgType) + 1 (ServiceID) + 4 (AccNo) + 4 (name len) + len(name) + 1 (Currency) + 8 (Balance)
