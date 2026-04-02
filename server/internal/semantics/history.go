@@ -8,7 +8,7 @@ import (
 // This is a server side cache of replies weve already sent.
 //
 // In at-most-once semantics, if we get a duplicate request (same client,
-// same request ID), we don't re-execute the handler — we just re-send
+// same request ID), we don't re-execute the handler: we just re-send
 // the cached reply. This prevents non-idempotent operations like Transfer
 // from executing twice when a reply gets lost and the client retransmits.
 //

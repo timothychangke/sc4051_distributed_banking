@@ -25,11 +25,11 @@ func TestPutUint8(t *testing.T) {
 func TestPutUint16(t *testing.T) {
 	enc := NewEncoder()
 
-	// 0x0000 — zero
+	// 0x0000: zero
 	enc.PutUint16(0)
-	// 0x04D2 — 1234 in big-endian
+	// 0x04D2: 1234 in big-endian
 	enc.PutUint16(1234)
-	// 0xFFFF — max value
+	// 0xFFFF: max value
 	enc.PutUint16(0xFFFF)
 
 	got := enc.Bytes()
@@ -46,7 +46,7 @@ func TestPutUint32(t *testing.T) {
 
 	// Zero
 	enc.PutUint32(0)
-	// 10000 — the starting account number from MemoryStore
+	// 10000: the starting account number from MemoryStore
 	enc.PutUint32(10000)
 	// Max uint32
 	enc.PutUint32(0xFFFFFFFF)
@@ -266,12 +266,12 @@ func TestEncoderBuildsReplyHeader(t *testing.T) {
 	//
 	// Total fixed header = 17 bytes
 	enc := NewEncoder()
-	enc.PutUint8(0x01)       // MsgTypeReply
-	enc.PutUint32(42)        // RequestID
+	enc.PutUint8(0x01)        // MsgTypeReply
+	enc.PutUint32(42)         // RequestID
 	enc.PutUint32(0xC0A80001) // 192.168.0.1
-	enc.PutUint16(12345)     // Port
-	enc.PutUint16(0)         // StatusSuccess
-	enc.PutUint32(0)         // ContentLen = 0
+	enc.PutUint16(12345)      // Port
+	enc.PutUint16(0)          // StatusSuccess
+	enc.PutUint32(0)          // ContentLen = 0
 
 	got := enc.Bytes()
 	if len(got) != 17 {

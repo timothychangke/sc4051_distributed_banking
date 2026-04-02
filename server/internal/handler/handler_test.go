@@ -65,12 +65,12 @@ func buildRequest(requestID uint32, tlvFields []marshal.TLVField) []byte {
 
 	// 18-byte header
 	enc.PutUint8(marshal.MsgTypeReply) // Type (0x01)
-	enc.PutUint8(0)                  // Flag
-	enc.PutUint32(requestID)         // RequestID
-	enc.PutUint32(0)                  // IPv4 (empty for test)
-	enc.PutUint16(0)                  // Port
-	enc.PutUint16(0)                  // StatusCode
-	enc.PutUint32(uint32(contentLen)) // ContentLen
+	enc.PutUint8(0)                    // Flag
+	enc.PutUint32(requestID)           // RequestID
+	enc.PutUint32(0)                   // IPv4 (empty for test)
+	enc.PutUint16(0)                   // Port
+	enc.PutUint16(0)                   // StatusCode
+	enc.PutUint32(uint32(contentLen))  // ContentLen
 
 	// Payload
 	if contentLen > 0 {
@@ -446,7 +446,7 @@ func TestHandleMonitor_Success(t *testing.T) {
 func TestHandleMonitor_MissingTimeout(t *testing.T) {
 	handler, _ := testSetup(t)
 
-	// No MonitorTimeoutSeconds field — should fail
+	// No MonitorTimeoutSeconds field: should fail
 	req := buildRequest(61, []marshal.TLVField{
 		marshal.TLVUint8(marshal.FieldService, protocol.ServiceMonitor),
 	})

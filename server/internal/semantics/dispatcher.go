@@ -113,7 +113,7 @@ func (d *Dispatcher) Dispatch(data []byte, addr *net.UDPAddr) ([]byte, error) {
 	// At-most-once: check the cache before doing anything.
 	// If weve seen this exact (client, requestID) before, the client
 	// is retransmitting because our previous reply got lost. Just
-	// re-send the cached reply — do NOT re-execute the handler.
+	// re-send the cached reply: do NOT re-execute the handler.
 	if cachedReply, found := d.history.Lookup(clientKey, header.RequestID); found {
 		log.Printf("[Dispatcher] At-most-once: duplicate detected for request %d from %s, returning cached reply",
 			header.RequestID, clientKey)

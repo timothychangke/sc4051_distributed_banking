@@ -16,7 +16,8 @@ import (
 
 // buildTLVField is a test helper that constructs a single TLV entry
 // exactly the way the C++ CommandEncoder does:
-//   [FieldID (1 byte)] [FieldLength (4 bytes, BE)] [Value (N bytes)]
+//
+//	[FieldID (1 byte)] [FieldLength (4 bytes, BE)] [Value (N bytes)]
 func buildTLVField(fieldID uint8, value []byte) []byte {
 	buf := make([]byte, 0, 1+4+len(value))
 	buf = append(buf, fieldID)
@@ -312,7 +313,7 @@ func TestDecodeTLV_Float64SpecialValues(t *testing.T) {
 }
 
 func TestDecodeTLV_IncompleteTLVHeader(t *testing.T) {
-	// Only 3 bytes — not enough for a full TLV header (need 5).
+	// Only 3 bytes: not enough for a full TLV header (need 5).
 	// This should NOT be an error; it means "no more fields."
 	payload := []byte{0x01, 0x00, 0x00}
 

@@ -781,6 +781,6 @@ TEST_F(BankClientTest, monitor_server_updates_PipelineFailure) {
 
     EXPECT_CALL(*mockIO, print_error(testing::HasSubstr("Failed to encode command"))).Times(1);
 
-    // listen_server must NOT be called — no socket interactions expected
+    // listen_server must NOT be called: no socket interactions expected
     client->monitor_server_updates(req);
 }

@@ -13,7 +13,7 @@ import (
 //
 // The callback format is flat (not TLV), so we verify each field at
 // its exact byte offset. The C++ client's monitor loop reads these
-// bytes sequentially — if anything is misaligned, it's game over.
+// bytes sequentially: if anything is misaligned, it's game over.
 // ─────────────────────────────────────────────────────────────────────
 
 func TestMarshalCallbackUpdate_MinimumSize(t *testing.T) {
