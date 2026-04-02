@@ -8,20 +8,20 @@ import (
 	"bank-server/pkg/models"
 )
 
-// mockMarshal is a trivial marshaler that just returns a fixed byte slice.
-// We don't care about the wire format in these unit tests: that's the
-// handler layer's responsibility.
+
+
+
 func mockMarshal(update models.AccountUpdate) ([]byte, error) {
 	return []byte("mock"), nil
 }
 
-// newTestManager spins up a manager backed by a real loopback UDP socket.
-// The sweeper interval is set deliberately high so it doesn't interfere
-// with test timing unless we explicitly test sweeper behaviour.
+
+
+
 func newTestManager(t *testing.T) (*Manager, *net.UDPConn) {
 	t.Helper()
 
-	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0") // OS picks a free port
+	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0") 
 	if err != nil {
 		t.Fatalf("Failed to resolve UDP address: %v", err)
 	}
@@ -31,7 +31,7 @@ func newTestManager(t *testing.T) (*Manager, *net.UDPConn) {
 		t.Fatalf("Failed to listen on UDP: %v", err)
 	}
 
-	// Use a very long sweep interval so it doesn't fire during normal tests.
+	
 	mgr := NewManager(conn, mockMarshal, 1*time.Hour)
 
 	t.Cleanup(func() {
@@ -61,7 +61,7 @@ func TestManager_RegisterAndCount(t *testing.T) {
 func TestManager_RegisterOverwritesSameClient(t *testing.T) {
 	mgr, _ := newTestManager(t)
 
-	// Same client registers twice: the second call should overwrite, not duplicate.
+	
 	client := fakeClientAddr(t, 9001)
 	mgr.Register(client, 10*time.Second)
 	mgr.Register(client, 60*time.Second)
@@ -74,13 +74,13 @@ func TestManager_RegisterOverwritesSameClient(t *testing.T) {
 func TestManager_LazyCleanupOnNotify(t *testing.T) {
 	mgr, _ := newTestManager(t)
 
-	// Register a subscriber that expires almost immediately
+	
 	mgr.Register(fakeClientAddr(t, 9001), 1*time.Millisecond)
 
-	// Give it a moment to expire
+	
 	time.Sleep(10 * time.Millisecond)
 
-	// NotifyAll should evict the expired subscriber during iteration
+	
 	update := models.AccountUpdate{
 		ServiceID:     1,
 		AccountNumber: 10000,
@@ -106,17 +106,17 @@ func TestManager_PeriodicSweep(t *testing.T) {
 		t.Fatalf("Failed to listen on UDP: %v", err)
 	}
 
-	// Sweep every 50ms so we can observe it firing within the test window
+	
 	mgr := NewManager(conn, mockMarshal, 50*time.Millisecond)
 	t.Cleanup(func() {
 		mgr.Stop()
 		conn.Close()
 	})
 
-	// Register a subscriber that expires in 10ms
+	
 	mgr.Register(fakeClientAddr(t, 9001), 10*time.Millisecond)
 
-	// Wait enough time for the subscriber to expire and the sweeper to fire
+	
 	time.Sleep(150 * time.Millisecond)
 
 	if count := mgr.ActiveCount(); count != 0 {
@@ -127,7 +127,7 @@ func TestManager_PeriodicSweep(t *testing.T) {
 func TestManager_NotifySkipsExpiredKeepsActive(t *testing.T) {
 	mgr, _ := newTestManager(t)
 
-	// One subscriber that expires immediately, one that sticks around
+	
 	mgr.Register(fakeClientAddr(t, 9001), 1*time.Millisecond)
 	mgr.Register(fakeClientAddr(t, 9002), 10*time.Minute)
 

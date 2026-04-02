@@ -15,25 +15,15 @@ import (
 	protocol "bank-server/util"
 )
 
-// ─────────────────────────────────────────────────────────────────────
-// Handler integration tests.
-//
-// These use a real MemoryStore and banking.Service so we're testing the
-// full path from raw bytes → handler → banking → raw reply bytes.
-// The only thing mocked is the UDP connection (monitor notifications
-// go to a dummy conn).
-// ─────────────────────────────────────────────────────────────────────
 
-// testSetup creates a fresh banking service and monitor for each test.
-// Returns the handler function and the banking service (for state inspection).
 func testSetup(t *testing.T) (semantics.RequestHandler, banking.Service) {
 	t.Helper()
 
 	memStore := store.NewMemoryStore()
 	svc := banking.NewService(memStore)
 
-	// Monitor needs a real UDPConn. Bind to a random port on loopback
-	// so we don't conflict with anything. We never actually read from it.
+	
+	
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
 	if err != nil {
 		t.Fatalf("failed to create monitor UDP socket: %v", err)
@@ -47,32 +37,32 @@ func testSetup(t *testing.T) (semantics.RequestHandler, banking.Service) {
 	return handler, svc
 }
 
-// clientAddr returns a deterministic fake client address for tests.
+
 func clientAddr() *net.UDPAddr {
 	return &net.UDPAddr{IP: net.IPv4(192, 168, 1, 50), Port: 9999}
 }
 
-// buildRequest constructs a full request packet with the semantics header
-// prepended, exactly as the C++ client sends on the wire.
-//
-//	[Type(1B)] [Flag(1B)] [RequestID(4B BE)] [IPv4(4B BE)] [Port(2B BE)] [StatusCode(2B BE)] [ContentLen(4B BE)] [TLV payload...]
+
+
+
+
 func buildRequest(requestID uint32, tlvFields []marshal.TLVField) []byte {
 	tlvBytes := marshal.EncodeTLVFields(tlvFields)
 	contentLen := len(tlvBytes)
 
-	// Pre-allocate the full 18-byte header + payload
+	
 	enc := marshal.NewEncoderWithCap(semantics.HeaderSize + contentLen)
 
-	// 18-byte header
-	enc.PutUint8(marshal.MsgTypeReply) // Type (0x01)
-	enc.PutUint8(0)                    // Flag
-	enc.PutUint32(requestID)           // RequestID
-	enc.PutUint32(0)                   // IPv4 (empty for test)
-	enc.PutUint16(0)                   // Port
-	enc.PutUint16(0)                   // StatusCode
-	enc.PutUint32(uint32(contentLen))  // ContentLen
+	
+	enc.PutUint8(marshal.MsgTypeReply) 
+	enc.PutUint8(0)                    
+	enc.PutUint32(requestID)           
+	enc.PutUint32(0)                   
+	enc.PutUint16(0)                   
+	enc.PutUint16(0)                   
+	enc.PutUint32(uint32(contentLen))  
 
-	// Payload
+	
 	if contentLen > 0 {
 		enc.PutBytes(tlvBytes)
 	}
@@ -80,7 +70,7 @@ func buildRequest(requestID uint32, tlvFields []marshal.TLVField) []byte {
 	return enc.Bytes()
 }
 
-// parseReply pulls apart the fixed reply header so tests can check individual fields.
+
 type parsedReply struct {
 	MsgType    uint8
 	RequestID  uint32
@@ -111,7 +101,7 @@ func parseReplyBytes(t *testing.T, data []byte) parsedReply {
 	return r
 }
 
-// --- OpenAccount tests ---
+
 
 func TestHandleOpen_Success(t *testing.T) {
 	handler, _ := testSetup(t)
@@ -134,7 +124,7 @@ func TestHandleOpen_Success(t *testing.T) {
 		t.Errorf("RequestID: want 1, got %d", r.RequestID)
 	}
 
-	// Content should contain the new account number
+	
 	cmd, err := marshal.DecodeTLV(r.Content)
 	if err != nil {
 		t.Fatalf("failed to decode reply content: %v", err)
@@ -142,7 +132,7 @@ func TestHandleOpen_Success(t *testing.T) {
 	if cmd.AccountNumber == nil {
 		t.Fatal("expected account number in reply")
 	}
-	// MemoryStore starts at 10000
+	
 	if *cmd.AccountNumber < 10000 {
 		t.Errorf("account number %d seems too low", *cmd.AccountNumber)
 	}
@@ -151,7 +141,7 @@ func TestHandleOpen_Success(t *testing.T) {
 func TestHandleOpen_MissingFields(t *testing.T) {
 	handler, _ := testSetup(t)
 
-	// Missing password and currency
+	
 	req := buildRequest(2, []marshal.TLVField{
 		marshal.TLVUint8(marshal.FieldService, protocol.ServiceOpenAccount),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Bob"),
@@ -166,12 +156,12 @@ func TestHandleOpen_MissingFields(t *testing.T) {
 	}
 }
 
-// --- CloseAccount tests ---
+
 
 func TestHandleClose_Success(t *testing.T) {
 	handler, svc := testSetup(t)
 
-	// First create an account to close
+	
 	pw := marshal.PasswordStringToFixed("close_me")
 	accNo := svc.OpenAccount("Dave", pw, models.USD, 0.0)
 
@@ -188,7 +178,7 @@ func TestHandleClose_Success(t *testing.T) {
 	if r.StatusCode != uint16(protocol.StatusSuccess) {
 		t.Fatalf("expected success, got status %d", r.StatusCode)
 	}
-	// Close returns no content
+	
 	if r.ContentLen != 0 {
 		t.Errorf("expected empty content, got %d bytes", r.ContentLen)
 	}
@@ -215,7 +205,7 @@ func TestHandleClose_WrongPassword(t *testing.T) {
 	}
 }
 
-// --- Deposit tests ---
+
 
 func TestHandleDeposit_Success(t *testing.T) {
 	handler, svc := testSetup(t)
@@ -239,7 +229,7 @@ func TestHandleDeposit_Success(t *testing.T) {
 		t.Fatalf("expected success, got status %d", r.StatusCode)
 	}
 
-	// Content should contain the new balance: 100.0 + 250.50 = 350.50
+	
 	cmd, err := marshal.DecodeTLV(r.Content)
 	if err != nil {
 		t.Fatalf("failed to decode reply content: %v", err)
@@ -258,7 +248,7 @@ func TestHandleDeposit_CurrencyMismatch(t *testing.T) {
 	pw := marshal.PasswordStringToFixed("currmis1")
 	accNo := svc.OpenAccount("Grace", pw, models.SGD, 100.0)
 
-	// Try to deposit USD into an SGD account
+	
 	req := buildRequest(21, []marshal.TLVField{
 		marshal.TLVUint8(marshal.FieldService, protocol.ServiceDeposit),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Grace"),
@@ -277,7 +267,7 @@ func TestHandleDeposit_CurrencyMismatch(t *testing.T) {
 	}
 }
 
-// --- Withdraw tests ---
+
 
 func TestHandleWithdraw_Success(t *testing.T) {
 	handler, svc := testSetup(t)
@@ -331,7 +321,7 @@ func TestHandleWithdraw_InsufficientFunds(t *testing.T) {
 	}
 }
 
-// --- GetBalance tests ---
+
 
 func TestHandleGetBalance_Success(t *testing.T) {
 	handler, svc := testSetup(t)
@@ -359,7 +349,7 @@ func TestHandleGetBalance_Success(t *testing.T) {
 	}
 }
 
-// --- Transfer tests ---
+
 
 func TestHandleTransfer_Success(t *testing.T) {
 	handler, svc := testSetup(t)
@@ -388,7 +378,7 @@ func TestHandleTransfer_Success(t *testing.T) {
 		t.Fatalf("expected success, got status %d", r.StatusCode)
 	}
 
-	// Sender's new balance: 1000 - 200 = 800
+	
 	cmd, _ := marshal.DecodeTLV(r.Content)
 	if *cmd.MonetaryValue != 800.0 {
 		t.Errorf("sender balance: want 800.0, got %f", *cmd.MonetaryValue)
@@ -406,7 +396,7 @@ func TestHandleTransfer_SameAccount(t *testing.T) {
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Mike"),
 		marshal.TLVUint32(marshal.FieldAccountNumber, accNo),
 		marshal.TLVString(marshal.FieldAccountPassword, "self_xfr"),
-		marshal.TLVUint32(marshal.FieldTxAccountNumber, accNo), // same account!
+		marshal.TLVUint32(marshal.FieldTxAccountNumber, accNo), 
 		marshal.TLVString(marshal.FieldTxAccountOwnerName, "Mike"),
 		marshal.TLVUint8(marshal.FieldCurrency, uint8(models.SGD)),
 		marshal.TLVFloat64(marshal.FieldMonetaryValue, 100.0),
@@ -421,7 +411,7 @@ func TestHandleTransfer_SameAccount(t *testing.T) {
 	}
 }
 
-// --- Monitor tests ---
+
 
 func TestHandleMonitor_Success(t *testing.T) {
 	handler, _ := testSetup(t)
@@ -437,7 +427,7 @@ func TestHandleMonitor_Success(t *testing.T) {
 	if r.StatusCode != uint16(protocol.StatusSuccess) {
 		t.Fatalf("expected success, got status %d", r.StatusCode)
 	}
-	// Monitor ack has no content
+	
 	if r.ContentLen != 0 {
 		t.Errorf("expected empty content, got %d bytes", r.ContentLen)
 	}
@@ -446,7 +436,7 @@ func TestHandleMonitor_Success(t *testing.T) {
 func TestHandleMonitor_MissingTimeout(t *testing.T) {
 	handler, _ := testSetup(t)
 
-	// No MonitorTimeoutSeconds field: should fail
+	
 	req := buildRequest(61, []marshal.TLVField{
 		marshal.TLVUint8(marshal.FieldService, protocol.ServiceMonitor),
 	})
@@ -459,13 +449,13 @@ func TestHandleMonitor_MissingTimeout(t *testing.T) {
 	}
 }
 
-// --- Reply format sanity checks ---
+
 
 func TestReplyFormat_AlwaysHas18ByteHeader(t *testing.T) {
 	handler, _ := testSetup(t)
 
-	// Even a bad request should produce a well-formed reply
-	req := buildRequest(99, nil) // unknown service ID
+	
+	req := buildRequest(99, nil) 
 
 	reply := handler(req, clientAddr())
 	if len(reply) < semantics.HeaderSize {
@@ -484,7 +474,7 @@ func TestReplyFormat_AlwaysHas18ByteHeader(t *testing.T) {
 func TestReplyFormat_RequestIDEchoed(t *testing.T) {
 	handler, _ := testSetup(t)
 
-	// Use a distinctive request ID and make sure it comes back
+	
 	req := buildRequest(0xCAFEBABE, []marshal.TLVField{
 		marshal.TLVUint8(marshal.FieldService, protocol.ServiceOpenAccount),
 		marshal.TLVString(marshal.FieldAccountOwnerName, "Test"),
@@ -501,7 +491,7 @@ func TestReplyFormat_RequestIDEchoed(t *testing.T) {
 	}
 }
 
-// --- Error mapping tests ---
+
 
 func TestMapBankingError_AllCases(t *testing.T) {
 	tests := []struct {

@@ -5,20 +5,6 @@ import (
 	"net"
 )
 
-// ─────────────────────────────────────────────────────────────────────
-// Shared utility functions for the marshalling layer.
-//
-// These handle the quirky conversions between what the C++ client sends
-// on the wire and what the Go banking service expects in its API.
-// ─────────────────────────────────────────────────────────────────────
-
-// IPv4ToUint32 converts a net.UDPAddr's IP into the big-endian uint32
-// that the C++ MessageSerializer expects in the reply header.
-//
-// If the address isn't a valid IPv4 (e.g., it's IPv6 or nil), we return 0.
-// The C++ client doesn't actually use this field for routing: it already
-// knows its own address: but the bytes must be present in the reply or
-// the fixed-offset deserializer reads garbage for everything after it.
 func IPv4ToUint32(addr *net.UDPAddr) uint32 {
 	if addr == nil || addr.IP == nil {
 		return 0
@@ -38,15 +24,6 @@ func IPv4ToUint32(addr *net.UDPAddr) uint32 {
 	return binary.BigEndian.Uint32(ip4)
 }
 
-// PasswordStringToFixed converts a variable-length password string from
-// the wire into the [8]byte array that the Go banking service expects.
-//
-// The C++ client sends passwords as variable-length strings: could be
-// 3 bytes, could be 8, could theoretically be longer. The Go banking
-// layer expects exactly [8]byte. We handle the mismatch here:
-//   - Short passwords get zero-padded on the right
-//   - Passwords longer than 8 bytes get truncated (shouldn't happen in
-//     practice since the client UI enforces the limit, but defense in depth)
 func PasswordStringToFixed(pw string) [8]byte {
 	var fixed [8]byte
 

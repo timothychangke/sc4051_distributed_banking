@@ -3,10 +3,7 @@ package marshal
 import "testing"
 
 func TestFieldIDValues(t *testing.T) {
-	// These values are the cross-language contract with the C++ client.
-	// If any of them change, TLV encoding breaks silently. This test
-	// exists so that a careless refactor doesn't shift the constants
-	// and cost someone two hours of hex-dump debugging.
+
 	tests := []struct {
 		name string
 		got  uint8
@@ -34,14 +31,14 @@ func TestFieldIDValues(t *testing.T) {
 }
 
 func TestTLVHeaderSize(t *testing.T) {
-	// 1 byte FieldID + 4 bytes Length = 5 bytes total
+	
 	if TLVHeaderSize != 5 {
 		t.Errorf("TLVHeaderSize = %d, want 5", TLVHeaderSize)
 	}
 }
 
 func TestIsValidFieldID(t *testing.T) {
-	// Every defined field should be valid
+	
 	validIDs := []uint8{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A}
 	for _, id := range validIDs {
 		if !IsValidFieldID(id) {
@@ -49,7 +46,7 @@ func TestIsValidFieldID(t *testing.T) {
 		}
 	}
 
-	// Anything outside our enum should be rejected
+	
 	invalidIDs := []uint8{0x00, 0x0B, 0x0C, 0xFF, 0x10, 0x80}
 	for _, id := range invalidIDs {
 		if IsValidFieldID(id) {
@@ -59,7 +56,7 @@ func TestIsValidFieldID(t *testing.T) {
 }
 
 func TestFieldIDsAreUnique(t *testing.T) {
-	// Paranoia check: make sure no two constants accidentally share a value
+	
 	all := []uint8{
 		FieldService, FieldAccountNumber, FieldAccountOwnerName,
 		FieldAccountPassword, FieldTxAccountNumber, FieldTxAccountOwnerName,
