@@ -133,10 +133,11 @@
     basicstyle=\ttfamily\footnotesize,
 }
 
-% Colors for packet dumps
-\definecolor{packetbg}{RGB}{240, 244, 248} % Very faint blue-grey
-\definecolor{packetbytes}{RGB}{50, 50, 50} % Dark grey for the hex bytes
-\definecolor{packetannotation}{RGB}{0, 102, 204} % Deep blue for the explanations
+% ── Packet Dump Code Listing Style ──────────────────────────────────────────
+\definecolor{packetbg}{RGB}{240, 244, 248}
+\definecolor{packetbytes}{RGB}{50, 50, 50}
+\definecolor{packetannotation}{RGB}{0, 102, 204}
+\definecolor{offsetgray}{HTML}{9CA3AF} % For byte offset numbers
 
 \lstdefinestyle{packetDump}{
     backgroundcolor=\color{packetbg},
@@ -145,12 +146,19 @@
     breaklines=true,
     captionpos=b,
     keepspaces=true,
-    numbers=none, % Removed line numbers for cleaner hex reading
-    frame=leftline, % A clean single line on the left instead of a full box
-    rulecolor=\color{packetannotation},
-    framerule=2pt, % Makes the left line slightly thicker
-    xleftmargin=10pt,
-    % The magic line: automatically styles anything between [ and ]
+    columns=fixed,              % STRICT ALIGNMENT for hex dumps
+    basewidth={0.5em, 0.45em},  % Locks character width
+    numbers=left,               % Used as byte offsets (0000, 0010)
+    numberstyle=\ttfamily\scriptsize\color{offsetgray}, 
+    numbersep=12pt,
+    frame=single,               % Thin console-like border
+    rulecolor=\color{offsetgray},
+    framerule=0.4pt,
+    xleftmargin=24pt,
+    framexleftmargin=20pt,
+    framexrightmargin=4pt,
+    framextopmargin=4pt,
+    framexbottommargin=4pt,
     moredelim=[s][\color{packetannotation}\itshape]{[}{]} 
 }
 
@@ -326,7 +334,7 @@ The client is written in C++ due to the language's ability to handle low level b
 
 The presence of cross-language components necessitates handling of various constraints. Firstly, the data boundary and marshalling conventions for all data types must be aligned on both components. Next, it is important to standardise encodings so that both components interpret numeric bytes identically. Network byte order (big-endian) is used for all integer fields, whereas IEEE754 double format (64-bit) is used for floating-point balances.
 
-The report analyses the unreliability of UDP, and the trade-offs between using different semantic modes to handle it, via explicit retry and duplicate-detection mechanisms.
+This report analyses the unreliability of UDP, and the trade-offs between using different semantic modes to handle it, via explicit retry and duplicate-detection mechanisms.
 
 % ---------------------------------------------------------
 \section{Message Design \& Wire Protocol}
@@ -469,7 +477,7 @@ Initial Balance & 8 bytes & IEEE-754 double precision floating-point number enco
 
 The client packs each numeric or string value  without additional padding, and the length specifies the exact number of bytes. For example, if the user “Alice” (5 letters) chooses password “pass1234” (8 chars), currency SGD (id=1), and balance 1000.00, the TLV encoding for that request would look like:
 
-\begin{lstlisting}[caption={TLV Encoding Example}, label={lst:tlv}]
+\begin{lstlisting}[style=packetDump, caption={TLV Encoding Example}, label={lst:tlv}]
 10 00 00 00 01 01                       [ServiceID field: ID=16, Len=1, Value=0x01 (OpenAccount service)]
 11 00 00 00 01 01                       [MsgType field: ID=17, Len=1, Value=0x01 (Request)]
 01 00 00 00 05 41 6C 69 63 65   [Name field: ID=1, Len=5, Value="Alice"]
@@ -713,7 +721,7 @@ As \texttt{BankClient} accepts \texttt{BaseSocket} and \texttt{BaseCommandEncode
 % Monitor manager runs its own goroutine for subscriber sweep. 
 % Client is single-threaded (blocked during monitor interval, per spec).
 
-While the lab permits a single-threaded server, our system was designed to allow multiple clients to operate concurrently on the server, and requires various synchronisation strategies to align this.
+While the report permits a single-threaded server, our system was designed to allow multiple clients to operate concurrently on the server, and requires various synchronisation strategies to align this.
 
 The in-memory account map, where account numbers were mapped to account data, is protected by a global read-write mutex which synchronises account lifecycle operations like CreateAccount and GetAccount. While multiple read queries can be run under a shared read lock, write-based operations utilise an exclusive write lock.
 
@@ -833,9 +841,9 @@ When Client~A performs a deposit, the server will then push the callback to Clie
 % --- Step 2: Client A deposits ---
 \def\yb{-3.4}
 \draw[msg, clientred] (\cax, \yb) -- node[above, font=\scriptsize] {Deposit(\$500, Acc\#10000)} (\svx, \yb);
-\node[note] at (\svx+0.1, \yb-0.55) {Server updates\\balance, calls\\NotifyAll()};
+\node[note] at (\svx+0.1, \yb-0.58) {Server updates\\balance, calls\\NotifyAll()};
 % FIX: Increased offset from \yb-0.15 to \yb-1.0
-\draw[msg, dashed, clientred] (\svx, \yb-1.0) -- node[below, font=\scriptsize] {Reply: Balance=\$1500} (\cax, \yb-1.0);
+\draw[msg, dashed, clientred] (\svx, \yb-1.2) -- node[below, font=\scriptsize] {Reply: Balance=\$1500} (\cax, \yb-1.2);
  
 % --- Step 3: Server pushes callback to Client B ---
 % Shifted \yc down slightly from -5.2 to -5.4 to make room for the fix above
@@ -931,9 +939,9 @@ As depicted in Figure~\ref{fig:at-least-once-flow}, at-least-once is safe only f
 
 \subsection{At-Most-Once Semantics}
 
-In this model, the client has a similar retry mechanism as at-least-once mode. However, the server detects and suppresses duplicates by caching replies, ensuring that each operation is executed at most one time, or zero times if all attempts are lost before execution.
+For at most once, the client has a similar retry mechanism as at-least-once mode. However, the server detects and suppresses duplicates by caching replies, ensuring that each operation is executed at most one time, or zero times if all attempts are lost before execution.
 
-\textbf{Client-side mechanism:} While the retry mechanism is similar to at-least-once, in this model, the client increments the request ID within the message for each session. This allows the server to distinguish fresh requests from retransmissions.
+\textbf{Client-side mechanism:} While the retry mechanism is similar to at-least-once, the client increments the request ID within the message for each session. This allows the server to distinguish fresh requests from retransmissions.
 
 \textbf{Server-side mechanism:} The dispatcher maintains a request history cache, which is a two-dimensional map that is keyed firstly by the client's IP address and port, and secondly by the request ID. Before dispatching a request to the handler, it will parse the message header and extract both keys. It will check the cache for a match:
 \begin{enumerate}
@@ -1135,7 +1143,7 @@ By mocking components like \texttt{BaseSocket} and \texttt{BaseCommandEncoder}, 
 
 \subsection{Integration Tests (End-to-End)}
 
-The integration test suite (\texttt{integration\_test.go}) is written in Go and runs 38 test cases that pass on both Windows and Linux. Each test:
+The integration test suite (\texttt{integration\_test.go}) is written in Go and runs 38 test cases that pass on both Windows and Mac. Each test:
 
 \begin{enumerate}
     \item Spawns the real Go server with specified flags (e.g., `--semantics=at-most-once --loss-rate=0.3`).
