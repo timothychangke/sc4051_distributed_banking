@@ -547,7 +547,8 @@ Within the lab requirements, the server should "push" updates to all registered 
 
 For example, if account 12345 (“Bob”) with currency USD (0x00) now has balance 250.75, the server might send:
 
-\begin{lstlisting}[style=packetDump, caption={Callback Packet Example}, label={lst:callback}]02 05               [MsgType=0x02, ServiceID=0x05 (monitor update)]
+\begin{lstlisting}[style=packetDump, caption={Callback Packet Example}, label={lst:callback}]
+02 03               [MsgType=0x02, ServiceID=0x03 (Deposit triggered update)]
 00 00 30 39        [Account#=12345 (big-endian)]
 00 00 00 03 42 6F 62   [NameLen=3, Name="Bob"]
 00                [Currency=0x00 (USD)]
