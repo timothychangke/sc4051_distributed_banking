@@ -66,9 +66,6 @@ func (e *Encoder) PutLengthPrefixedString(s string) {
 	e.PutString(s)
 }
 
-// Bytes returns the assembled buffer. The returned slice shares the
-// underlying array with the encoder: if you need an independent copy,
-// clone it yourself.
 func (e *Encoder) Bytes() []byte {
 	return e.buf
 }

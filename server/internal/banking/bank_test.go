@@ -121,7 +121,7 @@ func TestService_CloseAccount(t *testing.T) {
 	}
 }
 
-// TestService_ConcurrentWithdrawals PROVES your fine-grained mutexes work.
+// TestService_ConcurrentWithdrawals proves the fine-grained mutexes work.
 func TestService_ConcurrentWithdrawals(t *testing.T) {
 	_, svc := setupTestEnvironment()
 	pw := defaultPassword()
@@ -237,7 +237,7 @@ func TestService_Transfer(t *testing.T) {
 	}
 }
 
-// TestService_ConcurrentTransfers PROVES your deadlock prevention works.
+// TestService_ConcurrentTransfers proves the deadlock prevention works.
 func TestService_ConcurrentTransfers(t *testing.T) {
 	_, svc := setupTestEnvironment()
 	pw := defaultPassword()
