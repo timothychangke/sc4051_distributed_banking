@@ -1,18 +1,21 @@
-## Client 
+## Client
 
-### Instructions to compile the code 
+### Instructions to compile the code
 
-cmake is used to compile the code across different os. 
-Follow the intructions below to build the client code. 
+cmake is used to compile the code across different OSes.
+Follow the instructions below for the environment you are using.
 
-``` bash 
-mkdir build
+#### WSL Ubuntu / Linux
+
+```bash
+mkdir -p build
 cd build
 
-# To compile the code
-cmake .. 
-cmake --build . 
+cmake ..
+cmake --build .
 
-cd Debug 
-./client.exe
+./client 127.0.0.1 2222 -m
 ```
+
+Note: on WSL Ubuntu, CMake usually generates a single executable in the build directory.
+It does not normally create a Debug folder unless you explicitly use a multi-config generator.
